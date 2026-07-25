@@ -1,0 +1,171 @@
+---
+title: "Day 13｜AI 精準讀取 Google Sheets 的方法：欄位別名、Pandas 計算與快取設計"
+sidebarTitle: "Day 13｜Google Sheets"
+description: "直接把企業試算表塞進 Prompt 成本高且計算容易出錯。Data Machi 透過欄位別名對應、Pandas 精確篩選統計與短時快取設計，讓程式負責所有數字的計算工作，讓語言模型只需要理解使用者意圖、整合各項資料，並清楚組織出可信賴且準確的最終回答給使用者。"
+---
+
+讓 AI 讀取 Google Sheets，聽起來像是把資料表丟給模型就能搞定的事，但任何真正在企業環境處理過資料的人都知道，現實遠比 Demo 複雜得多。企業的試算表往往混雜著欄位別名、空白列、不一致的日期格式、合併儲存格，以及幾千行的明細資料。如果直接把整張表塞進 Prompt，不但 Token 成本會爆炸，模型在面對大量數字時的計算準確率也難以保證。Data Machi 的 Analyst Tool 設計，核心原則只有一句話：**讓程式負責精確計算，讓 LLM 負責理解與溝通。**
+
+## 為什麼不能直接把整張表送給模型？
+
+這個問題值得花一點時間認真回答，因為它關係到整個工具設計的出發點。
+
+假設你有一張記錄 2,000 筆工單的 Google Sheets，每筆工單有 15 個欄位。把它完整送進 Prompt 大概需要 30,000 個 Token。以 Gemini 的定價來算，一次查詢的成本就會相當可觀。而且更糟糕的是，**語言模型並不擅長精確的數學計算**——它可以理解「計算每個類別的工單數量」這個意圖，但若要它直接數出 Excel 裡的列數，出錯的機率遠高於你的預期。
+
+<Warning>
+  不要讓模型直接「心算」資料表。超過幾十列的數值計算，都應該交給可驗證的程式（例如 Pandas）來執行，模型只負責解讀使用者意圖和呈現結果。
+</Warning>
+
+## 先用程式處理，再讓模型解釋
+
+Data Machi 的 Analyst Tool 採用以下流程：
+
+<Steps>
+  <Step title="讀取並清理工作表">
+    透過 Google Sheets API 讀取指定工作表，移除空白列、補齊不完整欄位、統一日期格式。這個步驟確保後續計算的資料是乾淨可信的。
+  </Step>
+  <Step title="欄位別名對應">
+    把使用者可能用的中文自然語言欄位名稱（「負責人」「承辦人」「處理人員」）統一對應到資料表的正式英文欄位（`assigned_to`）。這個別名表是工具設計的重要組成部分。
+  </Step>
+  <Step title="用 Pandas 執行篩選與統計">
+    根據模型解析出的查詢條件，用 Pandas 對清理好的資料框執行篩選、分組、計算。結果是精確的數字，不是模型的「估計」。
+  </Step>
+  <Step title="將結果回傳給模型">
+    把計算結果（通常是 JSON 格式的統計摘要）回傳給 Coordinator，讓它根據數字組織成使用者能理解的自然語言回答。
+  </Step>
+</Steps>
+
+```python
+# 簡化的 Analyst Tool 執行流程示意
+
+@tool
+def query_ticket_sheet(
+    category: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    group_by: str = None
+) -> dict:
+    """
+    查詢工單試算表中的數量與統計資訊。
+    適用於：詢問特定類別工單數量、某時間範圍內的工單趨勢、各負責人工單分佈等問題。
+    日期格式為 YYYY-MM-DD。
+    """
+    # Step 1: 讀取並清理（附帶快取）
+    df = get_cached_sheet("ticket_sheet")
+    df = clean_dataframe(df)
+
+    # Step 2: 欄位別名對應
+    if group_by:
+        group_by = COLUMN_ALIAS_MAP.get(group_by, group_by)
+
+    # Step 3: 條件篩選
+    if category:
+        df = df[df["category"] == category]
+    if start_date:
+        df = df[df["date"] >= pd.to_datetime(start_date)]
+    if end_date:
+        df = df[df["date"] <= pd.to_datetime(end_date)]
+
+    # Step 4: 統計計算
+    if group_by and group_by in df.columns:
+        result = df.groupby(group_by).size().to_dict()
+    else:
+        result = {"total_count": len(df)}
+
+    return {"status": "success", "data": result, "row_count": len(df)}
+```
+
+## 為什麼需要欄位別名？
+
+這是很多技術導向的開發者容易忽略的設計細節，卻是讓工具真正「好用」的關鍵。
+
+一般使用者不會記得也不應該需要知道資料表的正式 schema。他說的可能是「承辦人」，資料表裡寫的是 `assigned_to`；他說「截止日期」，欄位名稱是 `due_date`；他說「這個月」，你需要把它轉成對應的日期範圍。
+
+別名對應表的作用就是在自然語言與結構化資料之間搭一座橋：
+
+```python
+COLUMN_ALIAS_MAP = {
+    # 中文自然語言 -> 資料表欄位
+    "負責人": "assigned_to",
+    "承辦人": "assigned_to",
+    "處理人": "assigned_to",
+    "Assigned To": "assigned_to",
+    "截止日期": "due_date",
+    "到期日": "due_date",
+    "建立日期": "created_at",
+    "類別": "category",
+    "分類": "category",
+    "狀態": "status",
+    "部門": "department",
+}
+```
+
+<Note>
+  別名表不需要窮舉所有可能，但應該涵蓋使用者在實際對話中最常用的說法。可以在系統上線後持續觀察使用者的輸入，補充新的別名。
+</Note>
+
+## 效能：快取的重要性
+
+這個細節在漂亮的 Demo 影片中幾乎不會出現，但在實際產品中卻直接影響使用者體驗。
+
+同一輪對話中，使用者可能連續問幾個相關的問題：
+
+> 「上個月工單總量是多少？」
+> 「其中軟體類別有多少？」
+> 「和上上個月比較呢？」
+
+如果每一個問題都完整呼叫一次 Google Sheets API，不但速度慢（每次 API 呼叫需要 0.5–2 秒），也會不必要地消耗 API 配額。Data Machi 的解法是加入**短時間快取（Short-term Cache）**：
+
+```python
+import time
+from functools import lru_cache
+
+_cache = {}
+CACHE_TTL_SECONDS = 120  # 快取有效期：2 分鐘
+
+def get_cached_sheet(sheet_name: str) -> pd.DataFrame:
+    now = time.time()
+    if sheet_name in _cache:
+        df, timestamp = _cache[sheet_name]
+        if now - timestamp < CACHE_TTL_SECONDS:
+            return df  # 快取命中，直接回傳
+
+    # 快取未命中，重新呼叫 API
+    df = fetch_sheet_from_api(sheet_name)
+    _cache[sheet_name] = (df, now)
+    return df
+```
+
+快取的有效期設定需要根據資料的即時性需求來決定。工單系統可能 2 分鐘內不會有大幅變動，但若是即時交易資料，就需要更短的快取期或完全不快取。
+
+<Accordion title="快取可能帶來什麼問題？">
+  若使用者在快取有效期內更新了資料表，然後立刻詢問最新數字，系統可能回傳舊資料。設計上應讓使用者能夠主動「重新整理」，或在回答中標注資料的取得時間，讓使用者自行判斷是否需要更新。
+</Accordion>
+
+## 踩坑筆記
+
+<Warning>
+  **不要讓模型自行編造不存在的欄位或資料。** 這是最容易發生、也最危險的錯誤之一。當使用者詢問的條件在資料表中找不到對應欄位時，工具應該明確回傳「此欄位不存在」，而不是讓模型猜測或用近似欄位代替。查詢前先驗證欄位是否存在，是防止幻覺（Hallucination）滲入資料查詢結果的第一道防線。
+</Warning>
+
+另一個常見問題是**日期解析**。使用者說「上個月」、「最近三個月」或「Q1」，這些都需要程式層明確地轉換成日期範圍，不能依賴模型在 Prompt 中「理解」。
+
+```python
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
+def resolve_date_range(expression: str) -> tuple[str, str]:
+    """把自然語言日期轉換成 (start_date, end_date) 字串"""
+    today = datetime.today()
+    if expression == "上個月":
+        first_day = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+        last_day = today.replace(day=1) - timedelta(days=1)
+        return first_day.strftime("%Y-%m-%d"), last_day.strftime("%Y-%m-%d")
+    # ... 其他情況
+```
+
+<Info>
+  今天只要記住一件事：讓程式負責精確計算，讓 LLM 負責理解與溝通。
+</Info>
+
+下一篇，我們會看另一個更複雜的挑戰：同一個企業問題的答案，往往分散在 Confluence 和 Trello 兩個不同的系統裡。

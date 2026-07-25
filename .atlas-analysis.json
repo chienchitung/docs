@@ -1,0 +1,92 @@
+{
+  "projectType": "general",
+  "projectName": "Data Machi 企業 AI 工作流",
+  "projectDescription": "《從 RAG 到 Agentic Workflow》是一套 30 天學習系列，引導讀者從 RAG、Tool Use、Agent 到 LangGraph，逐步打造企業級 AI 知識工作流。",
+  "theme": "almond",
+  "primaryColor": "#1be39b",
+  "lightColor": "#0c8c5c",
+  "darkColor": "#99bbb0",
+  "navigation": {
+    "groups": [
+      {
+        "group": "第一篇｜AI 與工作",
+        "pages": [
+          "30-days/day-01-enterprise-ai-is-not-chatbot",
+          "30-days/day-02-what-is-knowledge-work",
+          "30-days/day-03-why-ai-does-not-know-your-company",
+          "30-days/day-04-prompt-is-not-workflow",
+          "30-days/day-05-data-machi-origin"
+        ]
+      },
+      {
+        "group": "第二篇｜企業知識檢索",
+        "pages": [
+          "30-days/day-06-what-is-rag",
+          "30-days/day-07-pdf-to-searchable-knowledge",
+          "30-days/day-08-semantic-vs-keyword-search",
+          "30-days/day-09-scanned-pdf-and-visual-content",
+          "30-days/day-10-rag-is-not-enough"
+        ]
+      },
+      {
+        "group": "第三篇｜工具整合",
+        "pages": [
+          "30-days/day-11-rag-vs-tool-use",
+          "30-days/day-12-what-langchain-solves",
+          "30-days/day-13-ai-reads-google-sheets",
+          "30-days/day-14-confluence-and-trello",
+          "30-days/day-15-cross-source-workflow"
+        ]
+      },
+      {
+        "group": "第四篇｜Agent 決策",
+        "pages": [
+          "30-days/day-16-when-tools-become-agent",
+          "30-days/day-17-react-loop",
+          "30-days/day-18-coordinator-as-project-manager",
+          "30-days/day-19-agent-memory",
+          "30-days/day-20-clarification-and-verification"
+        ]
+      },
+      {
+        "group": "第五篇｜可控工作流",
+        "pages": [
+          "30-days/day-21-why-agentexecutor-is-not-enough",
+          "30-days/day-22-what-is-langgraph",
+          "30-days/day-23-parallel-tool-execution",
+          "30-days/day-24-tools-are-not-multi-agent",
+          "30-days/day-25-human-in-the-loop"
+        ]
+      },
+      {
+        "group": "第六篇｜企業級產品",
+        "pages": [
+          "30-days/day-26-timeout-retry-fallback",
+          "30-days/day-27-agent-ux",
+          "30-days/day-28-meeting-to-action-items",
+          "30-days/day-29-security-testing-deployment",
+          "30-days/day-30-design-your-enterprise-agent"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "30 天結構化學習路徑，從 RAG 到完整 Agentic Workflow",
+    "企業知識文件 PDF 解析與語意搜尋",
+    "Tool Use 整合 Google Sheets、Confluence、Trello",
+    "ReAct Agent 決策循環與 Coordinator 設計",
+    "LangGraph State/Node/Edge 可控工作流",
+    "Multi-Agent 架構與 Human-in-the-loop 審核",
+    "Timeout、Retry、Fallback 可靠性設計",
+    "Agent UX、安全測試與企業部署"
+  ],
+  "publicApiSurface": [
+    "RAG Pipeline（文件解析、Chunking、Embedding、Vector Search）",
+    "Tool Use（Google Sheets、Confluence、Trello、PDF）",
+    "LangChain Agent（ReAct、Coordinator、Memory）",
+    "LangGraph（State、Node、Edge、Parallel Execution）",
+    "Multi-Agent 架構",
+    "Human-in-the-loop 設計",
+    "企業 Agent 產品化 Canvas"
+  ]
+}

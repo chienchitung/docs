@@ -1,0 +1,188 @@
+---
+title: "Day 17｜ReAct 框架解析：AI 如何透過 Thought、Action、Observation 三步驟持續循環"
+sidebarTitle: "Day 17｜ReAct 循環"
+description: "透過 Thought、Action、Observation 三個核心步驟，理解 ReAct 框架如何讓 Agent 在推理與行動之間持續交替。模型不只在第一步選擇工具，更在每次取得工具結果後重新評估，動態調整後續行動策略。觀察能力讓 Agent 能處理資料缺失、欄位不一致等真實世界的複雜查詢場景。"
+---
+
+如果說 Day 16 讓我們理解了「工具」與「Agent」的差異，那麼 ReAct 就是讓 Agent 真正有智慧的那個引擎。ReAct 是 **Reasoning and Acting** 的縮寫，核心概念是讓模型在推理與行動之間交替運作——先思考要做什麼，再執行，然後觀察結果，再次思考。對使用者來說，它看起來像 AI「會自己處理事情」；實際上是模型與工具在一個受控循環中，一步一步地接近正確答案。
+
+## ReAct 的三個基本步驟
+
+ReAct 框架將 Agent 的每一輪行動拆解成三個明確的階段：
+
+<Steps>
+  <Step title="Thought（思考）">
+    模型分析目前的問題與對話脈絡，推理出下一步應該做什麼。這個步驟通常不直接對使用者可見，但它決定了接下來的行動方向。
+
+    例如：「使用者問的是哪個市場需求最高，我需要查詢銷售資料，並確認資料中有市場分類欄位。」
+  </Step>
+  <Step title="Action（行動）">
+    根據思考結果，選擇並呼叫適合的工具。這可能是查詢資料庫、搜尋文件、呼叫 API，或向使用者提出釐清問題。
+  </Step>
+  <Step title="Observation（觀察）">
+    取得工具的執行結果，仔細評估：資料是否完整？結果是否符合預期？是否足以回答使用者的問題？還是需要進一步行動？
+  </Step>
+</Steps>
+
+這三個步驟不是線性的一次性流程，而是一個**可以反覆執行的循環**，直到產生足夠的答案或觸發停止條件為止。
+
+## 一個完整的 ReAct 範例
+
+讓我們用一個實際情境，逐步拆解 ReAct 的運作過程：
+
+**使用者問：「今年哪個市場的需求工單最多？」**
+
+```text
+[Thought 1]
+使用者要求今年各市場的需求工單數量比較。
+我需要查詢需求工單資料，並確認有「市場」和「年份」欄位。
+
+[Action 1]
+呼叫 Google Sheets 工具，查詢需求工單工作表
+
+[Observation 1]
+回傳資料包含：日期、工單 ID、負責人、地區代碼
+⚠️ 找不到「市場」欄位，只有「地區代碼」
+
+[Thought 2]
+資料中沒有「市場」欄位，只有「地區代碼」。
+可能需要一份對照表，把地區代碼轉換成市場名稱。
+我應該查詢 Confluence 是否有市場定義文件。
+
+[Action 2]
+搜尋 Confluence，關鍵字：「地區代碼 市場定義」
+
+[Observation 2]
+找到一份文件：APAC 地區代碼對照表
+地區代碼 TW, HK, SG → 亞太市場
+地區代碼 US, CA → 北美市場
+
+[Thought 3]
+現在我有工單資料和地區代碼對照表。
+可以計算各市場今年的工單數量，回答使用者的問題。
+
+[Final Answer]
+根據查詢結果，今年需求工單最多的是亞太市場（共 342 張），
+其次是北美市場（共 218 張）。資料來源：需求工單工作表（截至今日）。
+```
+
+這個過程中，Agent 在中途發現資料不完整，主動補查對照表，最後整合兩份資料產生答案。這正是 ReAct 的力量所在。
+
+## 為什麼 Observation 是關鍵？
+
+在 ReAct 的三個步驟中，Observation（觀察）是最容易被忽視卻最重要的一環。
+
+<CardGroup cols={2}>
+  <Card title="沒有觀察的系統" icon="eye-slash">
+    模型只在執行前規劃一次，無論工具回傳什麼結果，都照著原本計劃執行。遇到「查無資料」「欄位不存在」「回傳格式不符」，只能報錯或回傳錯誤答案。
+  </Card>
+  <Card title="有觀察的 Agent" icon="eye">
+    每次工具執行後，模型重新評估結果，動態調整後續行動。能處理「查無資料」「找到多筆同名項目」「欄位名稱不一致」等真實世界中常見的資料問題。
+  </Card>
+</CardGroup>
+
+<Info>
+  **觀察讓 Agent 能處理「現實的不完美」**：真實的企業資料從來不是結構完美的教科書範例。資料缺失、命名不一致、系統之間的欄位對應差異，都需要 Agent 在觀察後動態調整策略。
+</Info>
+
+## Data Machi 的 ReAct 實作
+
+在 Data Machi 的架構中，Coordinator 的 Graph 會在 Agent 節點與 Action 節點之間持續循環，直到模型決定輸出最終答案：
+
+```python
+from langgraph.graph import StateGraph, END
+
+def build_react_graph():
+    graph = StateGraph(AgentState)
+    
+    # Agent 節點：模型思考並決定下一步
+    graph.add_node("agent", agent_node)
+    
+    # Action 節點：執行工具呼叫
+    graph.add_node("action", action_node)
+    
+    # 條件路由：有 tool_calls 就繼續，否則結束
+    graph.add_conditional_edges(
+        "agent",
+        should_continue,           # 判斷函式
+        {
+            "continue": "action",  # 有工具呼叫 → 執行工具
+            "end": END             # 無工具呼叫 → 輸出答案
+        }
+    )
+    
+    # 工具執行完畢後，回到 Agent 節點重新判斷
+    graph.add_edge("action", "agent")
+    
+    graph.set_entry_point("agent")
+    return graph.compile()
+
+def should_continue(state: AgentState) -> str:
+    last_message = state["messages"][-1]
+    # 若最後一條訊息包含 tool_calls，繼續執行工具
+    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        return "continue"
+    return "end"
+```
+
+模型發出工具呼叫後，Action 節點執行工具並把 `ToolMessage` 送回 Agent 節點，完成一個完整的觀察-判斷循環。
+
+## 循環必須有上限
+
+ReAct 的強大之處在於反覆嘗試，但這也是它的風險所在。
+
+<Warning>
+  **循環必須設定上限**。若工具一直回傳失敗、模型反覆搜尋相同條件、或不停改寫查詢卻沒有進展，就可能造成高延遲與不必要的 API 成本。Agentic 不等於無限制嘗試。
+</Warning>
+
+良好的 ReAct 系統應該包含：
+
+```python
+MAX_ITERATIONS = 10  # 最大循環次數
+
+def agent_node(state: AgentState) -> AgentState:
+    # 計算目前的迭代次數
+    iteration_count = sum(
+        1 for m in state["messages"] 
+        if hasattr(m, "tool_calls") and m.tool_calls
+    )
+    
+    if iteration_count >= MAX_ITERATIONS:
+        # 達到上限，強制產生當前最佳答案
+        return {"messages": [force_final_answer(state)]}
+    
+    response = llm_with_tools.invoke(state["messages"])
+    return {"messages": [response]}
+```
+
+除了迭代次數，也可以設定時間上限或總 Token 消耗上限，避免失控的循環。
+
+## ReAct 的適用場景
+
+<Accordion title="多步驟資料查詢">
+  需要先查詢 A 系統取得 ID，再用 ID 查詢 B 系統取得詳細資訊，最後整合成報告。每一步的結果都影響下一步的查詢條件。
+</Accordion>
+
+<Accordion title="動態資料補全">
+  第一次查詢結果不完整時，能根據缺失的欄位自動補查相關文件或其他資料來源。
+</Accordion>
+
+<Accordion title="條件式分支處理">
+  根據工具回傳的狀態（找到資料、查無資料、部分符合），選擇不同的後續處理路徑。
+</Accordion>
+
+<Accordion title="跨系統整合">
+  整合來自多個不同系統（如 Trello、Confluence、Google Sheets）的資料，需要在觀察每個系統的回傳結果後，決定如何組合成有意義的答案。
+</Accordion>
+
+<Tip>
+  ReAct 不是只能用於外部工具呼叫。在某些設計中，「思考」本身也可以是一個步驟——讓模型先輸出推理過程，再根據推理結果決定行動，能顯著提升複雜任務的準確率。
+</Tip>
+
+<Info>
+  今天只要記住一件事：Agent 的智慧不只在第一次選擇，而在於看完結果後能否做出下一個正確決定。
+</Info>
+
+---
+
+下一篇，我們會介紹 Coordinator 為什麼像一位 AI 專案經理，以及它如何在多個工具與多種任務類型之間，做出聰明的分派決策。

@@ -1,0 +1,156 @@
+---
+title: "Day 25｜企業不能完全放手：Human-in-the-loop 設計"
+sidebarTitle: "Day 25｜人工介入"
+description: "理解企業 Agent 在高風險操作前如何暫停工作流並交由人工審核，以及讀取與寫入操作的權限應如何分級設計。"
+---
+
+讓 AI 自動查詢資料的風險通常較低，但當 Agent 可以寄信、更新專案狀態、刪除文件或修改資料時，就不能只依賴模型自行判斷。Human-in-the-loop 設計讓工作流在特定節點暫停，把目前狀態與預計動作交給人類審核，再決定是否繼續執行。
+
+## 為什麼 Agent 需要人工介入？
+
+生成式 AI 的決策過程不完全透明，即使有 ReAct 循環與 Verification 機制，模型仍可能在邊界情境下做出不預期的動作。對企業來說，可控性與可審核性往往比速度更重要。
+
+<CardGroup cols={2}>
+  <Card title="讀取操作（低風險）" icon="eye">
+    查詢資料、搜尋文件、整理摘要、產生草稿。這類操作通常可以讓 Agent 自主完成，不需要人工介入。
+  </Card>
+  <Card title="寫入操作（高風險）" icon="pen-to-square">
+    寄送郵件、更新資料、刪除文件、呼叫有副作用的 API。這類操作在執行前應暫停並等待人工確認。
+  </Card>
+</CardGroup>
+
+## Human-in-the-loop 的運作方式
+
+在 LangGraph 中，Human-in-the-loop 是透過 **interrupt** 機制實現的：工作流在特定節點暫停，保存當前的 State，然後等待外部輸入（批准、修改或拒絕），再從原節點恢復執行。
+
+<Steps>
+  <Step title="Agent 產生預計動作">
+    Agent 完成推理，決定下一步是執行高風險操作，例如：「將分析報告寄給所有相關人員」。
+  </Step>
+  <Step title="工作流暫停並保存狀態">
+    LangGraph 的 `interrupt_before` 機制在執行前暫停，把當前 State（包含 Agent 的推理過程與預計動作）序列化並持久化到儲存層。
+  </Step>
+  <Step title="通知人類審核">
+    系統向負責人發出通知，顯示 Agent 的完整操作計畫：將對誰執行什麼動作、預期結果為何。
+  </Step>
+  <Step title="人類批准、修改或拒絕">
+    審核者可以直接批准、修改輸入參數（例如調整收件人名單），或完全拒絕該操作。
+  </Step>
+  <Step title="工作流從原節點恢復">
+    根據審核結果，LangGraph 從 interrupt 節點恢復執行，繼續後續流程，或終止並記錄拒絕原因。
+  </Step>
+</Steps>
+
+```python interrupt_node.py
+from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
+from typing import TypedDict
+
+class WorkflowState(TypedDict):
+    task: str
+    plan: str
+    approved: bool
+    result: str
+
+def review_node(state: WorkflowState) -> WorkflowState:
+    """
+    此節點會觸發 interrupt，暫停工作流等待人工審核。
+    實際的 interrupt 機制由 LangGraph 的 interrupt_before 設定觸發。
+    """
+    print(f"待審核操作：{state['plan']}")
+    # 系統會在此暫停，保存 state，等待外部輸入
+    return state
+
+def execute_node(state: WorkflowState) -> WorkflowState:
+    if state.get("approved"):
+        # 執行已批准的高風險操作
+        result = perform_action(state["plan"])
+        return {**state, "result": result}
+    else:
+        return {**state, "result": "操作已被拒絕"}
+
+# 設定需要人工介入的節點
+graph = StateGraph(WorkflowState)
+graph.add_node("review", review_node)
+graph.add_node("execute", execute_node)
+graph.set_entry_point("review")
+graph.add_edge("review", "execute")
+graph.add_edge("execute", END)
+
+checkpointer = MemorySaver()
+app = graph.compile(
+    checkpointer=checkpointer,
+    interrupt_before=["execute"]  # 在 execute 節點前暫停
+)
+```
+
+## 哪些情境需要人工介入？
+
+<Accordion title="對外通訊（寄信、推播、通報）">
+  任何會對外傳送資訊的操作都應納入審核。即使草稿由 AI 生成，發送行為應由人類確認。這包含：電子郵件、Slack 訊息、Webhook 通知、報告分享等。
+</Accordion>
+
+<Accordion title="資料修改與刪除">
+  更新 Google Sheets 欄位、修改 Trello 卡片狀態、刪除 Confluence 頁面或資料庫記錄。這類操作不可逆或難以回滾，必須審核。
+</Accordion>
+
+<Accordion title="高成本或大量 API 呼叫">
+  批次處理數百個記錄、呼叫計費型 API（例如大量 OCR、語音轉文字）、觸發外部服務的 Webhook。
+</Accordion>
+
+<Accordion title="模型缺少關鍵條件">
+  Agent 推理後發現需要人類補充資訊，例如：「這份報告要寄給哪位主管？」此時 interrupt 讓使用者填入缺少的輸入，再恢復執行。
+</Accordion>
+
+## 權限分級設計
+
+企業 Agent 不應一開始就開放所有操作。建議按照成熟度逐步擴展：
+
+| 階段 | 能力範圍 | 說明 |
+|---|---|---|
+| Level 1 | Read-only | 查詢資料、搜尋文件、產生摘要草稿 |
+| Level 2 | 草稿輸出 | AI 產生草稿，人類複製後手動發送 |
+| Level 3 | 審核後執行 | 系統暫停等待人工批准，批准後自動執行 |
+| Level 4 | 低風險自動執行 | 對低風險、可回滾的操作直接執行，記錄稽核日誌 |
+| Level 5 | 完整自主執行 | 有完善稽核、告警與回滾機制，再開放全自動模式 |
+
+<Warning>
+  「畫面上放一個確認按鈕」不等於真正的 Human-in-the-loop。系統必須在人類確認前**真正暫停**並保存狀態，確保批准後能從原節點恢復。如果操作在按下確認前已執行，Human-in-the-loop 機制就失去了意義。
+</Warning>
+
+## 狀態持久化是前提
+
+Human-in-the-loop 只有在 State 能被持久化的前提下才能可靠運作。如果工作流在等待審核期間重啟，系統必須能從儲存層重新載入 State 並恢復執行。
+
+```python checkpoint_persistence.py
+from langgraph.checkpoint.postgres import PostgresSaver
+
+# 使用持久化儲存層（而非 in-memory）
+connection_string = "postgresql://user:pass@host:5432/db"
+checkpointer = PostgresSaver.from_conn_string(connection_string)
+
+# 每次執行必須使用相同的 thread_id 才能恢復
+config = {"configurable": {"thread_id": "workflow-123"}}
+
+# 等待人工審核後，用相同 config 恢復
+app.invoke(
+    {"approved": True},  # 人類的審核結果
+    config=config
+)
+```
+
+<Tip>
+  在正式環境中，建議用資料庫（PostgreSQL、Redis）而非 in-memory 作為 checkpoint 後端，確保工作流在伺服器重啟後仍能恢復。
+</Tip>
+
+## Data Machi 的實踐方向
+
+Data Machi 目前主要聚焦於讀取與分析類操作，讓 Agent 查詢 Google Sheets、Confluence 與 Trello，產生摘要與分析報告。完整的 interrupt/resume 機制與高風險寫入審批，是下一階段的 LangGraph 開發目標。
+
+這樣的漸進策略符合企業的信任建立過程：先讓使用者習慣 AI 產生的建議，再逐步賦予 Agent 執行的能力。
+
+<Info>
+  今天只要記住一件事：企業 Agent 的成熟，不是取消人類，而是把人類放在最需要判斷與承擔責任的地方。
+</Info>
+
+下一篇開始，我們會把焦點從架構轉向產品化與可靠性——如何讓企業 Agent 從 Demo 變成真正可以交付的產品。

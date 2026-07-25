@@ -1,0 +1,156 @@
+---
+title: "Day 19｜Agent 如何記住對話？近期對話、摘要記憶與工具結果：多輪對話記憶的三種類型與設計原則"
+sidebarTitle: "Day 19｜Agent 記憶"
+description: "區分近期對話、摘要記憶與工具結果三種記憶類型，理解 Agent 如何在有限的 Token 窗口中保留對當前任務最有價值的資訊。過多歷史對話會增加成本並干擾模型判斷，過少則無法處理代名詞與追問。關鍵在於正確判斷：哪些資料可以沿用，哪些情況必須重新呼叫工具取得最新狀態。"
+---
+
+多輪對話中，Agent 面臨的挑戰不只是「記住」使用者說了什麼，更在於「判斷」哪些內容目前還有效、哪些已經過時需要更新。一個沒有記憶管理的 Agent，不是遺忘所有事情，就是把所有歷史通通塞進 context，反而造成模型被舊資訊干擾、成本無限膨脹、以及回應越來越慢。好的 Agent 記憶設計，是在有限的上下文窗口中，保留對當前任務最有價值的資訊。
+
+## 三種常見的 Agent 記憶類型
+
+Agent 的記憶不是單一的「對話歷史」，而是由幾種功能不同的記憶類型共同構成：
+
+<CardGroup cols={3}>
+  <Card title="📝 近期對話記憶" icon="comments">
+    保留最近幾輪的完整訊息，讓 Agent 能處理代名詞（「這個」「剛才說的」）、延續追問，以及理解當下的對話脈絡。
+  </Card>
+  <Card title="🗜️ 摘要記憶" icon="compress">
+    把較早的對話內容壓縮成重點摘要，避免上下文無限成長。保留關鍵事實（如使用者偏好、已確認的條件），省略細節。
+  </Card>
+  <Card title="🔍 工具結果記憶" icon="database">
+    保存先前工具查詢的原始結果，供後續整理、比較與引用。與其依賴模型對工具結果的文字描述，不如直接保留可追溯的來源資料。
+  </Card>
+</CardGroup>
+
+## Data Machi 的記憶架構
+
+Data Machi 採用分層記憶設計，每一層承擔不同的功能：
+
+<Steps>
+  <Step title="近期對話（Recent Messages）">
+    保留最近幾輪的完整對話，包含使用者訊息與 Agent 回覆。這一層確保 Agent 能理解當前對話的即時脈絡，處理代名詞與短期追問。
+  </Step>
+  <Step title="對話記憶（Conversation Memory）">
+    較早的對話內容會被整理成摘要，存入 Conversation Memory。這一層保留重要的使用者需求、已確認的條件、以及關鍵的決策脈絡，但不保留完整的對話細節。
+  </Step>
+  <Step title="工具結果記憶（Prior Tool Context）">
+    每次工具查詢的結果會另外保存成 Prior Tool Context。這一層獨立於對話摘要，確保數字、名稱、日期等事實資料可以直接追溯到原始來源，而不是依賴模型的二次詮釋。
+  </Step>
+</Steps>
+
+```python
+class AgentState(TypedDict):
+    # 近期對話：最後 N 輪的完整訊息
+    messages: list[BaseMessage]
+    
+    # 對話摘要：較早對話的壓縮版本
+    conversation_memory: str
+    
+    # 工具結果：上次查詢的原始資料
+    prior_tool_context: dict
+    
+    # 工具結果的有效性標記
+    tool_context_valid: bool
+    tool_context_timestamp: str
+```
+
+## 為什麼不能把所有內容都保留？
+
+一個直覺的想法是：保留越多對話歷史，Agent 就越「了解」使用者。但在實際系統中，這個想法會帶來嚴重的問題。
+
+<Accordion title="Token 成本隨對話長度線性增長">
+  每一輪對話都把完整歷史送進模型，成本會隨著對話長度線性增長。一場 50 輪的對話，最後幾輪的 API 費用可能是第一輪的 10 倍以上。
+</Accordion>
+
+<Accordion title="舊資訊干擾當前判斷">
+  模型可能過度注意很久以前設定的條件，而忽略使用者在最近幾輪中已經更新的需求。「注意力分散」是長 context 的常見問題。
+</Accordion>
+
+<Accordion title="摘要過程中的資訊損失">
+  把早期對話壓縮成摘要，不可避免地會損失一些細節。但對大多數後續問題來說，這些細節並不重要；真正需要精確追溯的，是工具查詢的原始數據。
+</Accordion>
+
+<Info>
+  **記憶管理的核心原則**：記憶不是愈多愈好，而是要保留對當前任務真正有用的資訊。近期對話保留脈絡，摘要記憶保留關鍵事實，工具結果記憶保留可追溯的數據來源。
+</Info>
+
+## 何時應該沿用資料，何時應該重新查詢？
+
+這是 Agent 記憶管理中最關鍵的判斷：
+
+```text
+✅ 可以沿用先前工具結果的情況：
+  → 「幫我整理成表格」
+  → 「換個說法解釋」
+  → 「翻譯成英文」
+  → 「只顯示前三名」
+  → 「加上百分比」
+
+🔄 必須重新呼叫工具的情況：
+  → 「請重新確認最新數字」
+  → 「加上本週新增的項目」
+  → 「你確定這個數字是對的嗎？」
+  → 「把篩選條件改成上個季度」
+  → 「我剛剛更新了那份試算表，重新查一次」
+```
+
+<Note>
+  判斷的關鍵在於：使用者的需求改變了嗎？還是只是對現有資料的呈現方式有不同要求？前者需要重新查詢，後者可以直接轉換已有的工具結果。
+</Note>
+
+## 工具結果摘要的風險
+
+許多系統為了節省 Token，會把工具查詢結果也摘要化，只保留模型生成的文字描述，而不保留原始數據。這個做法在處理事實性資料時有潛在風險：
+
+<Warning>
+  **不要只保留工具結果的摘要**。當涉及數字、日期、人名、金額等具體事實時，如果只保留模型的二次詮釋，後續的引用很可能不準確。「上個月銷售額約 150 萬」與原始的 `1,487,320` 有本質差異——前者是近似值，後者是可追溯的事實。
+</Warning>
+
+Data Machi 的 Prior Tool Context 設計原則：
+
+```python
+def update_tool_context(state: AgentState, tool_results: list) -> AgentState:
+    # 保留原始工具結果，不進行摘要
+    prior_context = {
+        "results": tool_results,           # 原始資料
+        "timestamp": get_current_time(),   # 查詢時間
+        "tools_used": [r.tool_name for r in tool_results],  # 使用的工具
+        "query_params": state.get("last_query_params", {}),  # 查詢條件
+    }
+    
+    return {
+        **state,
+        "prior_tool_context": prior_context,
+        "tool_context_valid": True
+    }
+```
+
+## 記憶老化：資料什麼時候會過期？
+
+工具結果記憶還有一個常被忽略的問題：**資料的時效性**。
+
+<Tip>
+  對於連接到即時或頻繁更新資料來源的 Agent，需要考慮工具結果的「保鮮期」。一份 30 分鐘前查詢的銷售數字，和一份 3 天前查詢的，在使用上應該有不同的處理方式。
+</Tip>
+
+```python
+def is_tool_context_fresh(state: AgentState, max_age_minutes: int = 30) -> bool:
+    """判斷工具結果是否仍在有效期內"""
+    if not state.get("tool_context_valid"):
+        return False
+    
+    timestamp = state.get("tool_context_timestamp")
+    if not timestamp:
+        return False
+    
+    age = (datetime.now() - datetime.fromisoformat(timestamp)).total_seconds() / 60
+    return age <= max_age_minutes
+```
+
+<Info>
+  今天只要記住一件事：Agent 記憶的重點不是記住所有內容，而是知道哪些內容可以沿用、哪些必須更新。
+</Info>
+
+---
+
+下一篇，我們會進入企業 Agent 最重要的能力之一：知道何時應該停下來問使用者，以及如何設計零幻覺架構，確保 Agent 永遠只回報有根據的事實。

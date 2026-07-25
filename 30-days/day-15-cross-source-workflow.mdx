@@ -1,0 +1,173 @@
+---
+title: "Day 15｜一個問題查三個系統：跨來源 Agent 工作流的設計邏輯與 Coordinator 執行策略"
+sidebarTitle: "Day 15｜跨來源工作流"
+description: "同一個問題可能同時需要查 Google Sheets 取精確數字、到 Confluence 找類別的正式定義、在 Trello 確認相關改善專案的最新進度狀態。Coordinator 如何分解子任務、決定查詢順序、整合三個來源並在回答中標注出處，是跨系統設計核心。"
+---
+
+前幾天我們分別認識了 Google Sheets 工具、Confluence 搜尋和 Trello 查詢。今天要把它們串在一起，面對企業環境中最真實也最棘手的場景：**一個問題，需要同時查三個系統才能回答**。這不只是技術整合的挑戰，更是一個關於「判斷力」的設計問題——什麼時候查哪裡、查到什麼才算夠、什麼時候該停下來整合而不是繼續挖掘。
+
+## 一個真實的複合問題
+
+假設企業主管問了這樣一個問題：
+
+> 「今年需求工單增加最多的類別是哪些？這些類別的定義是什麼？對應的改善專案目前進行到哪裡？」
+
+這個問題看起來是一句話，但拆解開來，它包含了三個完全不同性質的子問題：
+
+1. **「增加最多的類別是哪些？」** → 需要讀取工單資料、計算各類別數量、找出成長幅度最大的類別（→ Google Sheets）
+2. **「這些類別的定義是什麼？」** → 需要到知識庫查詢指標或類別的正式定義（→ Confluence）
+3. **「改善專案目前進行到哪裡？」** → 需要找到對應的專案任務、查看最新進度（→ Trello）
+
+任何一個來源單獨都給不出完整答案。
+
+## 一條可能的跨系統處理流程
+
+<Steps>
+  <Step title="分析問題，拆解子任務">
+    Coordinator 接收到問題後，首先要識別這個問題包含幾個需要不同工具回答的子問題，並決定一個合理的執行順序。通常先從最確定、最結構化的資料來源開始。
+  </Step>
+  <Step title="查詢 Google Sheets 取得數字基礎">
+    呼叫 Analyst Tool，取得今年各類別工單數量，與去年同期比較，找出成長率最高的類別。這一步建立了討論的數字基礎，後續的定義查詢與專案查詢都圍繞著這些類別展開。
+  </Step>
+  <Step title="查詢 Confluence 取得類別定義">
+    針對上一步找到的高成長類別，逐一到 Confluence 搜尋正式定義。若 Confluence 有對應的規格文件，取得定義段落；若找不到，記錄「此類別無正式文件定義」，不要自行推測。
+  </Step>
+  <Step title="查詢 Trello 取得改善專案進度">
+    使用類別名稱（可能搭配 Confluence 中找到的正式全名）到 Trello 搜尋對應的改善專案卡片，取得目前任務狀態、負責人、截止日期與最新留言。
+  </Step>
+  <Step title="整合三個來源，生成有來源標注的回答">
+    把數字（Sheets）、定義（Confluence）和進度（Trello）整合成一個結構清晰的回答，每一段資訊都標注來自哪個系統的哪個位置。
+  </Step>
+</Steps>
+
+## Coordinator 的角色：像專案經理，而不是執行者
+
+在這個跨系統工作流中，Coordinator 的工作方式很像一位資深的專案經理：
+
+- **理解需求**：不是逐字執行，而是理解使用者真正想知道什麼
+- **分配任務**：判斷哪個問題應該交給哪個工具，而不是把所有工具都呼叫一遍
+- **觀察結果**：每個工具回傳結果後，重新評估還需要什麼，而不是盲目繼續
+- **整合輸出**：把來自不同來源、不同格式的資訊組合成一個連貫的回答
+
+```python
+# Coordinator 的決策循環（偽程式碼示意）
+
+async def coordinator_loop(user_question: str, max_steps: int = 8):
+    messages = [SystemMessage(content=SYSTEM_PROMPT)]
+    messages.append(HumanMessage(content=user_question))
+
+    for step in range(max_steps):
+        # 讓模型決定下一步
+        response = await llm_with_tools.ainvoke(messages)
+        messages.append(response)
+
+        # 如果模型沒有呼叫工具，代表它認為可以回答了
+        if not response.tool_calls:
+            return response.content
+
+        # 執行模型選擇的工具
+        for tool_call in response.tool_calls:
+            result = await execute_tool(tool_call)
+            messages.append(ToolMessage(
+                content=str(result),
+                tool_call_id=tool_call["id"]
+            ))
+        # 回到循環頂端，讓模型觀察結果並決定下一步
+
+    return "已達到最大查詢次數，請拆解問題後再試。"
+```
+
+<Info>
+  Coordinator 每次工具呼叫後都會「重新觀察」目前的狀態，這個設計讓它可以根據中途發現的資訊調整查詢策略。例如，若 Google Sheets 顯示成長最高的類別只有兩個，就不必查所有類別的 Confluence 定義。
+</Info>
+
+## 查詢順序的判斷邏輯
+
+跨來源工作流中最微妙的問題是：**先查哪裡？** 這個決策沒有固定答案，但有幾個常用的判斷原則：
+
+<CardGroup cols={2}>
+  <Card title="先從最確定的來源開始" icon="chart-bar">
+    如果問題包含數字需求，通常先查 Google Sheets 建立量化基礎，再根據數字結果決定後續的文件查詢方向，避免查了一堆定義卻發現數字根本不顯著。
+  </Card>
+  <Card title="先解決縮寫或模糊名稱" icon="spell-check">
+    如果使用者使用了縮寫或非正式名稱，應先到 Confluence 找到正式名稱，再用正式名稱去 Trello 搜尋，避免因為名稱不匹配而漏掉相關卡片。
+  </Card>
+  <Card title="找不到時要釐清，而不是繼續猜" icon="circle-question">
+    若第一個來源找不到相關資訊，應評估是否需要請使用者確認問題描述，而不是把所有工具都試一遍，最終拼湊出一個看似合理但可能錯誤的答案。
+  </Card>
+  <Card title="數字查完才查解釋" icon="arrow-right-arrow-left">
+    先讓程式算出精確數字，再讓模型根據定義和上下文解釋這些數字的意義。確保「事實」先確立，「解釋」才跟上，不要在還不知道數字的情況下就開始解釋趨勢。
+  </Card>
+</CardGroup>
+
+## 來源追溯：讓回答可被驗證
+
+跨來源回答最容易出現的品質問題，是把不同時間點、不同定義的資訊混合在一起，卻沒有標注清楚。例如：「根據報告，X 類別工單今年增加了 47%，定義為符合 Y 條件的請求，相關改善專案預計於 Q3 完成。」
+
+這個回答看起來很完整，但：數字是哪張表的哪個欄位？定義是 Confluence 哪個版本的頁面？Q3 是卡片描述說的還是截止日期欄位？如果任何一個資料有誤，使用者沒有辦法快速定位問題所在。
+
+好的跨來源輸出格式應該像這樣：
+
+```markdown
+## 工單成長分析
+
+**數字來源：** 工單明細工作表（ticket_summary_2026，最後更新 2026-06-01）
+
+| 類別 | 今年工單數 | 去年工單數 | 成長率 |
+|------|-----------|-----------|--------|
+| 系統整合 | 234 | 158 | +48% |
+| 資料存取 | 189 | 142 | +33% |
+
+---
+
+**類別定義（來源：Confluence > 指標定義手冊 v3.2）**
+
+- **系統整合**：涉及兩個或以上系統之間的 API 或資料流整合需求...
+- **資料存取**：使用者申請存取特定資料集或報表的請求...
+
+---
+
+**改善專案進度（來源：Trello > IT 改善看板）**
+
+- **系統整合自動化專案**：目前狀態 In Progress，負責人 Chris，預計 2026-08-31 完成
+  - 最新留言（2026-05-28）：「已完成 API 串接，進入測試階段」
+```
+
+<Tip>
+  在企業 AI 系統中，來源標注不只是「好習慣」，更是建立使用者信任的關鍵。當使用者能夠驗證 AI 的資訊來源，他們才會願意根據 AI 的回答做出決策。
+</Tip>
+
+## 踩坑筆記
+
+<Warning>
+  **不要為了展示 Agent 能力，就每次都呼叫所有工具。** 一個呼叫了 10 個工具、生成 3,000 字回答的 Agent，不一定比一個呼叫 2 個工具、回傳 300 字精準摘要的 Agent 更有價值。好的工作流追求的是「足夠、正確、有效率」，而不是「工具呼叫數量最多」或「回答字數最長」。
+</Warning>
+
+另一個容易忽略的問題是**錯誤的靜默處理**。當某個工具呼叫失敗（API 超時、找不到資料、格式解析錯誤），Coordinator 不應該假裝什麼都沒發生然後繼續回答。每個工具失敗都應該被明確記錄，並在最終回答中說明哪些資訊因為查詢失敗而無法提供。
+
+```python
+# 工具呼叫時的錯誤處理範例
+
+async def execute_tool_safely(tool_call: dict) -> dict:
+    try:
+        result = await execute_tool(tool_call)
+        return {"status": "success", "data": result}
+    except APITimeoutError:
+        return {
+            "status": "error",
+            "tool": tool_call["name"],
+            "reason": "API 請求逾時，請稍後重試"
+        }
+    except DataNotFoundError as e:
+        return {
+            "status": "not_found",
+            "tool": tool_call["name"],
+            "reason": str(e)
+        }
+```
+
+<Info>
+  今天只要記住一件事：跨來源 Agent 的價值，是在正確時機取得正確資訊，而不是把所有資料全部搜一遍。
+</Info>
+
+下一篇，我們會回答一個在這一週學習過程中一直隱含的核心問題：工具在什麼時候才真正變成 Agent？擁有多個工具的系統，和真正意義上的 Agent，差距在哪裡？

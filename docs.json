@@ -1,0 +1,84 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "almond",
+  "name": "Data Machi",
+  "description": "從 RAG 到 Agentic Workflow：30 天打造企業知識工作流學習系列",
+  "colors": {
+    "primary": "#1be39b",
+    "light": "#0c8c5c",
+    "dark": "#99bbb0"
+  },
+  "logo": {
+    "light": "https://media.brand.dev/f9149ec8-8f45-4efb-9d85-58460ee4fee4.svg",
+    "dark": "https://media.brand.dev/f9149ec8-8f45-4efb-9d85-58460ee4fee4.svg"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "開始閱讀",
+        "pages": ["index"]
+      },
+      {
+        "group": "第一篇｜AI 與工作",
+        "pages": [
+          "30-days/day-01-enterprise-ai-is-not-chatbot",
+          "30-days/day-02-what-is-knowledge-work",
+          "30-days/day-03-why-ai-does-not-know-your-company",
+          "30-days/day-04-prompt-is-not-workflow",
+          "30-days/day-05-data-machi-origin"
+        ]
+      },
+      {
+        "group": "第二篇｜企業知識檢索",
+        "pages": [
+          "30-days/day-06-what-is-rag",
+          "30-days/day-07-pdf-to-searchable-knowledge",
+          "30-days/day-08-semantic-vs-keyword-search",
+          "30-days/day-09-scanned-pdf-and-visual-content",
+          "30-days/day-10-rag-is-not-enough"
+        ]
+      },
+      {
+        "group": "第三篇｜工具整合",
+        "pages": [
+          "30-days/day-11-rag-vs-tool-use",
+          "30-days/day-12-what-langchain-solves",
+          "30-days/day-13-ai-reads-google-sheets",
+          "30-days/day-14-confluence-and-trello",
+          "30-days/day-15-cross-source-workflow"
+        ]
+      },
+      {
+        "group": "第四篇｜Agent 決策",
+        "pages": [
+          "30-days/day-16-when-tools-become-agent",
+          "30-days/day-17-react-loop",
+          "30-days/day-18-coordinator-as-project-manager",
+          "30-days/day-19-agent-memory",
+          "30-days/day-20-clarification-and-verification"
+        ]
+      },
+      {
+        "group": "第五篇｜可控工作流",
+        "pages": [
+          "30-days/day-21-why-agentexecutor-is-not-enough",
+          "30-days/day-22-what-is-langgraph",
+          "30-days/day-23-parallel-tool-execution",
+          "30-days/day-24-tools-are-not-multi-agent",
+          "30-days/day-25-human-in-the-loop"
+        ]
+      },
+      {
+        "group": "第六篇｜企業級產品",
+        "pages": [
+          "30-days/day-26-timeout-retry-fallback",
+          "30-days/day-27-agent-ux",
+          "30-days/day-28-meeting-to-action-items",
+          "30-days/day-29-security-testing-deployment",
+          "30-days/day-30-design-your-enterprise-agent"
+        ]
+      }
+    ]
+  }
+}

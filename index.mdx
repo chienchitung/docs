@@ -1,0 +1,80 @@
+---
+title: "Data Machi 30 天學習系列：從零開始打造企業 AI 知識工作流"
+sidebarTitle: "首頁"
+description: "30 天帶你從 RAG、Tool Use、Agent 到 LangGraph，逐步打造可在企業環境穩定運作的 AI 知識工作流，理論與實戰兼具。"
+---
+
+Data Machi 是一套聚焦企業實戰的 30 天學習系列。你將從理解聊天機器人與真正「會工作的 AI」之間的差距出發，逐步學會如何讓 AI 讀懂企業文件、呼叫工具、自主決策，最後打造一個能在正式環境穩定運作的企業知識工作流 Agent。
+
+<CardGroup cols={2}>
+  <Card title="第一篇｜AI 與工作" icon="brain" href="/30-days/day-01-enterprise-ai-is-not-chatbot">
+    釐清企業 AI 的定位：從聊天機器人到知識工作夥伴，理解 Prompt、工具與工作流的差異。
+  </Card>
+  <Card title="第二篇｜企業知識檢索" icon="magnifying-glass" href="/30-days/day-06-what-is-rag">
+    學習 RAG、PDF 解析、語意搜尋與多模態文件處理，讓 AI 真正找得到公司的知識。
+  </Card>
+  <Card title="第三篇｜工具整合" icon="plug" href="/30-days/day-11-rag-vs-tool-use">
+    整合 Google Sheets、Confluence、Trello，讓 AI 從讀取資料進化到操作企業系統。
+  </Card>
+  <Card title="第四篇｜Agent 決策" icon="robot" href="/30-days/day-16-when-tools-become-agent">
+    理解 ReAct 決策循環、Coordinator 設計、記憶機制與零幻覺驗證策略。
+  </Card>
+  <Card title="第五篇｜可控工作流" icon="diagram-project" href="/30-days/day-21-why-agentexecutor-is-not-enough">
+    用 LangGraph 建立可觀測、可審核的工作流，導入 Human-in-the-loop 與平行工具執行。
+  </Card>
+  <Card title="第六篇｜企業級產品" icon="rocket" href="/30-days/day-26-timeout-retry-fallback">
+    從 Demo 到可交付產品：可靠性設計、Agent UX、安全測試與企業部署完整指南。
+  </Card>
+</CardGroup>
+
+## 系列學習路徑
+
+整個系列共 30 天，分成六大篇章，每篇五天、自成一個完整主題。你可以從頭到尾依序閱讀，也可以依照需求直接跳到最相關的篇章。
+
+<Steps>
+  <Step title="建立認知框架（Day 01–05）">
+    理解企業 AI 與聊天機器人的根本差異，拆解「知識工作」的五個步驟，並了解 Data Machi 系統的演進路徑。
+  </Step>
+  <Step title="讓 AI 找到企業知識（Day 06–10）">
+    學習 RAG 架構：文件解析、Chunk 切割、Embedding 向量化與語意搜尋，處理掃描 PDF、表格與圖片等非結構化內容。
+  </Step>
+  <Step title="接上企業工具與系統（Day 11–15）">
+    區分 RAG 與 Tool Use，用 LangChain 整合 Google Sheets、Confluence 與 Trello，設計跨來源工作流。
+  </Step>
+  <Step title="讓 AI 自主決策（Day 16–20）">
+    從單次工具呼叫進化到 Agent：理解 ReAct 循環、Coordinator 分派、短期與長期記憶，以及釐清與查核機制。
+  </Step>
+  <Step title="建立可控工作流（Day 21–25）">
+    用 LangGraph 的 State、Node、Edge 取代黑箱 Agent loop，導入平行執行、Multi-Agent 架構與人工審核。
+  </Step>
+  <Step title="產品化與上線（Day 26–30）">
+    設計 Timeout、Retry、Fallback 可靠性機制，優化 Agent UX，完成安全測試與部署，規劃自己的企業 AI 工作流。
+  </Step>
+</Steps>
+
+## 涵蓋的核心概念
+
+<CardGroup cols={3}>
+  <Card title="RAG" icon="database">
+    Retrieval-Augmented Generation：讓 AI 在回答前先從企業文件中找到真正相關的資料。
+  </Card>
+  <Card title="Tool Use" icon="wrench">
+    讓 AI 不只讀取資料，還能操作 Google Sheets、Confluence、Trello 等企業系統。
+  </Card>
+  <Card title="LangChain" icon="link">
+    整合模型、Prompt、訊息、記憶與工具的框架，是構建企業 Agent 的基礎積木。
+  </Card>
+  <Card title="ReAct" icon="arrows-rotate">
+    Thought → Action → Observation 的 Agent 決策循環，讓 AI 能觀察結果並重新判斷。
+  </Card>
+  <Card title="LangGraph" icon="share-nodes">
+    用 State、Node、Edge 管理複雜工作流，讓 AI 行為從黑箱變成可觀測、可控制的流程圖。
+  </Card>
+  <Card title="Human-in-the-loop" icon="user-check">
+    在高風險操作前加入人工審核節點，確保企業 AI 工作流的可信度與安全性。
+  </Card>
+</CardGroup>
+
+<Note>
+  建議依照 Day 01 到 Day 30 的順序閱讀。每五天形成一個完整主題，閱讀完一篇後會對下一篇的內容有更好的理解基礎。
+</Note>
