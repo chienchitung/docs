@@ -1,16 +1,12 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "almond",
+  "theme": "mint",
   "name": "Data Machi",
   "description": "從 RAG 到 Agentic Workflow：30 天打造企業知識工作流學習系列",
   "colors": {
-    "primary": "#1be39b",
-    "light": "#0c8c5c",
-    "dark": "#99bbb0"
-  },
-  "logo": {
-    "light": "https://media.brand.dev/f9149ec8-8f45-4efb-9d85-58460ee4fee4.svg",
-    "dark": "https://media.brand.dev/f9149ec8-8f45-4efb-9d85-58460ee4fee4.svg"
+    "primary": "#16A34A",
+    "light": "#22C55E",
+    "dark": "#15803D"
   },
   "favicon": "/favicon.svg",
   "navigation": {
