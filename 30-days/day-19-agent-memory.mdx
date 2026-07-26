@@ -11,13 +11,15 @@ description: "區分近期對話、摘要記憶與工具結果三種記憶類型
 Agent 的記憶不是單一的「對話歷史」，而是由幾種功能不同的記憶類型共同構成：
 
 <CardGroup cols={3}>
-  <Card title="📝 近期對話記憶" icon="comments">
+  <Card title="近期對話記憶" icon="comments">
     保留最近幾輪的完整訊息，讓 Agent 能處理代名詞（「這個」「剛才說的」）、延續追問，以及理解當下的對話脈絡。
   </Card>
-  <Card title="🗜️ 摘要記憶" icon="compress">
+
+  <Card title="摘要記憶" icon="compress">
     把較早的對話內容壓縮成重點摘要，避免上下文無限成長。保留關鍵事實（如使用者偏好、已確認的條件），省略細節。
   </Card>
-  <Card title="🔍 工具結果記憶" icon="database">
+
+  <Card title="工具結果記憶" icon="database">
     保存先前工具查詢的原始結果，供後續整理、比較與引用。與其依賴模型對工具結果的文字描述，不如直接保留可追溯的來源資料。
   </Card>
 </CardGroup>

@@ -11,10 +11,11 @@ description: "探討 Tool 與 Agent 在架構設計上的本質差異。工具�
 工具與 Agent 的邊界，往往不在技術實作，而在決策能力是否存在。
 
 <CardGroup cols={2}>
-  <Card title="🔧 Tool（工具）" icon="wrench">
+  <Card title="Tool（工具）" icon="wrench">
     被呼叫時執行固定能力，不會自行判斷是否呼叫自己、何時停止，或是否需要換用其他工具。執行結束即完成任務。
   </Card>
-  <Card title="🤖 Agent（代理）" icon="robot">
+
+  <Card title=" Agent（代理）" icon="robot">
     接收到任務後，根據語意選擇工具、觀察執行結果、判斷是否足夠，必要時調整策略、重新行動，直到達成目標或觸發停止條件。
   </Card>
 </CardGroup>

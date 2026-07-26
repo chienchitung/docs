@@ -11,10 +11,11 @@ description: "理解 Router 與 Coordinator 在 Agent 架構中的分工差異�
 在 Agent 系統的設計中，「分派」這件事可以做得很簡單，也可以做得很精緻。最基本的形式是 Router，而更完整的實作是 Coordinator。
 
 <CardGroup cols={2}>
-  <Card title="🚦 Router（路由器）" icon="route">
+  <Card title="Router（路由器）" icon="route">
     負責分類：判斷這個問題屬於哪個領域（如 Analyst、Trello、Confluence、Document），然後把請求轉發給對應的處理器。Router 通常只做一次決策，不管理後續流程。
   </Card>
-  <Card title="🗂️ Coordinator（協調者）" icon="sitemap">
+
+  <Card title="Coordinator（協調者）" icon="sitemap">
     除了分類之外，還會整合前後文、觀察工具回傳結果、決定是否需要補查其他工具、管理多輪工作流程，最後把所有資訊整合成一個完整的回答。
   </Card>
 </CardGroup>
