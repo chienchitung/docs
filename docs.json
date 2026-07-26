@@ -9,10 +9,6 @@
     "dark": "#15803D"
   },
   "favicon": "/favicon.svg",
-  "logo": {
-    "light": "/favicon.svg",
-    "dark": "/favicon.svg"
-  },
   "navigation": {
     "groups": [
       {
