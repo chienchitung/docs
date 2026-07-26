@@ -1,4 +1,28 @@
-# Data Machi
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./logo/dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./logo/light.svg">
+    <img src="./logo/light.svg" alt="Data Machi" width="300">
+  </picture>
+
+  <p><strong>從 RAG 到 Agentic Workflow，30 天打造企業 AI 知識工作流</strong></p>
+
+  <p>
+    <a href="https://data-machi.mintlify.app">
+      <img src="https://img.shields.io/website?url=https%3A%2F%2Fdata-machi.mintlify.app&label=Documentation&up_message=online&down_message=offline" alt="Documentation status">
+    </a>
+    <img src="https://img.shields.io/badge/Mintlify-Documentation-0D9373?logo=mintlify&logoColor=white" alt="Mintlify">
+    <img src="https://img.shields.io/badge/Content-MDX-1F6FEB?logo=mdx&logoColor=white" alt="MDX">
+    <a href="https://github.com/chienchitung/docs/commits/main">
+      <img src="https://img.shields.io/github/last-commit/chienchitung/docs" alt="Last commit">
+    </a>
+    <a href="./LICENSE">
+      <img src="https://img.shields.io/github/license/chienchitung/docs" alt="License">
+    </a>
+  </p>
+</div>
+
+## 關於 Data Machi
 
 Data Machi 是一套聚焦企業實戰的 30 天學習系列，帶領讀者從 RAG、Tool Use、Agent 到 Agentic Workflow，逐步理解並設計可在企業環境中穩定運作的 AI 知識工作流。
 
