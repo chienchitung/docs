@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="48" viewBox="0 0 220 48" role="img" aria-label="Data Machi logo">
+  <rect x="0" y="0" width="48" height="48" rx="12" fill="#16A34A"/>
+  <path d="M13 12h11.5C32.4 12 38 16.7 38 24s-5.6 12-13.5 12H13V12zm7 6v12h4.5c4 0 6.5-2.2 6.5-6s-2.5-6-6.5-6H20z" fill="#FFFFFF"/>
+  <text x="62" y="32" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#171717">Data Machi</text>
+</svg>
