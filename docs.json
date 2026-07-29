@@ -79,6 +79,17 @@
           "30-days/day-29-security-testing-deployment",
           "30-days/day-30-design-your-enterprise-agent"
         ]
+      },
+      {
+        "group": "Data Machi 實作篇",
+        "icon": "code",
+        "pages": [
+          "data-machi-practice/index",
+          "data-machi-practice/01-project-architecture",
+          "data-machi-practice/02-google-sheets-tool",
+          "data-machi-practice/03-langgraph-state-router",
+          "data-machi-practice/04-cross-source-coordinator"
+        ]
       }
     ]
   }

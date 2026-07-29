@@ -1,0 +1,74 @@
+---
+title: "實作 04｜建立跨來源 Coordinator"
+sidebarTitle: "實作 04｜跨來源查詢"
+description: "讓 Data Machi 同時查詢試算表、文件與專案進度，整合答案並保留來源與執行狀態。"
+---
+
+真實企業問題很少只依賴一個資料來源。使用者可能同時想知道數字、正式定義與目前改善進度，因此 Data Machi 需要先拆解問題，再決定執行一個或多個工具。
+
+## 範例問題
+
+> 今年 Q3 延遲工單有多少件？SLA 的正式定義是什麼？目前有哪些改善項目正在進行？
+
+這個問題需要：
+
+- Google Sheets：計算延遲工單數
+- 文件系統：取得 SLA 定義
+- 專案工具：確認改善項目狀態
+
+## Coordinator 流程
+
+```text
+使用者問題
+   ↓
+分析需要哪些來源
+   ↓
+建立 selected_tools
+   ↓
+平行執行獨立工具
+   ├─ Sheets Tool
+   ├─ Document Tool
+   └─ Project Tool
+   ↓
+檢查各工具結果
+   ↓
+整合答案與來源
+```
+
+## State 更新原則
+
+每個工具只更新自己的結果，不直接覆蓋其他工具內容：
+
+```python
+def sheets_node(state: DataMachiState):
+    result = query_sheets_tool(state["user_query"])
+    return {
+        "tool_results": {"sheets": result},
+        "sources": [{"type": "sheet", "name": result["source"]}],
+    }
+```
+
+在實際程式中，`tool_results` 與 `sources` 應設定 reducer，讓平行節點的輸出可以安全合併。
+
+## Synthesize Node 的責任
+
+Synthesize Node 只使用工具提供的事實：
+
+- 區分「查詢結果」與「模型推論」
+- 在每段結論後標示來源
+- 某個來源失敗時，清楚說明缺少哪一部分
+- 不用其他來源補猜不存在的數字
+
+## 完成標準
+
+- 單一來源問題只呼叫必要工具
+- 跨來源問題可以平行執行獨立工具
+- 任一工具失敗時仍能回傳部分結果
+- 每項重要事實都能對應來源
+- 執行紀錄能顯示每個工具的開始、完成與失敗狀態
+
+<Info>
+  完成這一步後，Data Machi 已不只是多工具聊天機器人，而是具備任務拆解、跨來源執行與證據整合能力的工作流系統。
+</Info>
+
+後續實作將加入資料不足時的重試循環、Reviewer 查核、Human-in-the-Loop 與 Checkpointer。

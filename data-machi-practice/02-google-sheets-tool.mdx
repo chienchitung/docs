@@ -1,0 +1,69 @@
+---
+title: "實作 02｜建立 Google Sheets 查詢工具"
+sidebarTitle: "實作 02｜Sheets Tool"
+description: "建立可驗證的試算表查詢工具，讓程式負責精確計算，LLM 負責理解意圖與整理回答。"
+---
+
+這一篇建立 Data Machi 的第一個工具。重點不是讓 LLM 直接閱讀整張試算表，而是把自然語言問題轉成結構化查詢，再交由 Pandas 或資料庫完成篩選與計算。
+
+## 責任分工
+
+| 工作 | 執行者 |
+| --- | --- |
+| 理解「今年 Q2 客訴有多少件」 | LLM |
+| 解析期間與指標 | LLM 或結構化解析器 |
+| 篩選日期、計算筆數與比例 | Python / Pandas |
+| 組織自然語言回答 | LLM |
+| 回傳資料更新時間與欄位來源 | Tool |
+
+## 工具輸入與輸出
+
+```python
+from pydantic import BaseModel
+
+class TicketQuery(BaseModel):
+    start_date: str
+    end_date: str
+    category: str | None = None
+    metric: str = "count"
+
+class TicketResult(BaseModel):
+    value: float
+    row_count: int
+    data_updated_at: str
+    filters_applied: dict
+```
+
+Tool 不應只回傳一句文字，而應回傳能被驗證與再次使用的結構化結果。
+
+## 最小流程
+
+```text
+使用者問題
+   ↓
+解析查詢條件
+   ↓
+驗證日期與欄位
+   ↓
+讀取快取或 Google Sheets
+   ↓
+Pandas 篩選與計算
+   ↓
+回傳結構化結果
+   ↓
+LLM 整理答案
+```
+
+## 驗證重點
+
+- 同一組篩選條件應得到相同數字
+- 缺少必要欄位時應明確報錯
+- 日期範圍不合法時不得自行猜測
+- 回答應包含資料更新時間或來源說明
+- 測試資料應涵蓋空結果與欄位別名
+
+<Warning>
+  不要要求模型自行加總大量列資料。模型可以理解「要算什麼」，但精確計算必須由程式完成。
+</Warning>
+
+下一篇會把工具放入 LangGraph，建立 Data Machi 的結構化 State 與 Router。

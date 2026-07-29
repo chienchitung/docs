@@ -74,6 +74,38 @@ description: "理解平行工具呼叫的運作原理，掌握哪些查詢可以
 
 在 LangGraph 中，這種結構可以透過 fan-out（一個節點拆成多個平行路徑）和 fan-in（多個路徑匯合到一個節點）來實現。
 
+## 從固定平行到動態 Graph
+
+前面的案例假設系統事先知道要查三個來源，因此可以預先定義三條平行路徑。但有些任務要到執行時，才知道需要建立多少個下游工作。
+
+例如，一份文件可能被拆成 3 個章節，也可能是 20 個章節；一個研究問題可能產生 5 個子題，也可能產生 12 個子題。這時不能在開發階段固定寫死 Worker 數量，而要由前一個節點根據執行結果動態分派：
+
+```text
+輸入文件
+   ↓
+拆分章節
+   ├─ Worker 1
+   ├─ Worker 2
+   ├─ Worker 3
+   └─ Worker N
+         ↓
+      合併結果
+```
+
+LangGraph 可以透過 `Send` 在執行期間建立下游任務，形成動態的 fan-out 與 fan-in。這種模式常用於 Map-Reduce、批次文件分析與多來源研究。
+
+```python
+from langgraph.types import Send
+
+def assign_workers(state: AgentState):
+    return [
+        Send("analyze_section", {"section": section})
+        for section in state["sections"]
+    ]
+```
+
+固定平行工具呼叫與動態 Graph 的差別在於：前者事先知道要執行哪些工作；後者必須根據 State 的內容，在執行期間決定工作數量與路徑。
+
 ## Data Machi 的實作方式
 
 當 LLM 在一個回應中產生多個 Tool Call 時，Data Machi 的 Action Node 會使用 Python 的非同步機制平行執行所有工具，再把所有 `ToolMessage` 一起交回 Agent Node 繼續判斷。

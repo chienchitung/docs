@@ -1,0 +1,58 @@
+---
+title: "Data Machi 實作篇｜從概念走向可執行系統"
+sidebarTitle: "實作篇導讀"
+description: "說明 Data Machi 實作篇的學習方式、專案演進原則與每篇文章如何對應可執行版本。"
+---
+
+30 天系列建立的是企業 AI 工作流的觀念地圖；實作篇則會把這些觀念逐步放進同一個 Data Machi 專案中。這裡不再按照固定天數更新，也不為了湊篇數拆分內容，而是依照真實產品的建構順序，完成一個可執行、可測試、可持續擴充的系統。
+
+## 實作篇的學習方式
+
+每一篇都會回答四個問題：
+
+1. 這個功能解決什麼真實問題？
+2. 它在整體架構中位於哪個位置？
+3. 如何用程式完成最小可行版本？
+4. 如何驗證它真的正確運作？
+
+```text
+需求與問題
+   ↓
+架構判斷
+   ↓
+最小可行實作
+   ↓
+測試與觀察
+   ↓
+再決定是否增加複雜度
+```
+
+## 第一階段路線圖
+
+<CardGroup cols={2}>
+  <Card title="實作 01｜專案架構" icon="folder-tree">
+    看懂 Data Machi 的前端、後端、Agent 與工具如何協作，完成本機環境與基本啟動流程。
+  </Card>
+
+  <Card title="實作 02｜Google Sheets Tool" icon="table">
+    讓程式負責精確計算，LLM 負責理解問題與組織答案。
+  </Card>
+
+  <Card title="實作 03｜LangGraph State" icon="diagram-project">
+    建立 State、Node、Edge 與 Router，將決策從黑箱移到可管理的工作流。
+  </Card>
+
+  <Card title="實作 04｜跨來源 Coordinator" icon="arrows-split-up-and-left">
+    同時查詢試算表、文件與專案進度，整合答案並保留來源。
+  </Card>
+</CardGroup>
+
+## 版本原則
+
+實作文章應對應固定的 Git commit 或 tag。文章中的程式碼、環境變數與執行結果，都應能在相同版本中重現，避免主分支持續演進後，舊文章失去可執行性。
+
+<Note>
+  實作篇的目標不是一次建立最複雜的 Multi-Agent，而是先完成單一 Coordinator、確定性 Tools、LangGraph 路由、驗證與重試。只有當真實需求出現，再把特定 Node 升級為完整 Agent。
+</Note>
+
+下一篇將先從專案全貌開始，理解一個問題進入 Data Machi 後，會經過哪些模組才形成最終回答。

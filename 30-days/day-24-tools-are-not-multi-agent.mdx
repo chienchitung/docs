@@ -14,6 +14,7 @@ description: "釐清單一 Agent 多工具與真正 Multi-Agent 架構的本質�
   <Card title="工具（Tool）" icon="wrench">
     工具是 Agent 可以呼叫的能力單元。一個工具有固定的輸入格式、固定的執行邏輯與固定的輸出格式。它本身不具備判斷能力——是 Agent 決定「什麼時候呼叫哪個工具、帶什麼參數」。工具像是螺絲起子：功能明確，由持有者決定何時使用。
   </Card>
+
   <Card title="Agent" icon="robot">
     Agent 是具備判斷能力的工作主體。它有自己的 Prompt（定義角色與目標）、自己的上下文（決定它能看到什麼資訊）、自己的工具集（決定它能做什麼）、以及可能獨立的模型選擇與權限設定。不同 Agent 之間存在明確的交接點。
   </Card>
@@ -96,7 +97,7 @@ Multi-Agent 不是越多越好，它應該由真實的業務需求驅動。以�
 Data Machi 目前的核心架構是一個 Coordinator 在 Agent 節點與 Action 節點之間循環，四個領域能力（Analyst、Trello、Confluence、Document）主要以工具形式存在。
 
 <Note>
-  這個選擇是刻意的，而不是暫時的妥協。對於目前的業務場景，單一 Coordinator + 多工具的架構已經能完整覆蓋需求，而且帶來了幾個重要優勢：架構更簡單、每次對話的模型呼叫次數更少（延遲更低）、除錯更直觀、新工具的加入更快速。
+  這個選擇是刻意的，而不是暫時的妥協。對於目前的業務場景，單一 Coordinator \+ 多工具的架構已經能完整覆蓋需求，而且帶來了幾個重要優勢：架構更簡單、每次對話的模型呼叫次數更少（延遲更低）、除錯更直觀、新工具的加入更快速。
 </Note>
 
 ```python
@@ -131,27 +132,47 @@ coordinator = create_react_agent(llm, tools=tools)
 若 Data Machi 未來遇到以下需求，才會考慮真正的 Multi-Agent 拆分：
 
 <Accordion title="可能觸發 Multi-Agent 拆分的未來場景">
+  **場景一：分析師 \+ 審核師工作流**
 
-**場景一：分析師 + 審核師工作流**
+  若需要讓 Analyst Agent 先產出分析草稿，交給 Reviewer Agent 獨立查核資料正確性，再由 Writer Agent 整理最終報告，這個「草稿→查核→報告」的流程有明確的角色交接，適合拆成三個獨立節點。
 
-若需要讓 Analyst Agent 先產出分析草稿，交給 Reviewer Agent 獨立查核資料正確性，再由 Writer Agent 整理最終報告，這個「草稿→查核→報告」的流程有明確的角色交接，適合拆成三個獨立節點。
+  ```text
+  Analyst Agent → （草稿）→ Reviewer Agent → （批准/退回）→ Writer Agent
+                                ↑                    │
+                                └────────────────────┘
+                                    （退回修正）
+  ```
+
+  **場景二：工具數量爆炸**
+
+  若工具清單從目前的 9 個增長到 30 個以上，Coordinator 的工具選擇準確度開始下滑，就是考慮按領域拆分 Sub-Agent 的時機。
+
+  **場景三：不同權限要求**
+
+  若系統需要支援不同角色（普通用戶 vs. 管理員），而管理員可以執行刪除或批量更新操作，用不同 Agent 隔離權限邊界會比在工具內部做條件判斷更清晰。
+</Accordion>
+
+## Graph 裡的三種 Node
+
+從 Graph Engineering 的角度來看，Node 不只是一種東西。理解 Node 的責任範圍，有助於避免把每個能力都錯誤包裝成 Agent。
+
+| Node 類型 | 主要責任 | 是否自主決策 |
+| --- | --- | --- |
+| **Tool Node** | 執行一個明確操作，例如查詢試算表或建立卡片 | 否 |
+| **LLM Node** | 完成一次分類、摘要、判斷或生成 | 有限，通常只做一次模型決策 |
+| **Agent Node** | 在自己的工具與上下文中反覆判斷、行動與觀察 | 是，內部可包含完整 Loop |
 
 ```text
-Analyst Agent → （草稿）→ Reviewer Agent → （批准/退回）→ Writer Agent
-                              ↑                    │
-                              └────────────────────┘
-                                  （退回修正）
+外層 Graph
+├─ Intent Classifier（LLM Node）
+├─ Spreadsheet Query（Tool Node）
+├─ Research Agent（Agent Node）
+└─ Human Approval（控制節點）
 ```
 
-**場景二：工具數量爆炸**
+因此，「Graph 中有很多 Node」不代表 Multi-Agent；只有當其中多個 Node 各自具備獨立目標、上下文、工具集與決策循環時，才是由 Graph 編排多個 Agent。
 
-若工具清單從目前的 9 個增長到 30 個以上，Coordinator 的工具選擇準確度開始下滑，就是考慮按領域拆分 Sub-Agent 的時機。
-
-**場景三：不同權限要求**
-
-若系統需要支援不同角色（普通用戶 vs. 管理員），而管理員可以執行刪除或批量更新操作，用不同 Agent 隔離權限邊界會比在工具內部做條件判斷更清晰。
-
-</Accordion>
+對 Data Machi 而言，現階段以單一 Coordinator 搭配多個 Tool Node 最合理；未來只有在研究、分析、查核等任務需要長時間自主執行與正式交接時，再把特定 Node 升級成 Agent Node。
 
 ## Multi-Agent 的隱藏成本
 

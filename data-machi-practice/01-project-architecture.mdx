@@ -1,0 +1,56 @@
+---
+title: "實作 01｜認識 Data Machi 專案架構"
+sidebarTitle: "實作 01｜專案架構"
+description: "從使用者輸入到最終回答，理解 Data Machi 前端、後端、Agent、工具與資料來源之間的關係。"
+---
+
+開始寫 Agent 之前，先看懂整個系統。Data Machi 不是只有一個 Prompt，而是由介面、API、工作流、工具與資料來源共同組成。
+
+## 一個問題如何流過系統
+
+```text
+使用者輸入
+   ↓
+前端送出請求
+   ↓
+後端 API 建立任務
+   ↓
+LangGraph 載入 State
+   ↓
+Coordinator 判斷需要哪些工具
+   ↓
+工具查詢資料來源
+   ↓
+整合結果與來源
+   ↓
+前端呈現答案與執行狀態
+```
+
+## 建議的資料夾結構
+
+```text
+data-machi/
+├─ app/
+│  ├─ api/              # API 與請求驗證
+│  ├─ graph/            # State、Node、Edge
+│  ├─ tools/            # Sheets、文件與專案工具
+│  ├─ services/         # 外部系統連線
+│  └─ schemas/          # 輸入輸出資料結構
+├─ tests/               # 單元與整合測試
+├─ .env.example         # 環境變數範例
+└─ README.md            # 安裝與啟動方式
+```
+
+## 第一版完成標準
+
+- 能從環境變數讀取模型金鑰
+- 能啟動後端服務
+- 能送出一個問題並取得模型回答
+- 錯誤時回傳可理解的訊息
+- 不把金鑰寫進程式碼或 Git
+
+<Info>
+  這一篇先建立可執行骨架，不急著加入 RAG、Multi-Agent 或複雜記憶。系統能穩定啟動，才有資格繼續增加能力。
+</Info>
+
+下一篇將加入第一個真正可驗證的資料工具：Google Sheets 查詢。

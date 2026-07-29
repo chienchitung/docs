@@ -8,7 +8,7 @@ description: "理解 AgentExecutor 在企業場景的三大限制：流程順序
 
 ## 什麼是 AgentExecutor？
 
-`AgentExecutor` 是 LangChain 提供的執行容器，負責協調 LLM 模型與工具之間的 ReAct 循環（Reasoning + Acting）。其核心邏輯非常直觀：
+`AgentExecutor` 是 LangChain 提供的執行容器，負責協調 LLM 模型與工具之間的 ReAct 循環（Reasoning \+ Acting）。其核心邏輯非常直觀：
 
 <Steps>
   <Step title="接收使用者輸入">
@@ -40,9 +40,11 @@ description: "理解 AgentExecutor 在企業場景的三大限制：流程順序
     ✅ 程式約束：step1 → step2 → step3，每步完成後才允許進入下一步
     ```
   </Card>
+
   <Card title="問題二：多 Agent 交接流程難以表達" icon="arrow-right-arrow-left">
     企業裡常見的審核流程是：Agent A 先搜尋並整理資料，Agent B 負責審核品質，若審核失敗則退回 Agent A 重新查詢。這種帶有條件分支與回退的拓撲結構，在 `AgentExecutor` 的單一循環模型裡幾乎無法自然表達——你必須在 Prompt 裡描述這個邏輯，並且祈禱模型能正確理解。
   </Card>
+
   <Card title="問題三：高風險操作前的人工暫停點難以實作" icon="hand">
     在寄出報告郵件、刪除文件或更新關鍵資料之前，企業流程通常需要一個人工確認步驟。`AgentExecutor` 的循環是連續的，它沒有內建的「暫停、等待人類批准、再恢復」機制。雖然可以用 Callback 或 Custom Chain 勉強模擬，但這會讓程式碼變得脆弱且難以維護。
   </Card>
@@ -72,16 +74,14 @@ Data Machi 在早期版本中同樣依賴 `AgentExecutor` 驅動查詢流程。�
 最終，我們把核心流程遷移到 LangGraph 的 `StateGraph`。這不是一次「換個更酷的框架」的決定，而是一次深思熟慮的架構選擇：把對流程的控制權，從模型的 Prompt 約束移回到程式邏輯本身。
 
 <Accordion title="AgentExecutor 與 LangGraph 的定位比較">
-
-| 維度 | AgentExecutor | LangGraph StateGraph |
-|------|--------------|----------------------|
-| 流程控制 | 由 LLM 透過 Prompt 決定 | 由開發者用 Node 與 Edge 定義 |
-| 條件分支 | 模型自行判斷 | 程式層級的條件 Edge |
-| 狀態保存 | 對話歷史（線性） | 結構化 State（可自訂欄位）|
-| 人工介入 | 需要額外 Hack | 內建 interrupt/resume 支援 |
-| 除錯難度 | 難（決策藏在模型內） | 較易（每個節點可單獨測試）|
-| 適用場景 | 簡單、短流程 Agent | 複雜、多步驟、有審核需求的流程 |
-
+  | 維度 | AgentExecutor | LangGraph StateGraph |
+  | --- | --- | --- |
+  | 流程控制 | 由 LLM 透過 Prompt 決定 | 由開發者用 Node 與 Edge 定義 |
+  | 條件分支 | 模型自行判斷 | 程式層級的條件 Edge |
+  | 狀態保存 | 對話歷史（線性） | 結構化 State（可自訂欄位） |
+  | 人工介入 | 需要額外 Hack | 內建 interrupt/resume 支援 |
+  | 除錯難度 | 難（決策藏在模型內） | 較易（每個節點可單獨測試） |
+  | 適用場景 | 簡單、短流程 Agent | 複雜、多步驟、有審核需求的流程 |
 </Accordion>
 
 ## 踩坑筆記：別過早抽象
@@ -96,6 +96,23 @@ Data Machi 在早期版本中同樣依賴 `AgentExecutor` 驅動查詢流程。�
 - 你的 Agent 有時跳過某個必要步驟，但你只能透過更多 Prompt 修補
 - 你需要在流程中的某個點等待外部確認才能繼續
 - 你需要記錄每個步驟的執行狀態以供稽核
+
+## 從 Agent Loop 到 Graph Engineering
+
+當系統只有一個 Agent 與少量工具時，單一 ReAct Loop 往往已經足夠。但隨著必要步驟、失敗處理、人工審核與多角色交接逐漸增加，開發者就不能再只描述「Agent 應該怎麼做」，而必須開始設計「系統允許怎麼走」。
+
+```text
+AgentExecutor
+模型在單一 Loop 中自行決定下一步
+        ↓
+LangGraph
+開發者將部分決策轉成明確的 Node、Edge 與 State
+        ↓
+Graph Engineering
+系統性設計自主性與確定性的邊界
+```
+
+所謂 **Graph Engineering**，不是把流程畫成漂亮的圖，而是明確回答：哪些決策交給 LLM、哪些步驟必須由程式保證、失敗時回到哪裡、何時必須暫停，以及哪個節點可以擁有自己的 Agent Loop。當你開始設計這些節點、狀態、路徑、循環與人工介入點時，就已經從單純使用 Agent，走向了工作流架構設計。
 
 <Info>
   今天只要記住一件事：當流程風險與複雜度提高，企業需要的不只是聰明模型，而是可預期的控制。
