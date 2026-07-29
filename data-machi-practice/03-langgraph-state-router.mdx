@@ -1,134 +1,44 @@
 ---
-title: "實作 03｜模組化 Prompt：把規則拆成可維護的層級"
-sidebarTitle: "實作 03｜模組化 Prompt"
-description: "將身份、限制、工作流、工具路由、資料結構與輸出格式拆成獨立 Prompt 模組。"
+title: "實作 03｜GitHub 如何串起開發、版本與自動部署？"
+sidebarTitle: "實作 03｜GitHub 中心"
+description: "理解 Repository、Commit、Branch、Pull Request，以及 GitHub 如何連接 Vercel 與 Render。"
 ---
 
-許多 AI 專案一開始只有一段 System Prompt。功能少時很方便，但規則越來越多後，Prompt 會變成一份無法維護的長文件：身份、禁止事項、工具說明、資料欄位與輸出格式全部混在一起。修改一個段落，可能意外影響另一個行為。
-
-這一篇要把 Prompt 從「一大段文字」改造成「有層級的系統規格」。
-
-## 用員工手冊理解 Prompt 模組
-
-一間公司不會把所有規則寫成一個無標題的長段落，而會分成：
-
-- 不可違反的資安規則
-- 工作角色與責任
-- 標準作業流程
-- 各系統的操作方式
-- 報告格式
-- 詞彙與溝通風格
-
-Prompt 也應該採用相同思路。
-
-## 建議的模組結構
+在這套開發流程中，GitHub 不只是放程式碼的地方，而是整個專案的共同中心。
 
 ```text
-backend/prompts/
-├─ hard_constraints.md
-├─ core_identity.md
-├─ workflow_policy.md
-├─ tool_routing.md
-├─ data_schema.md
-└─ response_formatting.md
+本機 VS Code ─┐
+              ├→ GitHub Repository → Render 後端
+雲端 Agent ───┘                    → Vercel 前端
 ```
 
-| 模組 | 負責內容 |
-| --- | --- |
-| Hard Constraints | 不得猜測、不得洩露敏感資訊等最高優先規則 |
-| Core Identity | 助理是誰、服務範圍是什麼 |
-| Workflow Policy | 何時查工具、何時釐清、何時停止 |
-| Tool Routing | 每個工具的用途與選擇條件 |
-| Data Schema | 欄位定義、指標定義、允許值 |
-| Response Formatting | 答案結構、語言、引用方式 |
+## 你需要理解的四個概念
 
-## Step 1：先拆分類，不要先改文字
+<CardGroup cols={2}>
+     
+</CardGroup>
 
-把原本 Prompt 的每一條規則標記成上述類別。若一條規則同時涉及兩個類別，先判斷它真正控制的是「行為」還是「格式」。
+## 建立自己的專案副本
 
-例如：
+你可以 Fork 開源專案，或建立新的 Repository 再複製程式碼。公開教學版本應先移除組織名稱、真實資料來源、預設 Sheet ID、看板 ID 與正式網址。
+
+## 為什麼 GitHub 是唯一正式來源？
+
+如果本機、雲端環境與正式部署各自保存不同版本，很快就會不知道哪一份才是最新的。比較安全的做法是：所有正式修改都必須回到 GitHub，Vercel 與 Render 只部署 GitHub 中指定分支的內容。
+
+## 建議的 Vibe Coding Prompt
 
 ```text
-「回答數字前必須查詢資料工具」
+請先閱讀目前 Repository 的資料夾結構、README 與部署設定。
+不要立即修改。請先說明：
+1. 前端與後端位於哪裡
+2. 哪些檔案含有品牌或環境相關設定
+3. 哪些內容需要抽象化
+4. 預計修改哪些檔案
 ```
-
-這是 Workflow Policy，不是 Response Formatting。
-
-## Step 2：建立優先順序
-
-```python
-prompt_modules = {
-    "Hard Constraints": read_prompt("hard_constraints.md"),
-    "Core Identity": read_prompt("core_identity.md"),
-    "Workflow Policy": read_prompt("workflow_policy.md"),
-    "Tool Routing": read_prompt("tool_routing.md"),
-    "Data Schema": read_prompt("data_schema.md"),
-    "Response Formatting": read_prompt("response_formatting.md"),
-}
-```
-
-順序不是裝飾。當兩條規則衝突時，系統必須知道哪一條優先。通常越接近安全、權限與事實性的規則，優先級越高。
-
-## Step 3：把模組組合成 System Prompt
-
-```python
-module_sections = "\n\n".join(
-    f"## {title}\n\n{content}"
-    for title, content in prompt_modules.items()
-    if content
-)
-
-system_prompt = f"""
-# System Context
-- Current date: {current_date}
-
-# Prompt Priority
-若規則衝突，以較高層級為準。
-
-# Loaded Modules
-{module_sections}
-"""
-```
-
-這裡的重點不是語法，而是每個模組都能單獨閱讀與修改。
-
-## Step 4：用測試問題驗證規則
-
-至少準備四類問題：
-
-1. 範圍內的正常問題
-2. 範圍外的問題
-3. 缺少必要條件的問題
-4. 要求模型猜測或繞過限制的問題
-
-例如：
-
-```text
-請提供上月的專案數量。
-```
-
-若沒有查資料工具就直接回答數字，代表 Workflow Policy 沒有被正確遵守。
-
-## 初學者最常犯的三個錯誤
-
-<Warning>
-  **把資料內容寫進 Prompt：** Prompt 應存規則，不應存會持續變動的業務數字。
-
-  **同一條規則重複出現：** 重複不一定更有效，反而可能出現不同版本互相衝突。
-
-  **只改 Prompt、不測流程：** 模型是否遵守規則，必須透過測試問題與工具紀錄確認。
-</Warning>
-
-## 本篇驗收
-
-- 每個 Prompt 檔案只負責一種責任
-- 有明確的規則優先順序
-- 修改格式規則不會影響工具路由
-- 至少建立一組範圍內、範圍外與缺條件測試
-- Prompt 中沒有真實企業資料與憑證
 
 <Info>
-  模組化 Prompt 不是為了讓 Prompt 看起來更漂亮，而是讓規則能被閱讀、測試、版本控制與安全修改。
+  今天只要記住一件事：AI Coding Agent 可以更換，但 GitHub 應該是所有開發方式共用的版本中心。
 </Info>
 
-下一篇開始建立第一個真正會取得資料的工具，並理解為什麼 LLM 不應負責精確計算。
+下一篇將建立 API Key、Secret 與環境變數的放置地圖。

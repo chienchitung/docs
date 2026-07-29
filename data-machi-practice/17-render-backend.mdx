@@ -1,0 +1,30 @@
+---
+title: "實作 17｜將 FastAPI 後端部署到 Render"
+sidebarTitle: "實作 17｜Render 後端"
+description: "連接 GitHub、設定 Root Directory、Build／Start Command、環境變數與健康檢查。"
+---
+
+本機後端只能在你的電腦開機時運作。Render 的角色，是讓 FastAPI 與 LangGraph 在公開網路上持續提供服務。
+
+## 部署流程
+
+<Steps>
+</Steps>
+
+## 常見部署問題
+
+- Root Directory 設錯，找不到 requirements。
+- Start Command 使用固定 Port。
+- Service Account JSON 格式錯誤。
+- PDF／FAISS 檔案在重新部署後沒有持久保存。
+- 免費方案休眠造成第一次請求較慢。
+
+## Vibe Coding Prompt
+
+```text
+請檢查目前 Repository 的 Render 部署設定。
+確認 backend root、Python 版本、build command、start command、Port、
+必要環境變數與健康檢查。不要把任何 Secret 寫進程式碼。
+```
+
+取得 Render URL 後先保存，下一篇會讓 Vercel 前端呼叫它。

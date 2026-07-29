@@ -1,135 +1,65 @@
 ---
-title: "Data Machi 實作篇｜從開源專案拆解可執行的 Agent 系統"
+title: "Data Machi 實作篇｜用 Vibe Coding 建立自己的企業知識工作流"
 sidebarTitle: "實作篇導讀"
-description: "以 Data Machi 開源專案為主線，逐步拆解前後端、工具、LangGraph、RAG、記憶、查核與部署。"
+description: "從開發方式、API 申請、資料來源串接，到 Render 與 Vercel 部署，逐步建立一套屬於自己的 Data Machi。"
 ---
 
-前 30 天系列主要回答「企業 AI 工作流為什麼要這樣設計」；實作篇則回答「真正打開專案後，第一步要做什麼」。
+前面的 30 天系列回答的是：**為什麼企業 AI 需要 RAG、Tool Use、Agent、LangGraph、記憶、查核與可靠性設計？**
 
-這套文章參考 Data Machi 的開源專案架構，但不要求讀者一開始就理解所有程式碼，也不會使用真實企業名稱、內部文件、試算表 ID、帳號或業務資料。所有操作都應使用自己建立的匿名測試資料。
+實作篇則換一個角度，回答更具體的問題：
 
-## 這不是程式碼說明書
+> 如果我想建立一套屬於自己的 Data Machi，到底需要準備哪些工具、申請哪些服務，並如何把它們串成一個真正可以上線的產品？
 
-對初學者而言，直接看到一段 Python 或 React 程式碼，通常無法判斷：
+這不是 Python 語法課，也不要求你先成為全端工程師。本系列採用 **Vibe Coding** 的方式：你可以在本機使用 VS Code 搭配 Claude Code、Codex 或其他 AI Coding Agent，也可以透過雲端 Coding Agent 從桌機或手機遠端修改專案。
 
-- 這段程式應該放在哪個檔案？
-- 執行前要先準備什麼？
-- 它解決的是哪個問題？
-- 執行成功時應該看到什麼？
-- 發生錯誤時要檢查哪一層？
-
-因此每篇文章都會依照相同順序撰寫：
+## 你最後會完成什麼？
 
 ```text
-真實問題與使用情境
-   ↓
-用白話比喻理解概念
-   ↓
-確認它在整體架構的位置
-   ↓
-準備環境與測試資料
-   ↓
-逐步實作
-   ↓
-觀察預期結果
-   ↓
-排除常見錯誤
-   ↓
-完成驗收清單
+使用者
+  ↓
+Vercel 前端
+  ↓
+Render 後端
+  ↓
+LangGraph Coordinator
+  ├─ Gemini API
+  ├─ Google Sheets
+  ├─ PDF 文件 RAG
+  ├─ Trello（選配）
+  ├─ Confluence（選配）
+  └─ Groq Whisper（選配）
 ```
 
-## 你需要具備什麼程度？
-
-不需要是軟體工程師，但建議先具備：
-
-- 能使用終端機切換資料夾與執行指令
-- 看得懂基本 Python 變數、函式與 `if`
-- 知道 JSON 是一種資料格式
-- 願意從錯誤訊息中找關鍵字
-
-<Note>
-  遇到看不懂的程式碼，不需要立刻理解每一個符號。先回答三個問題：輸入是什麼、輸出是什麼、這段程式負責哪一層。通常就能掌握七成用途。
-</Note>
-
-## 實作路線
+## 四個階段
 
 <CardGroup cols={2}>
-  <Card title="01｜啟動專案" icon="play">
-    看懂前端與後端的分工，完成本機啟動，追蹤一則訊息如何進入系統。
+  <Card title="Part 0｜開發與服務地圖" icon="map">
+    先理解 GitHub、AI Coding Agent、API Key、Vercel、Render 與各資料服務的角色。
   </Card>
 
-  <Card title="02｜API 契約" icon="code">
-    定義前端要送什麼、後端回什麼，以及為什麼錯誤也需要固定格式。
+  <Card title="Part 1｜準備外部服務" icon="key">
+    申請 Gemini、Google Service Account、Trello、Confluence 與 Groq API。
   </Card>
 
-  <Card title="03｜模組化 Prompt" icon="layer-group">
-    把身份、限制、工作流、工具路由與格式拆成可維護規則。
+  <Card title="Part 2｜建立自己的 Data Machi" icon="diagram-project">
+    從開源專案建立副本，依序加入模型、資料工具、RAG、Coordinator 與記憶。
   </Card>
 
-  <Card title="04｜資料工具" icon="table">
-    用匿名 Google Sheets、Pandas、欄位別名與快取完成精確查詢。
-  </Card>
-
-  <Card title="05｜文件 RAG" icon="file-pdf">
-    將 PDF 解析、切割、建立向量索引，並保留來源與頁碼。
-  </Card>
-
-  <Card title="06｜LangGraph" icon="diagram-project">
-    建立 State、Agent Node、Tool Node、條件 Edge 與平行工具執行。
-  </Card>
-
-  <Card title="07｜記憶與釐清" icon="brain">
-    處理追問、摘要記憶、工具結果重用與條件不足時的釐清。
-  </Card>
-
-  <Card title="08｜可靠性" icon="shield">
-    加入 Timeout、Retry、Fallback、錯誤分類與答案查核。
-  </Card>
-
-  <Card title="09｜Agent UX" icon="display">
-    顯示真實進度、釐清選項、文件範圍與可行動錯誤。
-  </Card>
-
-  <Card title="10｜整合與部署" icon="rocket">
-    串接會議記錄、行動項目、IndexedDB、Secret 與前後端部署。
+  <Card title="Part 3｜部署與持續開發" icon="cloud-arrow-up">
+    將後端部署到 Render、前端部署到 Vercel，設定 CORS、環境變數與正式驗收。
   </Card>
 </CardGroup>
 
-## 建議學習方式
+## 每篇文章都會回答五個問題
 
-不要一次讀完十篇。每完成一篇，至少做一次自己的小改動，例如：
+1. 這個工具或服務在系統中扮演什麼角色？
+2. 為什麼需要它？
+3. 要去哪裡申請或設定？
+4. 取得的 API Key、URL 或憑證應放在哪裡？
+5. 如何判斷串接成功？
 
-- 更換一個測試欄位
-- 新增一個 Prompt 規則
-- 刻意製造一次錯誤
-- 多加一份匿名 PDF
-- 修改一個進度提示
+<Note>
+  本系列會分享作者開發 Data Machi 的真實流程：本機主要使用 VS Code 搭配 Claude Code 或 Codex；需要遠端修改時，則使用 Claude Code 的雲端環境，從桌機或手機連接 GitHub Repository。無論在哪裡開發，GitHub 都是專案唯一的正式版本來源。
+</Note>
 
-只有親自改動並觀察結果，才會從「看懂文章」走向「真的會實作」。
-
-## 去識別化原則
-
-實作過程請一律使用：
-
-```text
-Your Organization
-Demo Project
-Team Member A
-Demo Requests Sheet
-Demo Policy.pdf
-```
-
-不要在公開程式碼、文章、截圖或錄影中出現：
-
-- 真實公司與部門名稱
-- 員工姓名、Email 與帳號
-- 真實營運數字或政策內容
-- Sheet／Board／Space ID
-- API Key、Token 與 Service Account
-- 內部網址與未公開文件
-
-<Info>
-  實作篇的終點不是複製 Data Machi，而是理解每個元件的責任，並能把資料來源、規則與介面替換成自己的安全測試環境。
-</Info>
-
-從實作 01 開始，先把整個系統跑起來，再逐步打開每一層。
+下一篇先從全貌開始：Data Machi 到底需要哪些平台、帳號與 API？

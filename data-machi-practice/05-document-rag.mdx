@@ -1,117 +1,40 @@
 ---
-title: "實作 05｜建立文件 RAG：PDF、向量索引與來源篩選"
-sidebarTitle: "實作 05｜文件 RAG"
-description: "建立 PDF 解析、向量資料庫、Lazy Initialization、文件篩選與來源回傳。"
+title: "實作 05｜申請 Gemini API：讓 Data Machi 具備語言理解能力"
+sidebarTitle: "實作 05｜Gemini API"
+description: "建立 Gemini API 憑證，理解模型、額度、環境變數與本機／Render 設定。"
 ---
 
-結構化資料適合用欄位與條件查詢，但政策文件、會議紀錄、操作手冊與 PDF 並沒有整齊的欄位。這時候需要 RAG：先從文件中找出與問題最相關的段落，再把段落交給模型回答。
+Gemini 是 Data Machi 的語言模型，負責理解問題、選擇工具、整理資料並產生回答。它不是資料庫，也不應取代 Google Sheets 或文件搜尋。
 
-## 用圖書館理解 RAG
+## 申請前先理解三件事
 
-RAG 不是把整間圖書館塞進模型，而是：
+- API Key 是讓後端呼叫模型的憑證。
+- 模型名稱決定使用哪個 Gemini 版本。
+- 免費額度、速率限制與計費可能隨服務方案調整，正式使用前要查看帳戶中的最新資訊。
+
+## 申請與設定流程
+
+<Steps>
+</Steps>
+
+```env
+GOOGLE_API_KEY=your_api_key
+GEMINI_MODEL=your_primary_model
+GEMINI_FAST_MODEL=your_fast_model
+```
+
+## 為什麼可以使用兩個模型？
+
+Data Machi 可讓主要模型負責使用者看得到的完整回答，較快模型負責分類、釐清與查核等內部步驟。這不是必要條件，但能分開控制品質、速度與成本。
+
+## 最小驗收
+
+先不要串接任何工具，只測試：
 
 ```text
-使用者提問
-   ↓
-將問題轉成向量
-   ↓
-在索引中找相近段落
-   ↓
-取回少量相關內容
-   ↓
-模型根據內容回答並標記來源
+前端輸入問題 → 後端收到請求 → Gemini 回答 → 前端顯示文字
 ```
 
-向量資料庫就像圖書館索引；它不直接回答問題，只負責找資料。
+若失敗，優先檢查金鑰名稱、模型名稱、額度與 Render Log，而不是立刻修改 Agent 架構。
 
-## Step 1：準備匿名文件
-
-先用自己建立的測試 PDF，例如：
-
-- Demo Travel Policy
-- Demo Product Guide
-- Demo Project Handbook
-
-不要使用公司內部文件，也不要把真實政策內容放進公開 Repository。
-
-## Step 2：解析與切割
-
-一份 100 頁 PDF 不適合直接送進模型，通常要切成較小片段：
-
-```python
-chunks = text_splitter.split_documents(documents)
-```
-
-切太大，搜尋結果容易混入不相關內容；切太小，又會失去上下文。初學者可以先從 800–1200 字元、少量重疊開始，再依測試結果調整。
-
-## Step 3：建立向量索引
-
-```python
-vector_db = FAISS.from_documents(chunks, embeddings)
-vector_db.save_local("faiss_index")
-```
-
-第一次建立索引較慢，之後可以直接從磁碟載入，不必每次重新處理全部 PDF。
-
-## Step 4：Lazy Initialization
-
-正式服務不一定在啟動時就有模型金鑰，也不一定每次都需要文件搜尋。因此可以等到第一次真正查文件時才初始化知識庫。
-
-```text
-啟動後端
-   ↓
-先不載入向量資料庫
-   ↓
-使用者第一次查文件
-   ↓
-檢查磁碟索引或 PDF
-   ↓
-初始化並搜尋
-```
-
-這能縮短啟動時間，也避免不必要的資源消耗。
-
-## Step 5：限制本輪可查文件
-
-當使用者只勾選兩份文件時，RAG 不應搜尋整個知識庫。這就是 `active_documents` 的用途。
-
-```python
-set_active_documents(["demo_policy.pdf", "demo_guide.pdf"])
-```
-
-它能降低錯誤引用，也讓使用者知道答案來自哪個範圍。
-
-## Step 6：回傳來源
-
-Tool 回傳內容時，至少保留：
-
-```json
-{
-  "content": "...",
-  "source": "demo_policy.pdf",
-  "page": 4,
-  "score": 0.83
-}
-```
-
-沒有來源的 RAG，只是比較會引用文件的聊天機器人；有來源，才方便使用者查核。
-
-## 常見失敗
-
-<Accordion title="明明有內容，為什麼搜尋不到？">
-  可能原因包括 PDF 是掃描圖片、切割位置不理想、問題用詞和文件差異太大，或索引尚未更新。先確認文件是否成功解析成文字，再檢查搜尋結果，不要一開始就怪模型。
-</Accordion>
-
-<Accordion title="為什麼找到的段落看似相關，答案卻不正確？">
-  相似度只表示語意接近，不代表足以支持結論。可以加入最低分數門檻、來源數量要求或後續 Verification Node。
-</Accordion>
-
-## 本篇驗收
-
-- PDF 能成功解析
-- 索引可以儲存與重新載入
-- 搜尋結果包含來源與頁碼
-- 可限制本輪搜尋文件
-- 查無資料時明確回覆，不自行猜測
-
-下一篇會把資料工具與文件工具放進 LangGraph，讓模型能根據問題決定要呼叫哪一種能力。
+下一篇將建立 Google Service Account，讓後端能安全讀取指定試算表。

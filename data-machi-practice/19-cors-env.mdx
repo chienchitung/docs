@@ -1,0 +1,31 @@
+---
+title: "實作 19｜串接 Vercel 與 Render：CORS、URL 與環境變數"
+sidebarTitle: "實作 19｜正式串接"
+description: "設定前端 Backend URL、後端 CORS allowlist，以及 Preview／Production 環境差異。"
+---
+
+前端與後端都部署成功，不代表它們已經能互相溝通。正式環境最常見的問題，就是前端指向錯誤 URL，或後端沒有允許 Vercel 網址跨來源呼叫。
+
+```text
+Vercel 網址
+  ↓ API Request
+Render 後端
+  ↑ 只接受 allowlist 中的 Origin
+```
+
+## 必須互相填入的設定
+
+- Vercel：保存 Render Backend URL。
+- Render：在 `ALLOWED_ORIGINS` 加入正式 Vercel 網址。
+- 本機開發：保留 `http://localhost:5173`。
+- Preview Deployment：決定是否允許暫時網址，或只在正式環境測試。
+
+## 為什麼不能直接允許所有網站？
+
+如果後端允許任意 Origin，其他網站也可能在訪客瀏覽器中呼叫你的 API、消耗模型額度或複製前端使用後端服務。公開網址不代表應該取消來源限制。
+
+## 驗收方式
+
+使用瀏覽器開發者工具查看 Network：請求是否送到正確 Render URL、回應狀態碼是什麼、Console 是否出現 CORS 錯誤。修改環境變數後，記得重新部署對應服務。
+
+下一篇完成正式驗收、雲端遠端維護與版本回復。

@@ -94,7 +94,17 @@
           "data-machi-practice/07-memory-clarification",
           "data-machi-practice/08-reliability-verification",
           "data-machi-practice/09-agent-ux",
-          "data-machi-practice/10-meeting-deployment"
+          "data-machi-practice/10-meeting-deployment",
+          "data-machi-practice/11-minimum-chat",
+          "data-machi-practice/12-sheets-tool",
+          "data-machi-practice/13-document-rag",
+          "data-machi-practice/14-coordinator",
+          "data-machi-practice/15-memory-clarification",
+          "data-machi-practice/16-reliability",
+          "data-machi-practice/17-render-backend",
+          "data-machi-practice/18-vercel-frontend",
+          "data-machi-practice/19-cors-env",
+          "data-machi-practice/20-operations"
         ]
       }
     ]

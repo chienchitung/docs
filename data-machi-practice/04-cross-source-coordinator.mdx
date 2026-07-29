@@ -1,133 +1,50 @@
 ---
-title: "實作 04｜建立結構化資料工具：Sheets、Pandas 與欄位別名"
-sidebarTitle: "實作 04｜資料工具"
-description: "以 Google Sheets 為資料來源，使用 Pandas、欄位別名、憑證管理與 TTL 快取完成精確查詢。"
+title: "實作 04｜API Key、Secret 與環境變數應該放在哪裡？"
+sidebarTitle: "實作 04｜Secret 地圖"
+description: "區分本機 .env、Render Environment、Vercel Environment 與 GitHub 中可公開的設定。"
 ---
 
-當使用者問「本月完成多少件需求？」時，LLM 可以理解問題，但不適合直接讀取數百列資料後自行計算。可靠的做法是：**讓模型理解使用者想查什麼，讓 Python 負責篩選與計算。**
+Data Machi 會使用多組 API Key、Token、Service Account JSON 與服務網址。對初學者來說，最容易出錯的不是申請，而是把憑證放錯地方。
 
-這一篇會建立一個通用的 Google Sheets 查詢工具。範例只使用匿名測試資料，不放入任何真實企業名稱、帳號或試算表 ID。
+## 四個環境的差異
 
-## 先理解責任分工
+| 設定 | 本機 | Render | Vercel | GitHub |
+| --- | --- | --- | --- | --- |
+| Gemini API Key | `backend/.env` | Environment | 不放 | 不放 |
+| Service Account JSON | `backend/.env` | Environment／Secret | 不放 | 不放 |
+| Trello／Confluence Token | `backend/.env` | Environment | 不放 | 不放 |
+| Render Backend URL | 前端 `.env` | 不需 | Environment | 可放範例 |
+| Vercel 網址 | 不需 | CORS allowlist | 自動產生 | 可寫文件 |
 
-```text
-使用者自然語言
-   ↓
-LLM 判斷查詢意圖與參數
-   ↓
-Tool 驗證欄位與期間
-   ↓
-Google Sheets 取得資料
-   ↓
-Pandas 篩選、分組與計算
-   ↓
-結構化結果交回 LLM
-   ↓
-LLM 整理成易讀答案
-```
+## `.env.example` 的作用
 
-| 任務 | 適合交給誰 |
-| --- | --- |
-| 理解「上個月」 | LLM 或日期解析程式 |
-| 判斷「完成」對應哪個狀態 | Schema／欄位規則 |
-| 計算筆數與比例 | Pandas |
-| 說明結果 | LLM |
-
-## Step 1：建立匿名測試表
-
-先建立一份自己的 Google Sheet，欄位例如：
-
-```text
-Ticket No. | Creation Date | Department | Status | Assigned To
-```
-
-填入 10–20 筆假的測試資料。不要直接使用工作中的真實資料，因為教學目標是驗證流程，不是複製內部環境。
-
-## Step 2：設定 Service Account
-
-Google Sheets API 不會因為知道網址就能讀取內容。程式需要一個 Service Account，並且該帳號必須被加入試算表共用名單。
-
-正式環境建議把整份憑證 JSON 放入環境變數：
+Repository 可以放變數名稱，但不能放真實值：
 
 ```env
-GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account", ...}
-GOOGLE_SHEET_KEY=your_test_sheet_id
+GOOGLE_API_KEY=
+GOOGLE_SERVICE_ACCOUNT_JSON=
+TRELLO_API_KEY=
+TRELLO_TOKEN=
+CONFLUENCE_URL=
+VITE_API_BASE_URL=
+```
+
+## 三個安全原則
+
+1. 真實憑證不得 Commit 到 GitHub。
+2. 前端程式可被使用者看到，因此敏感金鑰不能放在 Vite 前端環境變數。
+3. 憑證若曾公開，即使之後刪除，也應立即撤銷並重新建立。
+
+## 請 AI Coding Agent 檢查
+
+```text
+請檢查 Repository 是否包含 API Key、Token、Service Account JSON、
+正式 Sheet ID 或內部網址。只列出風險位置，不要在回覆中完整顯示憑證。
+同時確認 .gitignore 是否排除 .env 與憑證檔。
 ```
 
 <Warning>
-  不要把 Service Account JSON 提交到 Git，也不要在文章或截圖中露出 private key、client email 與真實 Sheet ID。
+  名稱以 `VITE_` 開頭的環境變數會被打包進前端，不能用來保存秘密。
 </Warning>
 
-## Step 3：把資料讀成 DataFrame
-
-```python
-import pandas as pd
-
-def load_worksheet_dataframe(worksheet) -> pd.DataFrame:
-    values = worksheet.get_all_values()
-    if len(values) < 2:
-        return pd.DataFrame()
-
-    headers = values[0]
-    rows = values[1:]
-    records = [dict(zip(headers, row)) for row in rows if any(row)]
-    return pd.DataFrame(records)
-```
-
-DataFrame 可以理解成 Python 裡的試算表。讀進來後，才能可靠地篩選日期、計算數量與建立分組結果。
-
-## Step 4：處理欄位別名
-
-使用者不會永遠輸入資料表的正式欄位名。他可能說「負責人」，資料欄位卻叫 `Assigned To`。
-
-```python
-COLUMN_ALIASES = {
-    "Status": ["狀態", "進度", "status"],
-    "Department": ["部門", "單位", "department"],
-    "Assigned To": ["負責人", "承辦人", "assigned to"],
-}
-```
-
-欄位別名的價值，是在自然語言與資料結構之間建立翻譯層，而不是讓模型每次臨場猜測。
-
-## Step 5：加入短期快取
-
-一輪對話可能連續查詢同一張工作表。如果每次都重新呼叫 Google Sheets API，速度慢，也容易碰到速率限制。
-
-```python
-SHEETS_CACHE_TTL_SECONDS = 60
-```
-
-TTL 60 秒代表：相同資料在 60 秒內可以重用。對不會每秒更新的資料，這通常能顯著降低延遲。
-
-## Step 6：讓 Tool 回傳結構化結果
-
-```python
-return {
-    "metric": "ticket_count",
-    "value": 12,
-    "filters": {"Status": "Done"},
-    "row_count": 12,
-    "source": "Demo Requests Sheet"
-}
-```
-
-不要只回傳「共有 12 件」。結構化結果能讓後續驗證、前端顯示與追問更可靠。
-
-## 測試方式
-
-至少測試：
-
-- 正常篩選有結果
-- 篩選後是零筆
-- 使用中文欄位別名
-- 日期欄位格式不一致
-- Sheet 名稱不存在
-- 憑證不存在
-- 同一查詢在快取期間內重複執行
-
-<Info>
-  最重要的原則：LLM 負責理解「要算什麼」，程式負責真正把數字算出來。
-</Info>
-
-下一篇會處理另一種完全不同的資料：PDF 與非結構化文件。
+下一篇開始準備第一個必要外部服務：Gemini API。

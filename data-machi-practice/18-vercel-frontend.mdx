@@ -1,0 +1,29 @@
+---
+title: "實作 18｜將 React 前端部署到 Vercel"
+sidebarTitle: "實作 18｜Vercel 前端"
+description: "連接 GitHub、設定 frontend Root Directory、Vite、Backend URL 與正式環境測試。"
+---
+
+Vercel 負責提供使用者實際打開的網站。它會建置 React／Vite 前端，但模型金鑰與資料憑證仍然只留在 Render 後端。
+
+## 部署流程
+
+1. 在 Vercel 匯入同一個 GitHub Repository。
+2. 將 Root Directory 指向 `frontend`。
+3. 確認 Framework 為 Vite，Build Command 與 Output Directory 正確。
+4. 建立前端環境變數，填入 Render Backend URL。
+5. 部署並取得 Vercel 網址。
+
+```env
+VITE_API_BASE_URL=https://your-backend.onrender.com
+```
+
+## 前端環境變數的限制
+
+Vite 會把 `VITE_` 開頭的值放進瀏覽器程式，因此只適合存放公開網址與非敏感設定，不能存 Gemini Key、Trello Token 或 Service Account。
+
+## 成功標準
+
+Vercel 網站可以開啟，送出問題後能呼叫 Render，並正確呈現進度、回答與錯誤狀態。若本機正常但正式網站失敗，下一步通常是檢查 API URL 與 CORS。
+
+下一篇專門處理 Vercel、Render 與 CORS 的雙向設定。

@@ -1,118 +1,38 @@
 ---
-title: "實作 08｜可靠性工程：Timeout、Fallback 與答案查核"
-sidebarTitle: "實作 08｜可靠性"
-description: "加入模型逾時、重試、備援模型、驗證預算與事實查核。"
+title: "實作 08｜申請 Groq API：為會議記錄加入語音轉文字"
+sidebarTitle: "實作 08｜Groq API"
+description: "認識 Groq Whisper 在會議記錄中的角色、API Key 管理與音訊處理流程。"
 ---
 
-AI Demo 偶爾失敗，重新整理就好；真正的產品不能把所有失敗都丟給使用者。模型可能過載、API 可能回傳 503、工具可能逾時，甚至答案雖然流暢，卻和工具結果不一致。
+Groq 在 Data Machi 中不是主要聊天模型，而是用來執行語音轉文字。把不同任務交給不同服務，是產品設計的一部分：Gemini 負責理解與整理，Whisper 類模型負責轉錄音訊。
 
-這一篇處理的不是「讓模型更聰明」，而是讓系統在失敗時仍有可預期的行為。
-
-## 先區分四種可靠性機制
-
-| 機制 | 解決的問題 |
-| --- | --- |
-| Timeout | 避免單一步驟無限等待 |
-| Retry | 暫時性錯誤再嘗試少數幾次 |
-| Fallback | 主模型不可用時切換備援模型 |
-| Verification | 檢查答案是否被工具資料支持 |
-
-這四者不能互相取代。例如一直 Retry 同一個過載模型，不如切換 Fallback；模型成功回覆，也不代表內容一定正確，所以仍可能需要 Verification。
-
-## Step 1：設定合理逾時
-
-內部分類通常只需要短時間，長篇最終回答則需要更多時間，因此不要所有模型呼叫共用同一個 Timeout。
-
-```env
-GEMINI_TIMEOUT_SECONDS=25
-GEMINI_GENERATION_TIMEOUT_SECONDS=120
-```
-
-這表示 Router、釐清與查核不能拖太久，但長報告有較寬鬆的生成時間。
-
-## Step 2：限制 Retry
-
-```env
-GEMINI_MAX_RETRIES=2
-```
-
-重試不是越多越穩定。同步聊天中，六次指數退避可能讓使用者等待一兩分鐘。通常少量快速重試後切換備援模型，更符合互動產品需求。
-
-## Step 3：使用不同的 Fallback 模型
-
-```python
-primary_llm = ChatGoogleGenerativeAI(model=PRIMARY_MODEL)
-fast_llm = ChatGoogleGenerativeAI(model=FAST_MODEL)
-
-reliable_llm = primary_llm.with_fallbacks(
-    [fast_llm],
-    exceptions_to_handle=(TimeoutError, ServerError),
-)
-```
-
-備援最好是不同模型，否則同一模型正處於高負載時，重新呼叫它可能仍然失敗。
-
-## Step 4：加入答案查核
-
-Verification 不應問另一個模型「你覺得這答案好不好」，而應提供：
-
-- 使用者原始問題
-- 實際工具結果
-- 草稿答案
-- 明確查核規則
-
-要求它檢查每個數字、日期與事實是否能在工具結果中找到支持。
-
-```json
-{
-  "status": "pass",
-  "unsupported_claims": [],
-  "needs_regeneration": false
-}
-```
-
-## Step 5：設定驗證時間預算
-
-查核本身也可能逾時。若驗證無限等待，反而讓使用者永遠看不到已經生成的答案。
-
-```env
-VERIFICATION_TIME_BUDGET_SECONDS=30
-```
-
-超過預算時，可以回傳原始答案並在 metadata 標記 `verification_timed_out`，而不是讓整輪請求失敗。
-
-## Step 6：錯誤要能被使用者理解
-
-不要只顯示：
+## 會議功能的資料流
 
 ```text
-500 Internal Server Error
+錄音或上傳音檔
+  ↓
+音訊格式轉換
+  ↓
+Groq Whisper 產生逐字稿
+  ↓
+Gemini 整理摘要、議程與 Action Items
+  ↓
+前端保存與呈現
 ```
 
-應該提供：
+## API Key 可以有兩種管理方式
 
-- 發生什麼事
-- 這次是否有資料遺失
-- 使用者可以做什麼
-- 是否值得稍後重試
+1. 由產品管理者放在 Render Environment，所有使用者共用。
+2. 由每位使用者在前端功能中自行輸入，後端只在該次請求中使用，不長期保存。
 
-例如：
+Data Machi 採用第二種方式，能避免公開 Demo 持續消耗同一組語音額度，也讓使用者對自己的憑證負責。
 
-```text
-模型目前回應較慢，這次請求已超過等待上限。
-你可以縮小資料範圍，或稍後再試一次。
-```
+## 申請與驗收
 
-## 必測情境
-
-- 主模型逾時後成功切換備援模型
-- 429、503 與無效 API Key 顯示不同錯誤
-- 工具失敗不會被誤判成查無資料
-- 查核發現錯誤數字時能阻止或重寫答案
-- 查核逾時不會卡住整輪請求
+建立 Groq 帳號與 API Key 後，先使用一段不含敏感資訊的短音檔測試。成功標準不是只有 API 回傳 200，而是逐字稿可讀、語言正確，且長音檔失敗時有清楚提示。
 
 <Warning>
-  不要把所有例外都捕捉後回傳同一句「請檢查 API Key」。這會掩蓋過載、逾時、權限與資料問題，讓使用者採取錯誤行動。
+  音檔可能包含個人資料與機密內容。公開教學務必使用自行錄製的匿名測試音訊。
 </Warning>
 
-下一篇會把後端的真實執行狀態呈現在前端，讓使用者知道 Agent 現在正在做什麼。
+下一篇開始建立自己的專案副本，並移除原始專案中的企業識別與預設設定。

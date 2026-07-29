@@ -1,132 +1,52 @@
 ---
-title: "實作 06｜建立 LangGraph Coordinator 與平行工具節點"
-sidebarTitle: "實作 06｜LangGraph"
-description: "建立 StateGraph、工具循環、條件 Edge、平行工具執行與進度事件。"
+title: "實作 06｜建立 Google Service Account：讓後端讀取 Google Sheets"
+sidebarTitle: "實作 06｜Sheets 憑證"
+description: "建立 Service Account、啟用 API、分享試算表，並將憑證安全放入本機與 Render。"
 ---
 
-前面已經有資料工具與文件工具，但系統還缺少一個「協調者」：誰決定要用哪個工具？工具執行完後，誰判斷資料是否足夠？如果同時需要兩個來源，應該依序查詢還是平行執行？
+Gemini API Key 只能呼叫模型，不能自動取得你的 Google Sheets 資料。要讓後端讀取試算表，還需要一個 Service Account。
 
-LangGraph 的角色，就是把這些決策變成可以看見、測試與追蹤的工作流。
+可以把 Service Account 想成專門給應用程式使用的機器帳號。你必須把指定試算表分享給它，它才有權限讀取。
 
-## 先用專案經理理解 Coordinator
-
-Coordinator 不一定親自完成每一項工作。它比較像專案經理：
-
-- 先理解需求
-- 決定需要哪些專業能力
-- 分派任務
-- 收集結果
-- 判斷是否需要補查
-- 整理成最終輸出
-
-## 最小 Graph
+## 完整流程
 
 ```text
-START
+Google Cloud Project
   ↓
-Agent Node
-  ├─ 不需工具 → END
-  └─ 需要工具
-         ↓
-      Tool Node
-         ↓
-      Agent Node
+啟用 Google Sheets／Drive API
+  ↓
+建立 Service Account
+  ↓
+建立 JSON 憑證
+  ↓
+將 Sheet 分享給 Service Account Email
+  ↓
+把 JSON 放入本機與 Render Secret
 ```
 
-這張圖已經包含循環，因此不是單向流水線。工具結果回來後，模型會重新判斷下一步。
+## 本機與正式環境
 
-## Step 1：定義 State
+本機可暫時使用 JSON 檔，但必須加入 `.gitignore`。正式環境更適合把完整 JSON 內容放進 `GOOGLE_SERVICE_ACCOUNT_JSON`。
 
-```python
-from typing import Annotated, TypedDict
-from langgraph.graph.message import add_messages
-
-class AgentState(TypedDict):
-    messages: Annotated[list, add_messages]
+```env
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"..."}
+GOOGLE_SHEET_KEY=your_sheet_id
 ```
 
-State 可以想成工作流中的共用資料夾。每個 Node 都能讀取它，再把新結果寫回去。
+## 最常見的錯誤
 
-初學時先保留 `messages` 即可；後續再加入 `retry_count`、`sources`、`verification_status` 等欄位。
+- 已建立 Service Account，但忘記把 Sheet 分享給它。
+- 只填 Sheet ID，卻沒有憑證。
+- 把 JSON 檔 Commit 到 GitHub。
+- 分享給自己的 Gmail，而不是 Service Account Email。
+- Render 中的 JSON 因換行或引號格式錯誤而無法解析。
 
-## Step 2：建立 Agent Node
+## 驗收方式
 
-Agent Node 的工作不是查資料，而是呼叫已綁定工具的模型：
+先建立一份匿名測試表，至少包含日期、分類、狀態與數值欄位。讓工具回答一個可人工核對的問題，例如「目前共有多少筆資料？」結果必須和 Sheet 手動計算一致。
 
-```python
-def agent_node(state: AgentState):
-    response = model_with_tools.invoke(state["messages"])
-    return {"messages": [response]}
-```
+<Info>
+  今天只要記住一件事：Sheet ID 告訴程式資料在哪裡；Service Account 決定程式有沒有權限讀取。
+</Info>
 
-如果模型判斷需要資料，回應裡會包含 Tool Call；若資料已足夠，就直接產生答案。
-
-## Step 3：建立條件 Edge
-
-```python
-def should_continue(state: AgentState):
-    last_message = state["messages"][-1]
-    if last_message.tool_calls:
-        return "tools"
-    return "end"
-```
-
-這是 Graph Engineering 的核心：由程式明確決定什麼情況走哪條路，而不是只在 Prompt 裡要求模型「記得繼續查」。
-
-## Step 4：平行執行多個工具
-
-若一個問題同時需要資料表和文件定義，兩個工具彼此獨立，就可以平行執行：
-
-```python
-results = await asyncio.gather(
-    *[execute_tool(call) for call in tool_calls],
-    return_exceptions=True,
-)
-```
-
-只有在工具互不依賴時才能平行。若第二個工具需要第一個工具的輸出，就必須維持順序。
-
-## Step 5：回報進度
-
-長流程不能只讓使用者看轉圈圈。Tool Node 執行時，可以發出進度事件：
-
-```text
-正在分析問題
-正在查詢結構化資料
-正在搜尋文件
-正在整合結果
-```
-
-進度不是模型的客套話，而應該來自實際節點狀態。
-
-## 建立 Graph
-
-```python
-graph = StateGraph(AgentState)
-graph.add_node("agent", agent_node)
-graph.add_node("tools", parallel_tool_node)
-graph.set_entry_point("agent")
-graph.add_conditional_edges(
-    "agent",
-    should_continue,
-    {"tools": "tools", "end": END},
-)
-graph.add_edge("tools", "agent")
-app = graph.compile()
-```
-
-## 如何觀察是否運作正確？
-
-測試三類問題：
-
-1. 不需工具的一般說明問題
-2. 只需一個工具的資料問題
-3. 同時需要兩個來源的跨來源問題
-
-確認後端 Log 中的 Tool Call 與預期一致，而不是只看最終答案是否流暢。
-
-<Warning>
-  不要因為用了 LangGraph，就把每個小函式都拆成 Node。只有需要獨立狀態、分支、重試、觀測或人工介入的步驟，才值得成為 Node。
-</Warning>
-
-下一篇會處理多輪對話。因為使用者常會說「那香港呢？」或「改成去年」，系統必須判斷該沿用什麼、又該重新查什麼。
+下一篇介紹 Trello 與 Confluence API，這兩項功能可以依需求選配。

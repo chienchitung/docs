@@ -1,0 +1,29 @@
+---
+title: "實作 12｜加入 Google Sheets：建立第一個可驗證資料工具"
+sidebarTitle: "實作 12｜Sheets Tool"
+description: "以匿名測試資料串接 Google Sheets，驗證 Service Account、欄位與查詢結果。"
+---
+
+這一篇不是教 Pandas 語法，而是完成一條真實資料流：
+
+```text
+使用者問題 → Agent 選擇 Sheets Tool → Google Sheets → 結構化結果 → 回答
+```
+
+## 為什麼先選 Sheets？
+
+因為它容易建立匿名測試資料，也能人工核對答案。你可以準備日期、分類、狀態、負責人與數值欄位，先回答「共有多少筆」「各狀態占比」等問題。
+
+## 串接順序
+
+1. 建立匿名測試 Sheet。
+2. 分享給 Service Account Email。
+3. 在本機與 Render 設定 Sheet ID 與憑證。
+4. 確認 Tool 能讀到工作表與欄位。
+5. 再讓模型根據使用者問題決定查詢條件。
+
+## 成功標準
+
+系統回傳的數字必須與人工計算一致；Sheet 未分享、欄位不存在或資料為空時，應回傳可理解的錯誤，而不是猜測。
+
+下一篇加入 PDF 文件 RAG。

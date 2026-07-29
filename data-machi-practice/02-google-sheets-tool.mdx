@@ -1,149 +1,61 @@
 ---
-title: "實作 02｜設計聊天 API：請求、回應與錯誤契約"
-sidebarTitle: "實作 02｜API 契約"
-description: "使用 FastAPI 與 Pydantic 定義聊天訊息、歷史紀錄、釐清選項、文件上下文與產品化錯誤。"
+title: "實作 02｜選擇你的 Vibe Coding 方式：本機、雲端或混合開發"
+sidebarTitle: "實作 02｜Vibe Coding"
+description: "比較 VS Code 搭配 Claude Code／Codex，以及雲端 Coding Agent 的使用情境。"
 ---
 
-前端與後端要合作，不能只靠一句「把訊息傳過去」。雙方必須先約定：送出的資料有哪些欄位、每個欄位是什麼格式、哪些可以省略，以及失敗時要回傳什麼。這份約定就是 **API 契約**。
+建立 Data Machi 不一定只有一種開發方式。你可以依照設備、時間與修改範圍，選擇本機、雲端或混合式工作流。
 
-可以把它想成網路購物的訂單表。若訂單只寫「幫我寄東西」，卻沒有收件人、地址與商品，就無法處理。聊天系統也是一樣：除了最新訊息，還可能需要對話歷史、對話 ID、使用者選擇的釐清條件與文件範圍。
-
-## 為什麼不能只傳一段文字？
-
-第一次做聊天 API，常見設計是：
-
-```json
-{"message": "請分析本月資料"}
-```
-
-但產品逐漸成熟後，系統還需要知道：
-
-- 這是不是同一段對話的追問？
-- 使用者前面選了哪些條件？
-- 這次只能查哪些文件？
-- 是否附加會議記錄作為上下文？
-- 使用者有沒有自行提供模型金鑰？
-
-因此請求會逐步成長成結構化物件。
-
-## Step 1：找到 FastAPI 入口
-
-打開：
+## 路線一：本機開發
 
 ```text
-backend/main.py
+VS Code
+  ├─ Claude Code
+  └─ Codex
+      ↓
+修改本機 Repository
+      ↓
+啟動前端與後端測試
+      ↓
+Push 到 GitHub
 ```
 
-你會看到 `FastAPI()`，它就像後端的接待櫃檯。前端的請求先到這裡，再被分派給真正的處理流程。
+適合大型修改、查看完整錯誤、測試 PDF／音訊與同時啟動前後端。
 
-## Step 2：理解 Pydantic Model
+## 路線二：雲端開發
 
-```python
-from pydantic import BaseModel, Field
-
-class Message(BaseModel):
-    role: str
-    content: str
-
-class ChatRequest(BaseModel):
-    message: str
-    history: list[Message] = Field(default_factory=list)
-    conversation_id: str | None = None
+```text
+桌機或手機
+  ↓
+Claude Code 雲端環境
+  ↓
+讀取 GitHub Repository
+  ↓
+建立 Commit 或 Pull Request
 ```
 
-這段程式不是在執行 AI，而是在定義資料規格。
+適合修改 Prompt、文案、環境變數範例、小型功能與部署問題。雲端環境是否能完整執行專案，取決於它是否支援必要套件、檔案與外部服務。
 
-| 欄位 | 白話說明 |
+## 路線三：混合式開發
+
+這是作者主要使用的方法：
+
+| 情境 | 建議方式 |
 | --- | --- |
-| `message` | 使用者這一輪最新輸入 |
-| `history` | 前幾輪對話內容 |
-| `conversation_id` | 用來辨識是不是同一段對話 |
+| 第一次啟動與大型架構修改 | 本機 VS Code |
+| Prompt、文案、小型修正 | 本機或雲端皆可 |
+| 手機臨時修改 | 雲端 Coding Agent |
+| PDF、音訊與完整流程測試 | 本機 |
+| 查看正式環境狀態 | Render／Vercel Dashboard |
 
-當前端送錯格式，FastAPI 會在資料進入 Agent 前就攔下來，避免錯誤一路傳到模型與工具。
-
-## Step 3：加入產品真正需要的上下文
-
-完整系統通常還會加入：
-
-```python
-class ClarificationSelection(BaseModel):
-    question: str
-    label: str
-    value: str
-
-class ActiveDocument(BaseModel):
-    filename: str
-
-class ChatRequest(BaseModel):
-    message: str
-    history: list[Message] = Field(default_factory=list)
-    conversation_id: str | None = None
-    clarifications: list[ClarificationSelection] = Field(default_factory=list)
-    turn_context: dict = Field(default_factory=dict)
-    active_documents: list[str] | None = None
-```
-
-不要急著背欄位。先理解原則：**每個欄位都應該對應一個真實的產品需求。** 若不知道資料為何存在，就不應盲目複製。
-
-## Step 4：設計統一回應格式
-
-```python
-class ChatResponse(BaseModel):
-    response: str
-    error_code: str | None = None
-    metadata: dict = Field(default_factory=dict)
-```
-
-這裡把回應拆成三層：
-
-- `response`：使用者看見的文字
-- `error_code`：程式用來判斷錯誤類型
-- `metadata`：來源、工具、執行時間等額外資訊
-
-比起只回傳一段錯誤文字，`error_code` 能讓前端顯示不同按鈕。例如：缺少金鑰時顯示「設定 API Key」，文件尚未處理完成時顯示「重新上傳」。
-
-## Step 5：用 Swagger 測試
-
-啟動後端後，開啟：
+## 不論用哪個工具，都遵循同一流程
 
 ```text
-http://localhost:8000/docs
+描述目標 → AI 先檢查 → 提出計畫 → 修改 → 查看 Diff → 測試 → Commit
 ```
 
-FastAPI 會自動建立測試介面。先不要碰前端，直接在這裡測試 API，可以更快判斷問題發生在後端還是前端。
+<Warning>
+  不要直接接受所有修改。至少確認改了哪些檔案、是否新增套件、是否把 API Key 寫進程式，以及原本功能是否仍正常。
+</Warning>
 
-範例 Request：
-
-```json
-{
-  "message": "請說明這個系統能做什麼",
-  "history": [],
-  "conversation_id": "demo-001",
-  "clarifications": [],
-  "turn_context": {}
-}
-```
-
-## 常見錯誤
-
-<Accordion title="422 Unprocessable Entity 是什麼？">
-  代表送進來的 JSON 與 Pydantic Model 不一致，例如必填欄位缺少、陣列誤傳成文字，或欄位名稱拼錯。這不是模型錯誤，而是 API 契約錯誤。
-</Accordion>
-
-<Accordion title="為什麼前端可以開，但 API 被瀏覽器擋住？">
-  通常是 CORS 設定沒有允許前端網址。開發環境至少要允許 `http://localhost:5173`；正式環境則要改成真正的前端網域，不建議永久開放 `*`。
-</Accordion>
-
-## 本篇驗收
-
-- 能在 `/docs` 看見聊天 API
-- 正確 JSON 能得到回應
-- 缺少必填欄位會得到 422
-- 錯誤回應具有固定 `error_code`
-- 前端與後端使用相同欄位名稱
-
-<Info>
-  API 契約的價值，是讓錯誤在系統邊界就被發現，而不是等到 Agent 執行一半才出問題。
-</Info>
-
-下一篇會處理另一個初學者常見問題：System Prompt 越寫越長後，如何拆成可管理、可測試的規則模組。
+下一篇會說明 GitHub 如何成為本機、雲端開發與自動部署之間的共同中心。

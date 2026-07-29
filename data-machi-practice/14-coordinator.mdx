@@ -1,0 +1,33 @@
+---
+title: "實作 14｜建立 Coordinator：讓系統選擇正確工具"
+sidebarTitle: "實作 14｜Coordinator"
+description: "使用 LangGraph 統一管理 Gemini、Sheets、RAG 與選配工具的路由。"
+---
+
+當系統只有 Gemini 時，不需要複雜路由；當 Sheets、PDF、Trello 與 Confluence 都加入後，才需要 Coordinator 判斷問題應交給誰。
+
+```text
+問數字 → Sheets
+問文件 → PDF RAG／Confluence
+問專案進度 → Trello
+一般整理 → Gemini
+```
+
+## Coordinator 的角色
+
+它像客服總機，不一定親自完成所有工作，而是根據問題、對話上下文與工具結果決定下一步。LangGraph 則把這些節點、路徑、循環與結束條件變成可觀察的流程。
+
+## 建議的實作順序
+
+1. 先綁定少量工具。
+2. 為每個工具寫清楚用途與限制。
+3. 建立 Agent Node 與 Tool Node。
+4. 工具執行後回到 Agent 再判斷。
+5. 沒有 Tool Call 時才輸出最終回答。
+6. 獨立資料來源才使用平行執行。
+
+## 驗收問題
+
+至少準備一題只需要 Sheets、一題只需要 PDF、一題需要兩個來源，以及一題不應呼叫任何工具。觀察實際路由，而不是只看答案是否流暢。
+
+下一篇處理多輪追問、記憶與釐清。

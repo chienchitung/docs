@@ -1,165 +1,48 @@
 ---
-title: "實作 01｜啟動 Data Machi：前後端架構與本機環境"
-sidebarTitle: "實作 01｜啟動專案"
-description: "從開源專案結構開始，完成 React 前端、FastAPI 後端、環境變數與本機啟動。"
+title: "實作 01｜Data Machi 需要哪些服務？先看懂完整產品地圖"
+sidebarTitle: "實作 01｜服務地圖"
+description: "認識 GitHub、AI Coding Agent、Vercel、Render、Gemini 與各資料來源在 Data Machi 中的角色。"
 ---
 
-第一次看到一個完整的 AI Agent 專案，最容易卡住的地方通常不是程式碼，而是不知道「應該先看哪裡」。資料夾很多、檔案很多、前端與後端又分開，還有模型、工具、向量資料庫與外部 API。若一開始就逐行閱讀，很容易迷失。
+很多人第一次看到 AI 專案，會以為只要申請一組模型 API Key 就完成了。但真正能讓使用者每天打開並使用的產品，通常由多個服務共同組成。
 
-這一篇不急著修改功能，而是先完成兩件事：**把系統成功跑起來，以及看懂一個問題從畫面進入系統後，經過哪些模組才形成答案。**
+## 先分清楚兩張架構圖
 
-## 先用餐廳理解前後端
-
-可以把整個系統想成一間餐廳：
-
-<CardGroup cols={2}>
-  <Card title="前端：外場與菜單" icon="display">
-    使用者看到的聊天畫面、輸入框、文件上傳、進度提示與錯誤訊息，都屬於前端。它負責收集需求與呈現結果，但不直接執行 AI 推理。
-  </Card>
-
-  <Card title="後端：廚房與出餐流程" icon="server">
-    後端接收前端送來的請求，呼叫模型與工具、查詢資料、保存對話狀態，再將結果傳回前端。
-  </Card>
-</CardGroup>
-
-Data Machi 的前端採用 React 與 Vite，後端則採用 Python 與 FastAPI。兩者必須分別啟動，就像餐廳需要外場與廚房同時運作。
-
-## 先看懂專案地圖
+### 產品正式運作時
 
 ```text
-project-root/
-├─ frontend/                 使用者介面
-│  ├─ src/                   React 元件與畫面邏輯
-│  └─ package.json           前端套件與啟動指令
-│
-├─ backend/                  AI 與資料處理
-│  ├─ main.py                FastAPI 入口
-│  ├─ agent_logic.py         一輪對話的主要流程
-│  ├─ agents/                Coordinator 與各類工具
-│  ├─ prompts/               模組化系統規則
-│  ├─ conversation_store.py  對話與工具結果保存
-│  └─ requirements.txt       Python 套件
-│
-└─ render.yaml               後端部署設定
+Vercel 前端 → Render 後端 → Gemini／Sheets／RAG／外部工具
 ```
+
+### 開發者修改產品時
+
+```text
+VS Code／雲端 Coding Agent → GitHub → Vercel 與 Render 自動部署
+```
+
+Claude Code、Codex 是建造產品的工具；Gemini、Render、Vercel 與資料 API 才是產品上線後需要的服務。
+
+## 服務清單
+
+| 服務 | 用途 | 必要性 |
+| --- | --- | --- |
+| GitHub | 保存程式碼與版本 | 必要 |
+| Claude Code／Codex | 協助修改與測試 | 擇一即可 |
+| Gemini API | 理解問題與生成答案 | 必要 |
+| Render | 部署 Python 後端 | 必要 |
+| Vercel | 部署 React 前端 | 必要 |
+| Google Sheets API | 查詢結構化資料 | 建議 |
+| PDF RAG | 搜尋文件內容 | 建議 |
+| Trello／Confluence | 專案與知識來源 | 選配 |
+| Groq Whisper | 會議錄音轉文字 | 選配 |
+
+## 建議完成順序
+
+<Steps>
+</Steps>
 
 <Info>
-  初學者不需要一開始看完所有檔案。先記住三個入口：前端從 `frontend/` 啟動，後端從 `backend/main.py` 啟動，一輪 AI 對話主要由 `agent_logic.py` 與 `agents/coordinator.py` 協作完成。
+  今天只要記住一件事：Data Machi 不是一個模型，而是一組互相協作的服務。
 </Info>
 
-## Step 1：準備環境
-
-請先安裝：
-
-- Node.js 20 以上
-- Python 3.11 或 3.12
-- Git
-
-確認版本：
-
-```bash
-node --version
-python3 --version
-git --version
-```
-
-若終端機顯示找不到指令，代表尚未安裝，不能直接進入下一步。
-
-## Step 2：取得專案
-
-```bash
-git clone https://github.com/chienchitung/ikea-data-agent.git
-cd ikea-data-agent
-```
-
-雖然 Repository 名稱保留原始名稱，實作文章中會將它視為一個通用的企業知識工作流範例，不使用真實企業資料。
-
-## Step 3：啟動後端
-
-開啟第一個終端機：
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Windows PowerShell 啟用虛擬環境的方式不同：
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-接著建立 `backend/.env`：
-
-```env
-GOOGLE_API_KEY=your_api_key
-GEMINI_MODEL=your_primary_model
-GEMINI_FAST_MODEL=your_fast_model
-ALLOWED_ORIGINS=http://localhost:5173
-```
-
-啟動後端：
-
-```bash
-python main.py
-```
-
-看到 `Uvicorn running on http://0.0.0.0:8000`，代表廚房已經開始營業。
-
-## Step 4：啟動前端
-
-開啟第二個終端機：
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-瀏覽器打開：
-
-```text
-http://localhost:5173
-```
-
-## 一則訊息實際經過哪些步驟？
-
-```text
-使用者輸入問題
-   ↓
-React 前端送出 HTTP Request
-   ↓
-FastAPI 驗證資料格式
-   ↓
-agent_logic.py 準備對話脈絡
-   ↓
-Coordinator 判斷是否需要工具
-   ↓
-工具查詢資料／文件
-   ↓
-模型整合答案
-   ↓
-FastAPI 回傳 JSON
-   ↓
-前端顯示結果
-```
-
-這條路徑就是後續所有實作文章的主線。
-
-## 驗收清單
-
-完成本篇後，請確認：
-
-- 前端網址可以開啟
-- 後端 `/docs` 頁面可以開啟
-- 瀏覽器 Console 沒有 CORS 錯誤
-- 後端終端機能看到請求紀錄
-- 沒有把 `.env` 或金鑰提交到 Git
-
-<Warning>
-  最常見的問題是只啟動前端，卻忘記啟動後端。此時畫面可能正常，但送出訊息會出現連線失敗。另一個常見問題是把 API Key 直接寫進程式碼，這會讓金鑰被提交到公開 Repository。
-</Warning>
-
-下一篇會進入後端入口，理解前端送來的資料為什麼需要先經過 API 契約，而不能直接把任意內容丟給 Agent。
+下一篇會協助你選擇本機、雲端或混合式 Vibe Coding。

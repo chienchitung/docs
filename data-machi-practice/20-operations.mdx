@@ -1,0 +1,50 @@
+---
+title: "實作 20｜正式驗收與遠端維護：完成你的 Data Machi"
+sidebarTitle: "實作 20｜驗收與維護"
+description: "完成安全、功能、部署與跨裝置驗收，並建立雲端 Vibe Coding 與版本回復流程。"
+---
+
+部署完成不是終點。最後一篇要建立一套可重複的驗收與維護方式，確保你之後無論在本機、桌機雲端環境或手機上修改，都不會讓正式服務失去控制。
+
+## 正式環境驗收
+
+- GitHub 不含 API Key、Token、Service Account 與內部資料。
+- Vercel 網站可以開啟，桌面與手機皆可操作。
+- Render 健康檢查與聊天 API 正常。
+- Gemini、Sheets 與 PDF 各有一組成功測試。
+- 選配的 Trello、Confluence、Groq 能個別關閉，不影響基本聊天。
+- 錯誤訊息能指出使用者可以採取的下一步。
+- CORS 只允許本機與正式前端來源。
+
+## 遠端 Vibe Coding 工作流
+
+```text
+手機／桌機 Claude Code 雲端
+  ↓
+建立 Branch 並修改
+  ↓
+查看 Diff 與測試結果
+  ↓
+建立 Pull Request
+  ↓
+合併到 GitHub
+  ↓
+Render／Vercel 自動部署
+```
+
+遠端環境適合 Prompt、文案、小型修正與部署設定；涉及本機檔案、音訊、PDF 或大型架構修改時，仍建議回到 VS Code 完整測試。
+
+## 每次修改後的固定檢查
+
+1. AI 修改了哪些檔案？
+2. 是否改到不相關功能？
+3. 是否新增套件與更新依賴檔？
+4. Secret 是否仍只存在環境變數？
+5. Preview 部署是否正常？
+6. 發生問題時能否回到上一個 Commit？
+
+<Info>
+  你完成的不是一個固定不變的 Demo，而是一套能持續透過 GitHub、AI Coding Agent、Render 與 Vercel演進的產品工作流。
+</Info>
+
+接下來可以依自己的工作情境，替換資料來源、Prompt、品牌、工具與權限，建立真正屬於你的 Data Machi。
