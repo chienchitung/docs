@@ -4,86 +4,130 @@ sidebarTitle: "實作 04｜資料工具"
 description: "以 Google Sheets 為資料來源，使用 Pandas、欄位別名、憑證管理與 TTL 快取完成精確查詢。"
 ---
 
-這一篇把自然語言問題轉成可驗證的資料查詢。核心原則是：LLM 負責理解需求，Python 負責篩選、計算與格式化數字。
+當使用者問「本月完成多少件需求？」時，LLM 可以理解問題，但不適合直接讀取數百列資料後自行計算。可靠的做法是：**讓模型理解使用者想查什麼，讓 Python 負責篩選與計算。**
 
-## 安全載入憑證
+這一篇會建立一個通用的 Google Sheets 查詢工具。範例只使用匿名測試資料，不放入任何真實企業名稱、帳號或試算表 ID。
 
-```python
-import json, os
-from oauth2client.service_account import ServiceAccountCredentials
+## 先理解責任分工
 
-SCOPES = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive",
-]
-
-def load_credentials():
-    raw = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-    if not raw:
-        raise RuntimeError("Missing service account credentials")
-    return ServiceAccountCredentials.from_json_keyfile_dict(
-        json.loads(raw), SCOPES
-    )
+```text
+使用者自然語言
+   ↓
+LLM 判斷查詢意圖與參數
+   ↓
+Tool 驗證欄位與期間
+   ↓
+Google Sheets 取得資料
+   ↓
+Pandas 篩選、分組與計算
+   ↓
+結構化結果交回 LLM
+   ↓
+LLM 整理成易讀答案
 ```
 
-教學資料必須使用自己的測試試算表，環境變數中只放占位符，不保留任何真實 Sheet ID。
+| 任務 | 適合交給誰 |
+| --- | --- |
+| 理解「上個月」 | LLM 或日期解析程式 |
+| 判斷「完成」對應哪個狀態 | Schema／欄位規則 |
+| 計算筆數與比例 | Pandas |
+| 說明結果 | LLM |
 
-## 欄位別名
+## Step 1：建立匿名測試表
+
+先建立一份自己的 Google Sheet，欄位例如：
+
+```text
+Ticket No. | Creation Date | Department | Status | Assigned To
+```
+
+填入 10–20 筆假的測試資料。不要直接使用工作中的真實資料，因為教學目標是驗證流程，不是複製內部環境。
+
+## Step 2：設定 Service Account
+
+Google Sheets API 不會因為知道網址就能讀取內容。程式需要一個 Service Account，並且該帳號必須被加入試算表共用名單。
+
+正式環境建議把整份憑證 JSON 放入環境變數：
+
+```env
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account", ...}
+GOOGLE_SHEET_KEY=your_test_sheet_id
+```
+
+<Warning>
+  不要把 Service Account JSON 提交到 Git，也不要在文章或截圖中露出 private key、client email 與真實 Sheet ID。
+</Warning>
+
+## Step 3：把資料讀成 DataFrame
+
+```python
+import pandas as pd
+
+def load_worksheet_dataframe(worksheet) -> pd.DataFrame:
+    values = worksheet.get_all_values()
+    if len(values) < 2:
+        return pd.DataFrame()
+
+    headers = values[0]
+    rows = values[1:]
+    records = [dict(zip(headers, row)) for row in rows if any(row)]
+    return pd.DataFrame(records)
+```
+
+DataFrame 可以理解成 Python 裡的試算表。讀進來後，才能可靠地篩選日期、計算數量與建立分組結果。
+
+## Step 4：處理欄位別名
+
+使用者不會永遠輸入資料表的正式欄位名。他可能說「負責人」，資料欄位卻叫 `Assigned To`。
 
 ```python
 COLUMN_ALIASES = {
     "Status": ["狀態", "進度", "status"],
     "Department": ["部門", "單位", "department"],
-    "Due Date": ["截止日期", "到期日", "due date"],
+    "Assigned To": ["負責人", "承辦人", "assigned to"],
 }
 ```
 
-使用者不會精確記得資料表欄位名稱，因此工具需要把自然語言對應到 canonical column，再由程式驗證欄位是否存在。
+欄位別名的價值，是在自然語言與資料結構之間建立翻譯層，而不是讓模型每次臨場猜測。
 
-## 安全讀取與短期快取
+## Step 5：加入短期快取
+
+一輪對話可能連續查詢同一張工作表。如果每次都重新呼叫 Google Sheets API，速度慢，也容易碰到速率限制。
 
 ```python
-import time
-
-CACHE_TTL = 60
-_cache = {}
-
-def get_records(cache_key, loader):
-    now = time.monotonic()
-    cached = _cache.get(cache_key)
-    if cached and now - cached[0] < CACHE_TTL:
-        return cached[1]
-    records = loader()
-    _cache[cache_key] = (now, records)
-    return records
+SHEETS_CACHE_TTL_SECONDS = 60
 ```
 
-短期快取可以避免同一輪對話重複抓取整張工作表，但 cache key 必須包含資料來源與工作表名稱，避免不同來源互相污染。
+TTL 60 秒代表：相同資料在 60 秒內可以重用。對不會每秒更新的資料，這通常能顯著降低延遲。
 
-## 查詢流程
+## Step 6：讓 Tool 回傳結構化結果
 
-```text
-自然語言問題
-  ↓
-解析期間、欄位與篩選條件
-  ↓
-欄位別名轉換
-  ↓
-載入或命中快取
-  ↓
-Pandas 篩選與計算
-  ↓
-回傳數值、列數、條件與資料來源
+```python
+return {
+    "metric": "ticket_count",
+    "value": 12,
+    "filters": {"Status": "Done"},
+    "row_count": 12,
+    "source": "Demo Requests Sheet"
+}
 ```
 
-## 驗收方式
+不要只回傳「共有 12 件」。結構化結果能讓後續驗證、前端顯示與追問更可靠。
 
-- 同一條件重複執行得到一致結果。
-- 空白列不會讓讀取提前停止。
-- 不存在的欄位會明確報錯。
-- 空結果不會被 LLM 補成推測答案。
-- 快取過期後能取得新資料。
+## 測試方式
+
+至少測試：
+
+- 正常篩選有結果
+- 篩選後是零筆
+- 使用中文欄位別名
+- 日期欄位格式不一致
+- Sheet 名稱不存在
+- 憑證不存在
+- 同一查詢在快取期間內重複執行
 
 <Info>
-  下一篇會處理另一種資料型態：PDF 與非結構化文件的 RAG 檢索。
+  最重要的原則：LLM 負責理解「要算什麼」，程式負責真正把數字算出來。
 </Info>
+
+下一篇會處理另一種完全不同的資料：PDF 與非結構化文件。

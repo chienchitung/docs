@@ -4,30 +4,78 @@ sidebarTitle: "實作 06｜LangGraph"
 description: "建立 StateGraph、工具循環、條件 Edge、平行工具執行與進度事件。"
 ---
 
-這一篇把前面的工具放進同一張可控 Graph。先從最小 State 開始，再逐步加入工具、條件路由與進度通知。
+前面已經有資料工具與文件工具，但系統還缺少一個「協調者」：誰決定要用哪個工具？工具執行完後，誰判斷資料是否足夠？如果同時需要兩個來源，應該依序查詢還是平行執行？
+
+LangGraph 的角色，就是把這些決策變成可以看見、測試與追蹤的工作流。
+
+## 先用專案經理理解 Coordinator
+
+Coordinator 不一定親自完成每一項工作。它比較像專案經理：
+
+- 先理解需求
+- 決定需要哪些專業能力
+- 分派任務
+- 收集結果
+- 判斷是否需要補查
+- 整理成最終輸出
+
+## 最小 Graph
+
+```text
+START
+  ↓
+Agent Node
+  ├─ 不需工具 → END
+  └─ 需要工具
+         ↓
+      Tool Node
+         ↓
+      Agent Node
+```
+
+這張圖已經包含循環，因此不是單向流水線。工具結果回來後，模型會重新判斷下一步。
+
+## Step 1：定義 State
 
 ```python
 from typing import Annotated, TypedDict
-from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
 class AgentState(TypedDict):
-    messages: Annotated[list[BaseMessage], add_messages]
+    messages: Annotated[list, add_messages]
 ```
 
-## 基本 Graph
+State 可以想成工作流中的共用資料夾。每個 Node 都能讀取它，再把新結果寫回去。
 
-```text
-START → Agent Node
-          ├─ 沒有 Tool Call → END
-          └─ 有 Tool Call → Parallel Tool Node → Agent Node
+初學時先保留 `messages` 即可；後續再加入 `retry_count`、`sources`、`verification_status` 等欄位。
+
+## Step 2：建立 Agent Node
+
+Agent Node 的工作不是查資料，而是呼叫已綁定工具的模型：
+
+```python
+def agent_node(state: AgentState):
+    response = model_with_tools.invoke(state["messages"])
+    return {"messages": [response]}
 ```
 
-Agent Node 負責理解與選擇；Tool Node 負責確定性執行。工具回傳後再回到 Agent Node，形成循環 Graph。
+如果模型判斷需要資料，回應裡會包含 Tool Call；若資料已足夠，就直接產生答案。
 
-## 平行工具執行
+## Step 3：建立條件 Edge
 
-當模型一次要求多個彼此獨立的工具時，可使用 `asyncio.gather()` 同時執行。每個結果都應保留 tool call ID，讓模型知道哪個結果屬於哪個請求。
+```python
+def should_continue(state: AgentState):
+    last_message = state["messages"][-1]
+    if last_message.tool_calls:
+        return "tools"
+    return "end"
+```
+
+這是 Graph Engineering 的核心：由程式明確決定什麼情況走哪條路，而不是只在 Prompt 裡要求模型「記得繼續查」。
+
+## Step 4：平行執行多個工具
+
+若一個問題同時需要資料表和文件定義，兩個工具彼此獨立，就可以平行執行：
 
 ```python
 results = await asyncio.gather(
@@ -36,20 +84,49 @@ results = await asyncio.gather(
 )
 ```
 
-單一工具失敗不應讓其他成功結果全部消失。應把 Exception 轉成對應的 ToolMessage，再讓後續節點決定是否重試或降級。
+只有在工具互不依賴時才能平行。若第二個工具需要第一個工具的輸出，就必須維持順序。
 
-## 進度事件
+## Step 5：回報進度
 
-工具開始、完成、失敗與整合階段都可以透過 callback 發送結構化進度：
+長流程不能只讓使用者看轉圈圈。Tool Node 執行時，可以發出進度事件：
 
-```python
-{"phase": "tool", "label": "正在查詢文件", "status": "running"}
+```text
+正在分析問題
+正在查詢結構化資料
+正在搜尋文件
+正在整合結果
 ```
 
-## 驗收方式
+進度不是模型的客套話，而應該來自實際節點狀態。
 
-- 不需要工具的問題能直接結束。
-- 兩個獨立工具能平行執行。
-- 單一工具失敗不會讓整輪崩潰。
-- Graph 不會因模型持續呼叫工具而無限循環。
-- 前端能收到人類可讀的階段狀態。
+## 建立 Graph
+
+```python
+graph = StateGraph(AgentState)
+graph.add_node("agent", agent_node)
+graph.add_node("tools", parallel_tool_node)
+graph.set_entry_point("agent")
+graph.add_conditional_edges(
+    "agent",
+    should_continue,
+    {"tools": "tools", "end": END},
+)
+graph.add_edge("tools", "agent")
+app = graph.compile()
+```
+
+## 如何觀察是否運作正確？
+
+測試三類問題：
+
+1. 不需工具的一般說明問題
+2. 只需一個工具的資料問題
+3. 同時需要兩個來源的跨來源問題
+
+確認後端 Log 中的 Tool Call 與預期一致，而不是只看最終答案是否流暢。
+
+<Warning>
+  不要因為用了 LangGraph，就把每個小函式都拆成 Node。只有需要獨立狀態、分支、重試、觀測或人工介入的步驟，才值得成為 Node。
+</Warning>
+
+下一篇會處理多輪對話。因為使用者常會說「那香港呢？」或「改成去年」，系統必須判斷該沿用什麼、又該重新查什麼。

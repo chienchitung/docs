@@ -4,80 +4,132 @@ sidebarTitle: "實作篇導讀"
 description: "以 Data Machi 開源專案為主線，逐步拆解前後端、工具、LangGraph、RAG、記憶、查核與部署。"
 ---
 
-這個實作篇不會重新發明一套只存在於教學中的範例，而是以 Data Machi 的開源專案為基礎，將一個已經能運作的 AI Agent 系統拆成可理解、可執行、可測試的學習單元。
+前 30 天系列主要回答「企業 AI 工作流為什麼要這樣設計」；實作篇則回答「真正打開專案後，第一步要做什麼」。
 
-<Note>
-  教學會保留真實架構與工程決策，但所有資料來源、欄位名稱、帳號、網址、試算表識別碼與組織規則都會抽象化。讀者應使用自己的測試資料與 API 憑證，不應複製任何內部識別資訊。
-</Note>
+這套文章參考 Data Machi 的開源專案架構，但不要求讀者一開始就理解所有程式碼，也不會使用真實企業名稱、內部文件、試算表 ID、帳號或業務資料。所有操作都應使用自己建立的匿名測試資料。
 
-## 這套實作會完成什麼？
+## 這不是程式碼說明書
+
+對初學者而言，直接看到一段 Python 或 React 程式碼，通常無法判斷：
+
+- 這段程式應該放在哪個檔案？
+- 執行前要先準備什麼？
+- 它解決的是哪個問題？
+- 執行成功時應該看到什麼？
+- 發生錯誤時要檢查哪一層？
+
+因此每篇文章都會依照相同順序撰寫：
 
 ```text
-React 前端
-   ↓ HTTP / progress events
-FastAPI API
+真實問題與使用情境
    ↓
-對話脈絡與釐清判斷
+用白話比喻理解概念
    ↓
-LangGraph Coordinator
-   ├─ 結構化資料工具
-   ├─ 專案管理工具
-   ├─ 知識文件工具
-   └─ 本地文件 RAG
+確認它在整體架構的位置
    ↓
-答案查核、來源整理與錯誤轉譯
+準備環境與測試資料
    ↓
-回傳可理解的結果與執行狀態
+逐步實作
+   ↓
+觀察預期結果
+   ↓
+排除常見錯誤
+   ↓
+完成驗收清單
 ```
 
-## 實作章節
+## 你需要具備什麼程度？
+
+不需要是軟體工程師，但建議先具備：
+
+- 能使用終端機切換資料夾與執行指令
+- 看得懂基本 Python 變數、函式與 `if`
+- 知道 JSON 是一種資料格式
+- 願意從錯誤訊息中找關鍵字
+
+<Note>
+  遇到看不懂的程式碼，不需要立刻理解每一個符號。先回答三個問題：輸入是什麼、輸出是什麼、這段程式負責哪一層。通常就能掌握七成用途。
+</Note>
+
+## 實作路線
 
 <CardGroup cols={2}>
-  <Card title="實作 01｜啟動專案" icon="play">
-    建立前後端環境、環境變數與最小可執行版本。
+  <Card title="01｜啟動專案" icon="play">
+    看懂前端與後端的分工，完成本機啟動，追蹤一則訊息如何進入系統。
   </Card>
 
-  <Card title="實作 02｜API 契約" icon="server">
-    設計 FastAPI 的聊天請求、回應、錯誤與進度事件。
+  <Card title="02｜API 契約" icon="code">
+    定義前端要送什麼、後端回什麼，以及為什麼錯誤也需要固定格式。
   </Card>
 
-  <Card title="實作 03｜模組化 Prompt" icon="layer-group">
-    將身份、工作流、工具路由與輸出規則拆成可維護模組。
+  <Card title="03｜模組化 Prompt" icon="layer-group">
+    把身份、限制、工作流、工具路由與格式拆成可維護規則。
   </Card>
 
-  <Card title="實作 04｜結構化資料工具" icon="table">
-    使用 Google Sheets、Pandas、欄位別名與快取完成精確查詢。
+  <Card title="04｜資料工具" icon="table">
+    用匿名 Google Sheets、Pandas、欄位別名與快取完成精確查詢。
   </Card>
 
-  <Card title="實作 05｜文件 RAG" icon="file-magnifying-glass">
-    建立 PDF 解析、向量索引、文件篩選與來源回傳。
+  <Card title="05｜文件 RAG" icon="file-pdf">
+    將 PDF 解析、切割、建立向量索引，並保留來源與頁碼。
   </Card>
 
-  <Card title="實作 06｜LangGraph Coordinator" icon="diagram-project">
-    建立 State、工具循環、平行執行與條件路由。
+  <Card title="06｜LangGraph" icon="diagram-project">
+    建立 State、Agent Node、Tool Node、條件 Edge 與平行工具執行。
   </Card>
 
-  <Card title="實作 07｜多輪記憶與釐清" icon="comments">
-    處理追問、上下文沿用、重新查詢與長對話摘要。
+  <Card title="07｜記憶與釐清" icon="brain">
+    處理追問、摘要記憶、工具結果重用與條件不足時的釐清。
   </Card>
 
-  <Card title="實作 08｜驗證與可靠性" icon="shield-check">
-    加入 Timeout、Retry、Fallback、答案查核與產品化錯誤訊息。
+  <Card title="08｜可靠性" icon="shield">
+    加入 Timeout、Retry、Fallback、錯誤分類與答案查核。
   </Card>
 
-  <Card title="實作 09｜Agent UX" icon="display">
-    顯示工具進度、釐清面板、文件選擇與可行動錯誤。
+  <Card title="09｜Agent UX" icon="display">
+    顯示真實進度、釐清選項、文件範圍與可行動錯誤。
   </Card>
 
-  <Card title="實作 10｜會議與部署" icon="rocket">
-    整合會議記錄、行動項目、本機儲存、測試與部署。
+  <Card title="10｜整合與部署" icon="rocket">
+    串接會議記錄、行動項目、IndexedDB、Secret 與前後端部署。
   </Card>
 </CardGroup>
 
-## 學習原則
+## 建議學習方式
 
-每篇文章都會包含：真實問題、對應程式模組、最小實作、測試方法、常見失敗與可再演進的方向。教學重點不是複製完整程式，而是理解為什麼系統需要這一層，以及如何在自己的專案中重建相同能力。
+不要一次讀完十篇。每完成一篇，至少做一次自己的小改動，例如：
+
+- 更換一個測試欄位
+- 新增一個 Prompt 規則
+- 刻意製造一次錯誤
+- 多加一份匿名 PDF
+- 修改一個進度提示
+
+只有親自改動並觀察結果，才會從「看懂文章」走向「真的會實作」。
+
+## 去識別化原則
+
+實作過程請一律使用：
+
+```text
+Your Organization
+Demo Project
+Team Member A
+Demo Requests Sheet
+Demo Policy.pdf
+```
+
+不要在公開程式碼、文章、截圖或錄影中出現：
+
+- 真實公司與部門名稱
+- 員工姓名、Email 與帳號
+- 真實營運數字或政策內容
+- Sheet／Board／Space ID
+- API Key、Token 與 Service Account
+- 內部網址與未公開文件
 
 <Info>
-  建議先完成實作 01–06，建立核心 Agent 工作流；實作 07–10 則把系統從 Demo 推進到可長期使用的產品。
+  實作篇的終點不是複製 Data Machi，而是理解每個元件的責任，並能把資料來源、規則與介面替換成自己的安全測試環境。
 </Info>
+
+從實作 01 開始，先把整個系統跑起來，再逐步打開每一層。

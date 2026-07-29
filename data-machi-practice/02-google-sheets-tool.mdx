@@ -4,13 +4,42 @@ sidebarTitle: "實作 02｜API 契約"
 description: "使用 FastAPI 與 Pydantic 定義聊天訊息、歷史紀錄、釐清選項、文件上下文與產品化錯誤。"
 ---
 
-Agent 系統不能只回傳一段文字。真實產品還需要傳遞對話歷史、Conversation ID、釐清選項、文件選擇、執行 metadata 與可分類的錯誤狀態。
+前端與後端要合作，不能只靠一句「把訊息傳過去」。雙方必須先約定：送出的資料有哪些欄位、每個欄位是什麼格式、哪些可以省略，以及失敗時要回傳什麼。這份約定就是 **API 契約**。
 
-## 核心請求模型
+可以把它想成網路購物的訂單表。若訂單只寫「幫我寄東西」，卻沒有收件人、地址與商品，就無法處理。聊天系統也是一樣：除了最新訊息，還可能需要對話歷史、對話 ID、使用者選擇的釐清條件與文件範圍。
+
+## 為什麼不能只傳一段文字？
+
+第一次做聊天 API，常見設計是：
+
+```json
+{"message": "請分析本月資料"}
+```
+
+但產品逐漸成熟後，系統還需要知道：
+
+- 這是不是同一段對話的追問？
+- 使用者前面選了哪些條件？
+- 這次只能查哪些文件？
+- 是否附加會議記錄作為上下文？
+- 使用者有沒有自行提供模型金鑰？
+
+因此請求會逐步成長成結構化物件。
+
+## Step 1：找到 FastAPI 入口
+
+打開：
+
+```text
+backend/main.py
+```
+
+你會看到 `FastAPI()`，它就像後端的接待櫃檯。前端的請求先到這裡，再被分派給真正的處理流程。
+
+## Step 2：理解 Pydantic Model
 
 ```python
 from pydantic import BaseModel, Field
-from typing import Any, Optional
 
 class Message(BaseModel):
     role: str
@@ -19,61 +48,102 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[Message] = Field(default_factory=list)
-    conversation_id: Optional[str] = None
-    clarifications: list[dict] = Field(default_factory=list)
-    turn_context: dict[str, Any] = Field(default_factory=dict)
-    active_documents: list[str] | None = None
+    conversation_id: str | None = None
+```
 
+這段程式不是在執行 AI，而是在定義資料規格。
+
+| 欄位 | 白話說明 |
+| --- | --- |
+| `message` | 使用者這一輪最新輸入 |
+| `history` | 前幾輪對話內容 |
+| `conversation_id` | 用來辨識是不是同一段對話 |
+
+當前端送錯格式，FastAPI 會在資料進入 Agent 前就攔下來，避免錯誤一路傳到模型與工具。
+
+## Step 3：加入產品真正需要的上下文
+
+完整系統通常還會加入：
+
+```python
+class ClarificationSelection(BaseModel):
+    question: str
+    label: str
+    value: str
+
+class ActiveDocument(BaseModel):
+    filename: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[Message] = Field(default_factory=list)
+    conversation_id: str | None = None
+    clarifications: list[ClarificationSelection] = Field(default_factory=list)
+    turn_context: dict = Field(default_factory=dict)
+    active_documents: list[str] | None = None
+```
+
+不要急著背欄位。先理解原則：**每個欄位都應該對應一個真實的產品需求。** 若不知道資料為何存在，就不應盲目複製。
+
+## Step 4：設計統一回應格式
+
+```python
 class ChatResponse(BaseModel):
     response: str
     error_code: str | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict = Field(default_factory=dict)
 ```
 
-| 欄位 | 用途 |
-| --- | --- |
-| `history` | 保留目前瀏覽器中的近期對話 |
-| `conversation_id` | 讀取持久化記憶與先前工具結果 |
-| `clarifications` | 將使用者選擇的條件結構化送回後端 |
-| `turn_context` | 告訴後續流程這輪是追問、改寫或新問題 |
-| `active_documents` | 限制本輪只能查哪些文件 |
-| `metadata` | 回傳來源、工具、驗證與執行狀態 |
+這裡把回應拆成三層：
 
-## 錯誤不是 Exception 字串
+- `response`：使用者看見的文字
+- `error_code`：程式用來判斷錯誤類型
+- `metadata`：來源、工具、執行時間等額外資訊
 
-```python
-def product_error(code: str, title: str, message: str, next_steps=None):
-    return {
-        "code": code,
-        "title": title,
-        "message": message,
-        "next_steps": next_steps or [],
-    }
+比起只回傳一段錯誤文字，`error_code` 能讓前端顯示不同按鈕。例如：缺少金鑰時顯示「設定 API Key」，文件尚未處理完成時顯示「重新上傳」。
+
+## Step 5：用 Swagger 測試
+
+啟動後端後，開啟：
+
+```text
+http://localhost:8000/docs
 ```
 
-建議至少區分模型未設定、模型逾時、知識庫未完成、查無支持資料、工具執行中斷與未預期錯誤。
+FastAPI 會自動建立測試介面。先不要碰前端，直接在這裡測試 API，可以更快判斷問題發生在後端還是前端。
 
-## CORS 與前端來源
+範例 Request：
 
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+```json
+{
+  "message": "請說明這個系統能做什麼",
+  "history": [],
+  "conversation_id": "demo-001",
+  "clarifications": [],
+  "turn_context": {}
+}
 ```
 
-正式環境不要使用無限制的 `*`。只允許自己的前端網域與本機開發網址。
+## 常見錯誤
 
-## 驗收方式
+<Accordion title="422 Unprocessable Entity 是什麼？">
+  代表送進來的 JSON 與 Pydantic Model 不一致，例如必填欄位缺少、陣列誤傳成文字，或欄位名稱拼錯。這不是模型錯誤，而是 API 契約錯誤。
+</Accordion>
 
-1. 空白 history 也能正常送出。
-2. 非法資料型別會得到清楚的驗證訊息。
-3. 缺少 API Key 時回傳產品化錯誤。
-4. 前端能依 `error_code` 顯示不同操作建議。
+<Accordion title="為什麼前端可以開，但 API 被瀏覽器擋住？">
+  通常是 CORS 設定沒有允許前端網址。開發環境至少要允許 `http://localhost:5173`；正式環境則要改成真正的前端網域，不建議永久開放 `*`。
+</Accordion>
+
+## 本篇驗收
+
+- 能在 `/docs` 看見聊天 API
+- 正確 JSON 能得到回應
+- 缺少必填欄位會得到 422
+- 錯誤回應具有固定 `error_code`
+- 前端與後端使用相同欄位名稱
 
 <Info>
-  API 契約穩定後，才適合繼續設計 Prompt 與 Agent，否則每增加一項功能都會反覆修改前後端介面。
+  API 契約的價值，是讓錯誤在系統邊界就被發現，而不是等到 Agent 執行一半才出問題。
 </Info>
+
+下一篇會處理另一個初學者常見問題：System Prompt 越寫越長後，如何拆成可管理、可測試的規則模組。

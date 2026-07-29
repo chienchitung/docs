@@ -4,34 +4,115 @@ sidebarTitle: "實作 08｜可靠性"
 description: "加入模型逾時、重試、備援模型、驗證預算與事實查核。"
 ---
 
-正式 Agent 必須假設模型與外部 API 一定會失敗。可靠性不是多寫一句「請不要出錯」，而是為每一種失敗建立程式層級處理。
+AI Demo 偶爾失敗，重新整理就好；真正的產品不能把所有失敗都丟給使用者。模型可能過載、API 可能回傳 503、工具可能逾時，甚至答案雖然流暢，卻和工具結果不一致。
 
-## 雙模型分工
+這一篇處理的不是「讓模型更聰明」，而是讓系統在失敗時仍有可預期的行為。
 
-- 主要模型：負責使用者可見的長回答。
-- 快速模型：負責路由、釐清、分類與查核。
-- Fallback 模型：主要模型過載或逾時時接手生成。
+## 先區分四種可靠性機制
 
-內部 JSON 判斷可以使用較短 timeout，長回答則需要較寬鬆的生成上限；不要用同一個 timeout 套用所有步驟。
+| 機制 | 解決的問題 |
+| --- | --- |
+| Timeout | 避免單一步驟無限等待 |
+| Retry | 暫時性錯誤再嘗試少數幾次 |
+| Fallback | 主模型不可用時切換備援模型 |
+| Verification | 檢查答案是否被工具資料支持 |
 
-## Retry 與 Fallback
+這四者不能互相取代。例如一直 Retry 同一個過載模型，不如切換 Fallback；模型成功回覆，也不代表內容一定正確，所以仍可能需要 Verification。
 
-```python
-primary = build_model(timeout=120, max_retries=2)
-fallback = build_fast_model(timeout=120, max_retries=2)
-model = primary.with_fallbacks([fallback], exceptions_to_handle=(TimeoutError,))
+## Step 1：設定合理逾時
+
+內部分類通常只需要短時間，長篇最終回答則需要更多時間，因此不要所有模型呼叫共用同一個 Timeout。
+
+```env
+GEMINI_TIMEOUT_SECONDS=25
+GEMINI_GENERATION_TIMEOUT_SECONDS=120
 ```
 
-Retry 適合暫時性錯誤；認證錯誤、非法參數與資料不存在則不應盲目重試。
+這表示 Router、釐清與查核不能拖太久，但長報告有較寬鬆的生成時間。
 
-## 驗證時間預算
+## Step 2：限制 Retry
 
-回答生成後可以執行來源查核、數字一致性檢查與全年範圍驗證，但驗證也需要總時間上限。超過預算時應保留原回答並標記驗證狀態，而不是讓使用者無限等待。
+```env
+GEMINI_MAX_RETRIES=2
+```
 
-## 驗收方式
+重試不是越多越穩定。同步聊天中，六次指數退避可能讓使用者等待一兩分鐘。通常少量快速重試後切換備援模型，更符合互動產品需求。
 
-- 模擬 503 時會切換備援模型。
-- 逾時錯誤不會被誤判成 API Key 問題。
-- 工具結果與回答中的主要數字能對照。
-- 驗證階段超時後仍能回傳結果。
-- metadata 能指出是否完成驗證與使用了哪些來源。
+## Step 3：使用不同的 Fallback 模型
+
+```python
+primary_llm = ChatGoogleGenerativeAI(model=PRIMARY_MODEL)
+fast_llm = ChatGoogleGenerativeAI(model=FAST_MODEL)
+
+reliable_llm = primary_llm.with_fallbacks(
+    [fast_llm],
+    exceptions_to_handle=(TimeoutError, ServerError),
+)
+```
+
+備援最好是不同模型，否則同一模型正處於高負載時，重新呼叫它可能仍然失敗。
+
+## Step 4：加入答案查核
+
+Verification 不應問另一個模型「你覺得這答案好不好」，而應提供：
+
+- 使用者原始問題
+- 實際工具結果
+- 草稿答案
+- 明確查核規則
+
+要求它檢查每個數字、日期與事實是否能在工具結果中找到支持。
+
+```json
+{
+  "status": "pass",
+  "unsupported_claims": [],
+  "needs_regeneration": false
+}
+```
+
+## Step 5：設定驗證時間預算
+
+查核本身也可能逾時。若驗證無限等待，反而讓使用者永遠看不到已經生成的答案。
+
+```env
+VERIFICATION_TIME_BUDGET_SECONDS=30
+```
+
+超過預算時，可以回傳原始答案並在 metadata 標記 `verification_timed_out`，而不是讓整輪請求失敗。
+
+## Step 6：錯誤要能被使用者理解
+
+不要只顯示：
+
+```text
+500 Internal Server Error
+```
+
+應該提供：
+
+- 發生什麼事
+- 這次是否有資料遺失
+- 使用者可以做什麼
+- 是否值得稍後重試
+
+例如：
+
+```text
+模型目前回應較慢，這次請求已超過等待上限。
+你可以縮小資料範圍，或稍後再試一次。
+```
+
+## 必測情境
+
+- 主模型逾時後成功切換備援模型
+- 429、503 與無效 API Key 顯示不同錯誤
+- 工具失敗不會被誤判成查無資料
+- 查核發現錯誤數字時能阻止或重寫答案
+- 查核逾時不會卡住整輪請求
+
+<Warning>
+  不要把所有例外都捕捉後回傳同一句「請檢查 API Key」。這會掩蓋過載、逾時、權限與資料問題，讓使用者採取錯誤行動。
+</Warning>
+
+下一篇會把後端的真實執行狀態呈現在前端，讓使用者知道 Agent 現在正在做什麼。

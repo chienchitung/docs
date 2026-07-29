@@ -4,42 +4,114 @@ sidebarTitle: "實作 05｜文件 RAG"
 description: "建立 PDF 解析、向量資料庫、Lazy Initialization、文件篩選與來源回傳。"
 ---
 
-結構化資料適合精確計算，PDF 與文字文件則需要 RAG。這一篇建立文件載入、切割、Embedding、向量索引與搜尋流程。
+結構化資料適合用欄位與條件查詢，但政策文件、會議紀錄、操作手冊與 PDF 並沒有整齊的欄位。這時候需要 RAG：先從文件中找出與問題最相關的段落，再把段落交給模型回答。
+
+## 用圖書館理解 RAG
+
+RAG 不是把整間圖書館塞進模型，而是：
 
 ```text
-上傳文件 → 解析文字 → 切割 Chunk → Embedding → FAISS 索引
-                                               ↓
-使用者問題 → 文件篩選 → 相似度搜尋 → 來源片段 → 回答
+使用者提問
+   ↓
+將問題轉成向量
+   ↓
+在索引中找相近段落
+   ↓
+取回少量相關內容
+   ↓
+模型根據內容回答並標記來源
 ```
 
-## 延遲初始化
+向量資料庫就像圖書館索引；它不直接回答問題，只負責找資料。
 
-不要在服務啟動時無條件重建知識庫。先檢查磁碟是否已有索引或可處理文件，再於第一次需要時載入。
+## Step 1：準備匿名文件
+
+先用自己建立的測試 PDF，例如：
+
+- Demo Travel Policy
+- Demo Product Guide
+- Demo Project Handbook
+
+不要使用公司內部文件，也不要把真實政策內容放進公開 Repository。
+
+## Step 2：解析與切割
+
+一份 100 頁 PDF 不適合直接送進模型，通常要切成較小片段：
 
 ```python
-async def ensure_kb_initialized():
-    if vector_db is not None:
-        return
-    if not has_index_cache() and not has_source_files():
-        return
-    await load_or_build_vector_db()
+chunks = text_splitter.split_documents(documents)
 ```
 
-## Active Documents
+切太大，搜尋結果容易混入不相關內容；切太小，又會失去上下文。初學者可以先從 800–1200 字元、少量重疊開始，再依測試結果調整。
 
-前端允許使用者指定本輪可搜尋的文件，後端則把文件清單放入 request context。這可避免多份相似文件互相干擾，也能降低不必要的檢索範圍。
+## Step 3：建立向量索引
 
-## 查無資料時不要猜
+```python
+vector_db = FAISS.from_documents(chunks, embeddings)
+vector_db.save_local("faiss_index")
+```
 
-工具應明確回傳：搜尋詞、文件名稱、頁碼或 chunk metadata，以及是否找到足夠相關內容。若沒有支持資料，最終回答應轉為可行動提示。
+第一次建立索引較慢，之後可以直接從磁碟載入，不必每次重新處理全部 PDF。
 
-<Warning>
-  教學資料請使用公開或自製 PDF。不要上傳內部文件、未公開報告、帳號資訊或含個資的資料。
-</Warning>
+## Step 4：Lazy Initialization
 
-## 驗收方式
+正式服務不一定在啟動時就有模型金鑰，也不一定每次都需要文件搜尋。因此可以等到第一次真正查文件時才初始化知識庫。
 
-- 服務重啟後可從磁碟索引恢復。
-- 限定文件後，不會引用其他文件。
-- 掃描型 PDF 能清楚提示需要 OCR 或視覺解析。
-- 最終回答能保留文件與頁碼來源。
+```text
+啟動後端
+   ↓
+先不載入向量資料庫
+   ↓
+使用者第一次查文件
+   ↓
+檢查磁碟索引或 PDF
+   ↓
+初始化並搜尋
+```
+
+這能縮短啟動時間，也避免不必要的資源消耗。
+
+## Step 5：限制本輪可查文件
+
+當使用者只勾選兩份文件時，RAG 不應搜尋整個知識庫。這就是 `active_documents` 的用途。
+
+```python
+set_active_documents(["demo_policy.pdf", "demo_guide.pdf"])
+```
+
+它能降低錯誤引用，也讓使用者知道答案來自哪個範圍。
+
+## Step 6：回傳來源
+
+Tool 回傳內容時，至少保留：
+
+```json
+{
+  "content": "...",
+  "source": "demo_policy.pdf",
+  "page": 4,
+  "score": 0.83
+}
+```
+
+沒有來源的 RAG，只是比較會引用文件的聊天機器人；有來源，才方便使用者查核。
+
+## 常見失敗
+
+<Accordion title="明明有內容，為什麼搜尋不到？">
+  可能原因包括 PDF 是掃描圖片、切割位置不理想、問題用詞和文件差異太大，或索引尚未更新。先確認文件是否成功解析成文字，再檢查搜尋結果，不要一開始就怪模型。
+</Accordion>
+
+<Accordion title="為什麼找到的段落看似相關，答案卻不正確？">
+  相似度只表示語意接近，不代表足以支持結論。可以加入最低分數門檻、來源數量要求或後續 Verification Node。
+</Accordion>
+
+## 本篇驗收
+
+- PDF 能成功解析
+- 索引可以儲存與重新載入
+- 搜尋結果包含來源與頁碼
+- 可限制本輪搜尋文件
+- 查無資料時明確回覆，不自行猜測
+
+下一篇會把資料工具與文件工具放進 LangGraph，讓模型能根據問題決定要呼叫哪一種能力。
