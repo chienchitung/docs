@@ -22,48 +22,28 @@ description: "釐清單一 Agent 多工具與真正 Multi-Agent 架構的本質�
 
 ### 用結構來判斷
 
-```text
-【單一 Agent + 多個工具】
-使用者輸入
-    │
-    ▼
-┌─────────────────────────────────┐
-│  Coordinator Agent              │
-│  （一個 LLM，一個 Prompt）       │
-│                                 │
-│  工具清單：                      │
-│  • analyst_query()              │
-│  • trello_search()              │
-│  • confluence_search()          │
-│  • document_generate()          │
-└─────────────────────────────────┘
-    │
-    ▼
-  最終答案
+```mermaid
+flowchart TB
+    subgraph S[單一 Agent + 多個工具]
+        U1[使用者輸入] --> C1[Coordinator Agent<br/>一個 LLM、一個 Prompt]
+        C1 --> T1[Analyst Tool]
+        C1 --> T2[Trello Tool]
+        C1 --> T3[Confluence Tool]
+        C1 --> T4[Document Tool]
+        T1 --> A1[最終答案]
+        T2 --> A1
+        T3 --> A1
+        T4 --> A1
+    end
 
-【真正的 Multi-Agent 架構】
-使用者輸入
-    │
-    ▼
-┌─────────────────┐
-│  Coordinator    │  → 決定分配任務
-└─────────────────┘
-    │           │
-    ▼           ▼
-┌──────────┐ ┌──────────┐
-│ Analyst  │ │ Reviewer │  ← 各自有獨立 Prompt、上下文與工具
-│  Agent   │ │  Agent   │
-└──────────┘ └──────────┘
-    │           │
-    └─────┬─────┘
-          ▼
-    ┌──────────┐
-    │  Writer  │  ← 接收前兩個 Agent 的輸出，整理最終報告
-    │  Agent   │
-    └──────────┘
-          │
-          ▼
-      最終報告
+    subgraph M[真正的 Multi-Agent 架構]
+        U2[使用者輸入] --> C2[Coordinator<br/>分配任務]
+        C2 --> AN[Analyst Agent<br/>獨立 Prompt、上下文與工具]
+        C2 --> RV[Reviewer Agent<br/>獨立 Prompt、上下文與工具]
+        AN --> W[Writer Agent<br/>整合輸出]
+        RV --> W
+        W --> R[最終報告]
+    end
 ```
 
 精確的描述方式是：如果這四種能力只是四組 Tool，由同一個 Coordinator 的 LLM 選擇與呼叫，這是「**單一 Agent 加多個領域工具**」，而不是 Multi-Agent。
@@ -136,11 +116,12 @@ coordinator = create_react_agent(llm, tools=tools)
 
   若需要讓 Analyst Agent 先產出分析草稿，交給 Reviewer Agent 獨立查核資料正確性，再由 Writer Agent 整理最終報告，這個「草稿→查核→報告」的流程有明確的角色交接，適合拆成三個獨立節點。
 
-  ```text
-  Analyst Agent → （草稿）→ Reviewer Agent → （批准/退回）→ Writer Agent
-                                ↑                    │
-                                └────────────────────┘
-                                    （退回修正）
+  ```mermaid
+  flowchart LR
+  A[Analyst Agent] -->|分析草稿| R[Reviewer Agent]
+  R -->|通過| W[Writer Agent]
+  R -->|退回修正| A
+  W --> F[最終報告]
   ```
 
   **場景二：工具數量爆炸**
@@ -162,12 +143,13 @@ coordinator = create_react_agent(llm, tools=tools)
 | **LLM Node** | 完成一次分類、摘要、判斷或生成 | 有限，通常只做一次模型決策 |
 | **Agent Node** | 在自己的工具與上下文中反覆判斷、行動與觀察 | 是，內部可包含完整 Loop |
 
-```text
-外層 Graph
-├─ Intent Classifier（LLM Node）
-├─ Spreadsheet Query（Tool Node）
-├─ Research Agent（Agent Node）
-└─ Human Approval（控制節點）
+```mermaid
+flowchart TD
+    G[外層 Graph]
+    G --> I[Intent Classifier<br/>LLM Node]
+    G --> S[Spreadsheet Query<br/>Tool Node]
+    G --> R[Research Agent<br/>Agent Node]
+    G --> H[Human Approval<br/>控制節點]
 ```
 
 因此，「Graph 中有很多 Node」不代表 Multi-Agent；只有當其中多個 Node 各自具備獨立目標、上下文、工具集與決策循環時，才是由 Graph 編排多個 Agent。

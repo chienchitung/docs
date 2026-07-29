@@ -73,27 +73,12 @@ app = graph.compile()
 
 Data Machi 目前的核心工作流，可以用下面這個簡潔的拓撲圖表示：
 
-```text
-START
-  │
-  ▼
-┌─────────────────────────────────────────┐
-│  Agent Node                             │
-│  • 接收使用者問題與對話歷史              │
-│  • LLM 判斷：呼叫工具 or 直接輸出答案  │
-└─────────────────────────────────────────┘
-  │                           │
-  │ 需要呼叫工具               │ 不需要工具
-  ▼                           ▼
-┌──────────────┐            END（輸出答案）
-│ Action Node  │
-│ • 執行工具   │
-│ • 取得結果   │
-└──────────────┘
-  │
-  │ 結果回傳
-  ▼
-Agent Node（重新判斷）
+```mermaid
+flowchart TD
+    START([START]) --> A[Agent Node<br/>接收使用者問題與對話歷史<br/>LLM 判斷是否需要工具]
+    A -->|需要工具| B[Action Node<br/>執行工具並取得結果]
+    B -->|將結果寫回 State| A
+    A -->|資訊已足夠| END([END<br/>輸出最終答案])
 ```
 
 這個結構看起來簡單，但它的優勢在於每一個環節都是明確的：你知道 Agent Node 負責什麼、Action Node 負責什麼、以及什麼條件會觸發哪條路徑。
@@ -133,16 +118,16 @@ Graph Engineering 真正設計的是五件事：
 
 傳統資料流程常使用不能回頭的 DAG，但真實 Agent 經常需要循環：
 
-```text
-搜尋資料
-   ↓
-檢查結果是否足夠
-   ├─ 否 → 改寫查詢後重新搜尋
-   └─ 是 → 產生答案
-              ↓
-           驗證答案
-              ├─ 不通過 → 返回修改或補查資料
-              └─ 通過 → 完成
+```mermaid
+flowchart TD
+    A[搜尋資料] --> B{結果是否足夠？}
+    B -->|否| C[改寫查詢]
+    C --> A
+    B -->|是| D[產生答案]
+    D --> E{答案是否通過驗證？}
+    E -->|否| F[修改答案或補查資料]
+    F --> A
+    E -->|是| G([完成])
 ```
 
 這表示 Loop 並不是 Graph 的替代方案；Loop 本身就是一種循環 Graph。Day 17 介紹的 ReAct 循環，可以被放在 Graph 的某個節點內，也可以由多個節點與條件 Edge 共同表達。
@@ -151,12 +136,13 @@ Graph Engineering 真正設計的是五件事：
 
 早期常見的 Graph，是編排多次 LLM 或工具呼叫；現在更常見的做法，是讓外層 Graph 編排多個具有自己工具與循環的 Agent：
 
-```text
-Coordinator Graph
-├─ Spreadsheet Agent
-├─ Document Search Agent
-├─ Project Status Agent
-└─ Reviewer Agent
+```mermaid
+flowchart TD
+    C[Coordinator Graph]
+    C --> S[Spreadsheet Agent]
+    C --> D[Document Search Agent]
+    C --> P[Project Status Agent]
+    C --> R[Reviewer Agent]
 ```
 
 外層 Graph 控制順序、交接、驗證與人工介入；每個 Agent Node 則在自己的範圍內自主選擇工具與完成子任務。這可以稱為「Graph orchestration of agents」。
