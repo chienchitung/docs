@@ -4,47 +4,116 @@ sidebarTitle: "實作 20｜驗收與維護"
 description: "完成安全、功能、部署與跨裝置驗收，並建立雲端 Vibe Coding 與版本回復流程。"
 ---
 
-部署完成不是終點。最後一篇要建立一套可重複的驗收與維護方式，確保你之後無論在本機、桌機雲端環境或手機上修改，都不會讓正式服務失去控制。
+完成部署不等於產品已經完成。最後一篇要確認 Data Machi 在正式環境中真的可用，並建立日後透過本機或雲端 Coding Agent 持續維護的流程。
 
-## 正式環境驗收
-
-- GitHub 不含 API Key、Token、Service Account 與內部資料。
-- Vercel 網站可以開啟，桌面與手機皆可操作。
-- Render 健康檢查與聊天 API 正常。
-- Gemini、Sheets 與 PDF 各有一組成功測試。
-- 選配的 Trello、Confluence、Groq 能個別關閉，不影響基本聊天。
-- 錯誤訊息能指出使用者可以採取的下一步。
-- CORS 只允許本機與正式前端來源。
-
-## 遠端 Vibe Coding 工作流
-
-```text
-手機／桌機 Claude Code 雲端
-  ↓
-建立 Branch 並修改
-  ↓
-查看 Diff 與測試結果
-  ↓
-建立 Pull Request
-  ↓
-合併到 GitHub
-  ↓
-Render／Vercel 自動部署
+```mermaid
+flowchart LR
+    C[修改需求] --> B[建立 Branch]
+    B --> A[AI Coding Agent 協助修改]
+    A --> T[測試與檢查 Diff]
+    T --> P[Pull Request]
+    P --> M[合併 Main]
+    M --> D[Vercel / Render 部署]
+    D --> V[正式環境驗收]
+    V -->|失敗| R[回復 Commit 或修正]
 ```
 
-遠端環境適合 Prompt、文案、小型修正與部署設定；涉及本機檔案、音訊、PDF 或大型架構修改時，仍建議回到 VS Code 完整測試。
+## 四個層次的驗收
 
-## 每次修改後的固定檢查
+### 1. 功能驗收
 
-1. AI 修改了哪些檔案？
-2. 是否改到不相關功能？
-3. 是否新增套件與更新依賴檔？
-4. Secret 是否仍只存在環境變數？
-5. Preview 部署是否正常？
-6. 發生問題時能否回到上一個 Commit？
+- 最小 Gemini 對話正常。
+- Sheets 問題與人工核對結果一致。
+- PDF RAG 能顯示來源並拒答無資料問題。
+- Trello、Confluence、Groq 等選配功能可獨立開關。
+- 多輪追問、釐清與要求最新資料的流程正確。
+
+### 2. 失敗驗收
+
+刻意製造以下情況：
+
+- 移除或填錯 Gemini Key。
+- 將 Sheet 取消分享。
+- 上傳無法解析的 PDF。
+- 使用失效 Token。
+- 關閉 Render 或改錯 Backend URL。
+- 讓模型呼叫超過 Timeout。
+
+每種失敗都應結束 Loading、顯示明確原因，並提供下一步建議。
+
+### 3. 安全驗收
+
+```mermaid
+flowchart TD
+    S[安全檢查] --> G[GitHub 無 Secret]
+    S --> F[前端無私密 Key]
+    S --> C[CORS 僅允許指定來源]
+    S --> L[Log 不顯示完整憑證]
+    S --> D[測試資料已匿名化]
+```
+
+另外檢查：
+
+- `.env`、Service Account JSON 與索引暫存均在 `.gitignore`。
+- Vercel 只保存可公開的前端設定。
+- Render Secret 依最小權限原則配置。
+- 教學截圖、README 與錯誤訊息沒有企業識別資訊。
+
+### 4. 使用體驗驗收
+
+- 桌機與手機都能正常操作。
+- Render 冷啟動時有清楚等待狀態。
+- 工具執行時顯示真實進度。
+- 回答完成、失敗、查核中等狀態不混淆。
+- 長回答、文件來源與錯誤訊息在小螢幕仍可閱讀。
+
+## 遠端 Vibe Coding 維護流程
+
+當你不在主要電腦旁，可以透過 Claude Code 桌面或手機端啟動雲端開發：
+
+```mermaid
+sequenceDiagram
+    participant U as 使用者
+    participant C as Claude Code 雲端
+    participant G as GitHub
+    participant D as 部署平台
+    U->>C: 描述小型修改
+    C->>G: 讀取 Repository
+    C->>G: 建立 Branch / Commit / PR
+    U->>G: 查看 Diff 並合併
+    G->>D: 觸發自動部署
+    D-->>U: 檢查 Preview / Production
+```
+
+適合遠端處理的項目包括 Prompt 文案、錯誤訊息、README、環境變數範例與小型 UI 修正。大型架構、PDF／音訊處理、跨服務除錯則較適合回到本機完整測試。
+
+## 如何安全回復版本？
+
+- 小型錯誤：建立修正 Commit。
+- 尚未合併的 PR：關閉 PR 或修正 Branch。
+- 已合併且部署失敗：Revert 對應 Commit。
+- 部署平台問題：先查看 Log，避免在不確定原因時連續亂改。
+
+不要只依賴平台的重新部署按鈕；GitHub 中的程式版本才應該是正式來源。
+
+## 最終完成清單
+
+- [ ] 有自己的去識別化 Repository
+- [ ] Gemini、Sheets 與 PDF RAG 正常
+- [ ] Render 後端與 Vercel 前端已串接
+- [ ] CORS、Environment Variables 與 Secret 正確
+- [ ] 多輪記憶與可靠性測試完成
+- [ ] GitHub PR、部署與版本回復流程可操作
+- [ ] 可從桌機與手機完成正式環境驗收
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請根據目前 Repository、Render 與 Vercel 設定，建立正式上線驗收計畫。
+必須包含：核心功能、外部服務失敗、安全、CORS、跨裝置、冷啟動、部署回復與 Secret 掃描。
+不要直接修改程式，先列出測試步驟、預期結果與失敗判斷方式。
+```
 
 <Info>
-  你完成的不是一個固定不變的 Demo，而是一套能持續透過 GitHub、AI Coding Agent、Render 與 Vercel演進的產品工作流。
+  完成這 20 篇後，你不只是複製一個聊天介面，而是理解如何用 GitHub、Vibe Coding、外部 API、LangGraph、Render 與 Vercel，建立並持續維護一套屬於自己的 Data Machi。
 </Info>
-
-接下來可以依自己的工作情境，替換資料來源、Prompt、品牌、工具與權限，建立真正屬於你的 Data Machi。

@@ -4,45 +4,68 @@ sidebarTitle: "實作 01｜服務地圖"
 description: "認識 GitHub、AI Coding Agent、Vercel、Render、Gemini 與各資料來源在 Data Machi 中的角色。"
 ---
 
-很多人第一次看到 AI 專案，會以為只要申請一組模型 API Key 就完成了。但真正能讓使用者每天打開並使用的產品，通常由多個服務共同組成。
+在開始申請 API 或部署服務之前，先不要急著碰設定。第一步是看懂：**Data Machi 不是一個單獨的程式，而是一組彼此合作的服務。**
 
-## 先分清楚兩張架構圖
-
-### 產品正式運作時
-
-```text
-Vercel 前端 → Render 後端 → Gemini／Sheets／RAG／外部工具
+```mermaid
+flowchart LR
+    U[使用者] --> F[Vercel 前端]
+    F --> B[Render 後端]
+    B --> G[Gemini API]
+    B --> S[Google Sheets]
+    B --> R[PDF RAG]
+    B --> T[Trello API]
+    B --> C[Confluence API]
+    B --> W[Groq Whisper]
 ```
 
-### 開發者修改產品時
+## 每個服務負責什麼？
 
-```text
-VS Code／雲端 Coding Agent → GitHub → Vercel 與 Render 自動部署
-```
-
-Claude Code、Codex 是建造產品的工具；Gemini、Render、Vercel 與資料 API 才是產品上線後需要的服務。
-
-## 服務清單
-
-| 服務 | 用途 | 必要性 |
+| 服務 | 在系統中的角色 | 是否必要 |
 | --- | --- | --- |
-| GitHub | 保存程式碼與版本 | 必要 |
-| Claude Code／Codex | 協助修改與測試 | 擇一即可 |
-| Gemini API | 理解問題與生成答案 | 必要 |
-| Render | 部署 Python 後端 | 必要 |
+| GitHub | 保存程式碼、版本與部署來源 | 必要 |
 | Vercel | 部署 React 前端 | 必要 |
-| Google Sheets API | 查詢結構化資料 | 建議 |
+| Render | 執行 FastAPI 與 LangGraph 後端 | 必要 |
+| Gemini API | 理解問題、選擇工具、產生回答 | 必要 |
+| Google Sheets | 提供結構化資料 | 建議 |
 | PDF RAG | 搜尋文件內容 | 建議 |
-| Trello／Confluence | 專案與知識來源 | 選配 |
+| Trello / Confluence | 專案進度與知識庫 | 選配 |
 | Groq Whisper | 會議錄音轉文字 | 選配 |
 
-## 建議完成順序
+## 產品架構與開發架構不要混在一起
 
-<Steps>
-</Steps>
+```mermaid
+flowchart TB
+    subgraph Development[開發流程]
+      D1[VS Code + Claude Code / Codex]
+      D2[Claude Code 雲端]
+      GH[GitHub Repository]
+      D1 --> GH
+      D2 --> GH
+    end
+
+    subgraph Product[正式產品]
+      V[Vercel]
+      R[Render]
+      API[模型與資料 API]
+      V --> R --> API
+    end
+
+    GH --> V
+    GH --> R
+```
+
+Claude Code 與 Codex 是協助你建造產品的工具；產品上線後並不需要它們持續運作。真正在線上服務使用者的是 Vercel、Render、Gemini 與資料來源。
+
+## 本篇完成後，你應該能回答
+
+- 前端為什麼部署在 Vercel？
+- 後端為什麼部署在 Render？
+- Gemini API Key 與 Google Service Account 有何不同？
+- 哪些服務是核心，哪些可以晚一點再加？
+- GitHub 為什麼是整個流程的中心？
 
 <Info>
-  今天只要記住一件事：Data Machi 不是一個模型，而是一組互相協作的服務。
+  今天只要記住一件事：先看懂服務之間的關係，再開始申請帳號與修改程式，會比一邊做一邊猜更有效率。
 </Info>
 
-下一篇會協助你選擇本機、雲端或混合式 Vibe Coding。
+下一篇會介紹本機、雲端與混合式 Vibe Coding 的差異，協助你選擇最適合自己的開發方式。

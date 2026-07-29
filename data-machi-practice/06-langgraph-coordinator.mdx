@@ -4,49 +4,76 @@ sidebarTitle: "實作 06｜Sheets 憑證"
 description: "建立 Service Account、啟用 API、分享試算表，並將憑證安全放入本機與 Render。"
 ---
 
-Gemini API Key 只能呼叫模型，不能自動取得你的 Google Sheets 資料。要讓後端讀取試算表，還需要一個 Service Account。
+Gemini API Key 讓模型可以思考，但不能自動讀取你的 Google Sheets。若要讓後端存取指定試算表，需要建立一個 **Service Account**，把它視為專門給程式使用的 Google 帳號。
 
-可以把 Service Account 想成專門給應用程式使用的機器帳號。你必須把指定試算表分享給它，它才有權限讀取。
-
-## 完整流程
-
-```text
-Google Cloud Project
-  ↓
-啟用 Google Sheets／Drive API
-  ↓
-建立 Service Account
-  ↓
-建立 JSON 憑證
-  ↓
-將 Sheet 分享給 Service Account Email
-  ↓
-把 JSON 放入本機與 Render Secret
+```mermaid
+flowchart LR
+    B[Render / 本機後端] --> SA[Service Account]
+    SA --> GS[Google Sheets API]
+    GS --> Sheet[指定試算表]
 ```
 
-## 本機與正式環境
+## Gemini Key 與 Service Account 的差異
 
-本機可暫時使用 JSON 檔，但必須加入 `.gitignore`。正式環境更適合把完整 JSON 內容放進 `GOOGLE_SERVICE_ACCOUNT_JSON`。
+| 憑證 | 用途 |
+| --- | --- |
+| Gemini API Key | 呼叫模型 |
+| Service Account JSON | 代表後端讀取被分享的 Google Sheet |
+
+## 建立流程
+
+1. 在 Google Cloud 建立或選擇 Project。
+2. 啟用 Google Sheets API；需要時也啟用 Drive API。
+3. 建立 Service Account。
+4. 建立 JSON Key，下載後妥善保管。
+5. 找到 Service Account Email。
+6. 將測試 Sheet 分享給這個 Email，權限先使用 Viewer。
+
+```mermaid
+flowchart TD
+    P[Google Cloud Project] --> A[啟用 Sheets API]
+    A --> S[建立 Service Account]
+    S --> J[下載 JSON Key]
+    S --> E[取得 Service Account Email]
+    E --> H[把 Sheet 分享給該 Email]
+```
+
+## 憑證放在哪裡？
+
+本機可以暫時將 JSON 放在 `backend/`，但必須加入 `.gitignore`。更安全且適合正式環境的方法，是把整份 JSON 內容存成環境變數：
 
 ```env
-GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"..."}
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 GOOGLE_SHEET_KEY=your_sheet_id
 ```
 
-## 最常見的錯誤
+Render 中同樣建立這兩個 Environment Variables。不要把 JSON 檔上傳到 GitHub。
 
-- 已建立 Service Account，但忘記把 Sheet 分享給它。
-- 只填 Sheet ID，卻沒有憑證。
-- 把 JSON 檔 Commit 到 GitHub。
-- 分享給自己的 Gmail，而不是 Service Account Email。
-- Render 中的 JSON 因換行或引號格式錯誤而無法解析。
+## 建立匿名測試資料
 
-## 驗收方式
+建議先建立一份不含真實企業資訊的測試表，例如：
 
-先建立一份匿名測試表，至少包含日期、分類、狀態與數值欄位。讓工具回答一個可人工核對的問題，例如「目前共有多少筆資料？」結果必須和 Sheet 手動計算一致。
+| Request ID | Created Date | Category | Status |
+| --- | --- | --- | --- |
+| R001 | 2026-07-01 | Dashboard | Completed |
+| R002 | 2026-07-03 | Data Query | In Progress |
 
-<Info>
-  今天只要記住一件事：Sheet ID 告訴程式資料在哪裡；Service Account 決定程式有沒有權限讀取。
-</Info>
+先用這份資料驗證權限與查詢，再替換成自己的資料來源。
 
-下一篇介紹 Trello 與 Confluence API，這兩項功能可以依需求選配。
+## 本篇驗收
+
+- 後端能開啟指定 Sheet。
+- 未分享給 Service Account 時會出現權限錯誤。
+- Sheet ID 與憑證不會出現在公開教學內容。
+- Viewer 權限已足夠時，不給 Editor。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請檢查 Google Sheets 工具的憑證載入方式。
+目標：本機可讀取 .env，Render 可讀取 GOOGLE_SERVICE_ACCOUNT_JSON，
+Repository 不得包含 JSON Key，缺少權限時回傳清楚錯誤。
+請不要把任何真實 Sheet ID 寫進程式碼。
+```
+
+下一篇會介紹 Trello 與 Confluence API；這兩項是選配，不影響基礎版 Data Machi 完成。

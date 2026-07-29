@@ -4,31 +4,77 @@ sidebarTitle: "實作 11｜最小對話"
 description: "先不加入任何資料工具，確認前端、後端與 Gemini API 能完成一次完整對話。"
 ---
 
-在加入 Google Sheets、RAG 或 LangGraph 前，先完成最小閉環：
+在加入 Sheets、RAG 或 Trello 前，先完成最小可行流程。這一步只驗證三件事：前端能送出訊息、後端能呼叫 Gemini、回答能回到畫面。
 
-```text
-使用者輸入 → 前端 → FastAPI → Gemini → FastAPI → 前端顯示
+```mermaid
+flowchart LR
+    U[使用者] --> F[React 前端]
+    F --> B[FastAPI /chat]
+    B --> G[Gemini API]
+    G --> B --> F --> U
 ```
 
-這一步很重要，因為如果連最基本的模型呼叫都還沒成功，就同時加入多個工具，只會讓錯誤來源更難判斷。
+## 為什麼要先做最小版本？
 
-## 本篇要完成的結果
+若一開始同時串接五個工具，出錯時很難判斷問題來自前端、後端、模型、資料權限還是路由。先讓主幹成功，後續每新增一個工具都能單獨驗證。
 
-- 前端可以送出一則訊息。
-- 後端能讀取 `GOOGLE_API_KEY`。
-- Gemini 回傳文字。
-- 前端能顯示回答與錯誤狀態。
+## 開始前確認
 
-## 建議先關閉選配能力
+- 本機前端與後端都已啟動。
+- `GOOGLE_API_KEY` 已放在 `backend/.env`。
+- 前端 API Base URL 指向本機後端。
+- GitHub 中沒有真實 API Key。
 
-暫時不要要求系統查 Sheets、PDF、Trello 或 Confluence。System Prompt 也先維持簡單，確認模型連線正常後，再逐步恢復工具路由與企業規則。
+## 測試流程
 
-## 驗收問題
+先使用不需要外部資料的問題，例如：
 
-使用不需要外部資料的問題，例如「請用一句話介紹你能協助的工作」。若回答成功，代表主幹已打通；若失敗，檢查 API Key、模型名稱、後端 Log 與前端 API URL。
+```text
+請用三句話說明你能協助處理哪些工作。
+```
 
-<Info>
-  最小版本不是最終產品，但它是後續所有功能共用的健康檢查。
-</Info>
+成功時應看到：
 
-下一篇加入第一個可驗證的資料來源：Google Sheets。
+1. 前端顯示送出中或處理中。
+2. 後端 Terminal 收到 `/chat` 請求。
+3. Gemini 回傳內容。
+4. 前端顯示完整回答。
+
+## 不要急著加入的功能
+
+本篇先暫時忽略：
+
+- Google Sheets
+- PDF 文件搜尋
+- Trello 與 Confluence
+- 對話記憶
+- Fallback 與 Verification
+
+先確認最小對話穩定，再逐步增加複雜度。
+
+## 常見錯誤
+
+| 現象 | 優先檢查 |
+| --- | --- |
+| 401／認證失敗 | Gemini API Key |
+| 404 | 前端 API 路徑與後端 Route |
+| 422 | Request JSON 格式 |
+| CORS Error | 後端允許的 Origin |
+| 長時間無回應 | 模型負載、Timeout 或網路 |
+
+## 本篇驗收
+
+- 連續送出三個簡單問題都能收到回答。
+- 錯誤時前端不會永久停在 Loading。
+- 後端 Log 不顯示完整 Secret。
+- 回答語言能跟隨使用者輸入。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請建立或檢查最小聊天流程，只保留 React 前端、FastAPI /chat 與 Gemini 呼叫。
+先不要加入任何 Tool、RAG 或 Memory。
+請提供一個最小測試，以及 401、422、CORS 和 Timeout 的排查方式。
+```
+
+下一篇會加入第一個可人工核對的資料工具：Google Sheets。

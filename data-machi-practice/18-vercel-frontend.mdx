@@ -4,26 +4,85 @@ sidebarTitle: "實作 18｜Vercel 前端"
 description: "連接 GitHub、設定 frontend Root Directory、Vite、Backend URL 與正式環境測試。"
 ---
 
-Vercel 負責提供使用者實際打開的網站。它會建置 React／Vite 前端，但模型金鑰與資料憑證仍然只留在 Render 後端。
+Render 已經讓後端在線上運作，下一步是把 React／Vite 前端部署到 Vercel，讓使用者可以直接透過瀏覽器使用 Data Machi。
 
-## 部署流程
+```mermaid
+flowchart LR
+    GH[GitHub Repository] --> V[Vercel Project]
+    V --> F[建置 frontend]
+    F --> URL[Vercel 公開網址]
+    URL --> R[Render Backend URL]
+```
 
-1. 在 Vercel 匯入同一個 GitHub Repository。
-2. 將 Root Directory 指向 `frontend`。
-3. 確認 Framework 為 Vite，Build Command 與 Output Directory 正確。
-4. 建立前端環境變數，填入 Render Backend URL。
-5. 部署並取得 Vercel 網址。
+## 建立 Vercel Project
+
+1. 登入 Vercel，選擇 **Add New Project**。
+2. 匯入同一個 GitHub Repository。
+3. Root Directory 設為 `frontend`。
+4. Framework Preset 選擇 Vite。
+5. 確認 Build Command 與 Output Directory。
+6. 建立前端環境變數。
+7. 執行第一次部署。
+
+## 前端最重要的環境變數
 
 ```env
 VITE_API_BASE_URL=https://your-backend.onrender.com
 ```
 
-## 前端環境變數的限制
+這個網址不是 Secret，可以放在 Vercel Environment，但不要散落在多個 React 元件中。所有 API 呼叫應該統一從環境變數或共用 API Client 讀取。
 
-Vite 會把 `VITE_` 開頭的值放進瀏覽器程式，因此只適合存放公開網址與非敏感設定，不能存 Gemini Key、Trello Token 或 Service Account。
+<Warning>
+  `VITE_` 變數會被打包到瀏覽器端，因此只能放可公開設定。Gemini Key、Trello Token、Confluence Token 與 Service Account JSON 都不應出現在 Vercel 前端。
+</Warning>
 
-## 成功標準
+## Preview 與 Production
 
-Vercel 網站可以開啟，送出問題後能呼叫 Render，並正確呈現進度、回答與錯誤狀態。若本機正常但正式網站失敗，下一步通常是檢查 API URL 與 CORS。
+Vercel 可能為每個 Branch 或 Pull Request 建立 Preview URL，而主要分支則對應 Production URL。
 
-下一篇專門處理 Vercel、Render 與 CORS 的雙向設定。
+```mermaid
+flowchart TD
+    B[Feature Branch] --> P[Preview Deployment]
+    M[Main Branch] --> D[Production Deployment]
+    P --> T[測試修改]
+    T --> PR[合併 Pull Request]
+    PR --> M
+```
+
+Preview 很適合檢查前端版面與基本流程，但若後端 CORS 只允許 Production URL，Preview 可能無法呼叫 Render。後續串接篇會處理這個差異。
+
+## 如何驗證前端成功？
+
+- Vercel Deployment 狀態為 Ready。
+- 首頁與聊天介面能正常載入。
+- 瀏覽器 Console 沒有找不到環境變數或 JavaScript 錯誤。
+- Network 面板能看到請求送往正確的 Render URL。
+- 後端失敗時，畫面會顯示可理解的錯誤，不會永久 Loading。
+
+## 常見失敗
+
+| 現象 | 優先檢查 |
+| --- | --- |
+| Build Failed | Node.js 版本、`package.json`、Root Directory |
+| 白畫面 | 瀏覽器 Console、路由與環境變數 |
+| 呼叫 localhost | `VITE_API_BASE_URL` 未設定或未重新部署 |
+| 404 on refresh | SPA Rewrite／路由設定 |
+| CORS Error | Render 尚未允許目前 Vercel 網域 |
+
+## 本篇驗收
+
+- Production URL 可在桌機與手機開啟。
+- API 請求指向 Render，而不是 localhost。
+- GitHub 新 Commit 能觸發 Vercel 自動部署。
+- Preview 與 Production 的環境設定已清楚區分。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請檢查 React / Vite 前端的 Vercel 部署設定。
+確認 Root Directory、Build Command、Output Directory 與 VITE_API_BASE_URL。
+請把所有 Backend URL 集中管理，不要散落在元件中，
+並提供 Browser Console、Network 與部署 Log 的驗收方式。
+```
+
+下一篇會正式串接 Vercel 與 Render，處理 CORS、網址與環境差異。

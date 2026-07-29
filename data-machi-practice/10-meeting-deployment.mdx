@@ -4,32 +4,81 @@ sidebarTitle: "實作 10｜本機啟動"
 description: "啟動 React 前端與 FastAPI 後端，理解兩個服務如何透過 API 溝通。"
 ---
 
-正式串接資料與部署前，先在本機確認專案骨架正常。這一步不是要深入學習 React 或 Python，而是確認你的電腦能執行這兩個服務。
+在部署前，先確認專案能在本機運作。Data Machi 需要同時啟動前端與後端，兩者分別使用不同的 Port。
 
-## 為什麼需要兩個服務？
-
-```text
-React／Vite 前端：顯示畫面、接收輸入
-FastAPI 後端：保管 Secret、呼叫模型與資料工具
+```mermaid
+flowchart LR
+    B[瀏覽器 localhost:5173] --> F[React / Vite 前端]
+    F --> A[FastAPI localhost:8000]
+    A --> G[Gemini 與資料工具]
 ```
 
-前端通常使用 `localhost:5173`，後端通常使用 `localhost:8000`。這是同一台電腦上的兩個不同服務。
+## 啟動後端
 
-## 啟動流程
-
-<Steps>
-</Steps>
-
-## 這一階段先不要追求所有功能成功
-
-如果尚未申請 Trello 或 Confluence，相關工具失敗是合理的。你只需要先確認：前端可以開啟、後端可以啟動、前端能送出一則請求，錯誤訊息也能正常顯示。
-
-## 使用 AI Coding Agent 排查
-
-```text
-請檢查目前前端與後端的啟動指令、必要版本與環境變數。
-我希望先完成最小啟動，不處理選配工具。
-若啟動失敗，請根據終端機錯誤判斷問題屬於套件、環境變數、Port 或 CORS。
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
 ```
 
-下一篇會只串接 Gemini，完成第一個真正可對話的最小版本。
+Windows 啟用虛擬環境時通常使用：
+
+```powershell
+.\.venv\Scripts\activate
+```
+
+啟動成功後，先開啟 `http://localhost:8000/docs`，確認 FastAPI 的 API 文件可以顯示。
+
+## 啟動前端
+
+另開一個 Terminal：
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+開啟 Vite 顯示的網址，通常是 `http://localhost:5173`。
+
+## 一則訊息如何流動？
+
+```mermaid
+sequenceDiagram
+    participant U as 使用者
+    participant F as Vite 前端
+    participant B as FastAPI 後端
+    participant M as Gemini
+    U->>F: 輸入問題
+    F->>B: POST /chat
+    B->>M: 傳送訊息
+    M-->>B: 回傳回答
+    B-->>F: JSON Response
+    F-->>U: 顯示文字
+```
+
+## 常見錯誤
+
+- `localhost:5173` 打得開但不能聊天：通常是後端未啟動、API URL 錯誤或 CORS。
+- `localhost:8000/docs` 打不開：先看後端 Terminal 的套件或環境變數錯誤。
+- 前端白畫面：查看瀏覽器 Console 與 Vite Terminal。
+- 安裝失敗：確認 Node.js、Python 版本與目前所在資料夾。
+
+## 本篇驗收
+
+- 前端與後端可同時啟動。
+- `/docs` 可以開啟。
+- 瀏覽器 Console 沒有持續的連線錯誤。
+- 關閉後端後，前端能顯示清楚的連線失敗訊息。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請檢查目前專案的本機啟動流程。
+請確認 README 中的 Python、Node.js、前端與後端指令與實際檔案一致，
+並補上如何測試 /docs、如何停止服務，以及常見的 CORS 與 Port 問題。
+```
+
+下一篇會先只串接 Gemini，完成最小 AI 對話主幹。

@@ -4,21 +4,28 @@ sidebarTitle: "實作 07｜Atlassian API"
 description: "認識 Trello 與 Confluence 的用途、必要憑證、權限與選配方式。"
 ---
 
-Trello 與 Confluence 都屬於選配服務。沒有 Atlassian 帳號的讀者，仍然可以先完成 Gemini、Google Sheets 與 PDF RAG 版本。
+Trello 與 Confluence 都屬於選配資料來源。沒有使用 Atlassian 服務的讀者，可以先完成 Gemini、Google Sheets 與 PDF RAG，再回來擴充。
 
-## 兩個服務解決不同問題
+```mermaid
+flowchart LR
+    Q[使用者問題] --> C[Coordinator]
+    C -->|專案進度| T[Trello API]
+    C -->|規範與文件| F[Confluence API]
+```
+
+## 兩種服務解決不同問題
 
 | 服務 | 適合回答 |
 | --- | --- |
-| Trello | 專案目前做到哪裡、有哪些卡片、誰負責 |
-| Confluence | 名詞定義、政策、流程與正式文件內容 |
+| Trello | 卡片狀態、負責人、截止日、看板進度 |
+| Confluence | 規範、流程、定義、團隊文件與知識文章 |
 
 ## Trello 需要準備
 
-- 一個匿名測試 Board
+- Trello 帳號與測試 Board
 - Board ID
 - API Key
-- 使用者授權 Token
+- API Token
 
 ```env
 TRELLO_BOARD_ID=
@@ -26,12 +33,15 @@ TRELLO_API_KEY=
 TRELLO_TOKEN=
 ```
 
+請建立匿名測試 Board，不要使用真實專案名稱、人員或機密卡片。Token 代表你的存取權限，應放在 `backend/.env` 與 Render Environment。
+
 ## Confluence 需要準備
 
+- Atlassian 帳號
 - Confluence Site URL
-- 帳號 Email
+- 登入 Email
 - API Token
-- 對目標 Space 與 Page 的讀取權限
+- 該帳號可讀取的測試 Space／頁面
 
 ```env
 CONFLUENCE_URL=
@@ -39,16 +49,25 @@ CONFLUENCE_USERNAME=
 CONFLUENCE_API_TOKEN=
 ```
 
-## 權限觀念
+API 能讀到的內容仍受原本頁面權限限制。若帳號在網頁中看不到某頁，後端通常也不能透過 API 讀取。
 
-API 不會自動突破原本的頁面權限。帳號在網頁中看不到的內容，透過 API 通常也讀不到。教學與公開範例請建立匿名資料，不要連接真實內部空間。
+## 個人學習版與正式產品版
 
-## 選擇你的版本
+個人測試可使用 Email 加 API Token。若要提供給多位使用者或公開散布，應進一步評估 OAuth、權限隔離、Token 輪替與稽核紀錄，而不是共用同一組管理者 Token。
+
+## 本篇驗收
+
+- Trello 能列出匿名測試 Board 的卡片。
+- Confluence 能讀到指定測試頁面。
+- 移除權限後，API 應回傳權限錯誤，而不是空白成功。
+- Token 不存在 GitHub、Vercel 前端或教學截圖。
+
+## 建議的 Vibe Coding Prompt
 
 ```text
-基礎版：Gemini + Sheets
-知識版：Gemini + Sheets + PDF
-完整版：再加入 Trello + Confluence
+請檢查 Trello 與 Confluence 工具目前需要哪些環境變數與權限。
+先建立最小讀取測試，不要加入寫入、刪除或更新功能。
+錯誤訊息需要區分：缺少 Token、權限不足、資源不存在與網路失敗。
 ```
 
-下一篇會申請 Groq API，為會議錄音加入語音轉文字能力。
+下一篇會加入 Groq Whisper，讓會議錄音可以轉成文字。

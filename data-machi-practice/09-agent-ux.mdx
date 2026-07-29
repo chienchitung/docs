@@ -4,36 +4,57 @@ sidebarTitle: "實作 09｜建立副本"
 description: "從開源專案建立自己的版本，移除品牌、預設資料來源與正式環境設定。"
 ---
 
-完成服務準備後，接下來要把開源 Repository 變成自己的 Data Machi，而不是直接沿用原始專案中的名稱與設定。
+前面已準備好主要服務，現在才正式建立自己的專案副本。這一步不是把原始 Repository 原封不動複製，而是先移除不屬於你的品牌、資料來源與正式環境設定。
 
-## 應該抽象化的內容
-
-- 組織、部門與產品名稱
-- 預設 Sheet ID、Board ID、Space Key
-- 正式前端與後端網址
-- Prompt 中的業務範圍與身份
-- 範例資料中的姓名、Email 與指標
-- Logo、favicon、頁面標題與說明
-
-## 不應該只做文字取代
-
-品牌名稱可能同時存在於前端、後端 Prompt、README、部署設定與錯誤訊息。請先讓 AI Coding Agent 搜尋完整 Repository，再依用途分類修改。
-
-```text
-請掃描整個 Repository，找出所有可能屬於特定組織的識別資訊。
-請分成：品牌文字、預設資料來源、正式網址、憑證風險、業務規則。
-先列出位置與修改建議，不要立即全部取代。
+```mermaid
+flowchart LR
+    O[原始開源專案] --> F[Fork / Clone]
+    F --> A[去識別化]
+    A --> E[建立 .env.example]
+    E --> G[自己的 GitHub Repository]
 ```
 
-## 建立 `.env.example`
+## 優先檢查的位置
 
-保留變數名稱與用途說明，但不要放真實值。完成後，新的讀者應能只看 README 與 `.env.example`，知道需要申請哪些服務。
+- README、頁面標題、Logo 與前端文案
+- `backend/agents` 中的 Prompt 與資料描述
+- 預設 Spreadsheet Key、Board ID、Space URL
+- CORS 中的正式網域
+- Render、Vercel 與部署設定檔
+- 範例資料、測試截圖與錯誤訊息
+
+## 去識別化不只是改名稱
+
+除了品牌文字，也要移除可推回真實組織的資訊，例如部門名稱、地區代碼、內部指標、真實 Email、工單欄位與專案看板結構。教學中應替換為匿名資料，例如 `Your Organization`、`Project Board`、`Knowledge Base`。
+
+## 建立自己的環境變數範本
+
+```env
+GOOGLE_API_KEY=
+GEMINI_MODEL=
+GOOGLE_SERVICE_ACCOUNT_JSON=
+GOOGLE_SHEET_KEY=
+TRELLO_BOARD_ID=
+CONFLUENCE_URL=
+VITE_API_BASE_URL=
+```
+
+`.env.example` 只列出變數名稱與用途，不放真實值。
 
 ## 本篇驗收
 
-- Repository 搜尋不到原始企業名稱。
-- 沒有真實 API Key、Token 或 Service Account。
-- 專案名稱、Logo 與說明已改成自己的版本。
-- 所有環境差異都透過變數控制，而不是寫死在程式中。
+- GitHub Repository 已屬於你自己的帳號。
+- 搜尋不到原組織名稱與真實網域。
+- 所有 Secret 都由環境變數讀取。
+- README 清楚列出必要與選配服務。
+- 專案在沒有選配 API 時仍可啟動基礎功能。
 
-下一篇會在本機啟動前端與後端，確認專案骨架可正常運作。
+## 建議的 Vibe Coding Prompt
+
+```text
+請掃描整個 Repository，找出品牌名稱、真實網址、預設資料來源 ID、Email、部門與市場資訊。
+先建立清單，再改成中性名稱與環境變數。
+不要刪除功能，只移除識別資訊與硬編碼設定。
+```
+
+下一篇會在本機啟動前端與後端，確認專案骨架可以運作。

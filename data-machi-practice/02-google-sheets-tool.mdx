@@ -4,58 +4,82 @@ sidebarTitle: "實作 02｜Vibe Coding"
 description: "比較 VS Code 搭配 Claude Code／Codex，以及雲端 Coding Agent 的使用情境。"
 ---
 
-建立 Data Machi 不一定只有一種開發方式。你可以依照設備、時間與修改範圍，選擇本機、雲端或混合式工作流。
+建立 Data Machi 不代表你必須先熟悉所有程式語法。更實際的方式是：先描述目標，再讓 AI Coding Agent 協助閱讀 Repository、修改檔案、執行測試與說明錯誤。
 
-## 路線一：本機開發
+## 三種開發方式
 
-```text
-VS Code
-  ├─ Claude Code
-  └─ Codex
-      ↓
-修改本機 Repository
-      ↓
-啟動前端與後端測試
-      ↓
-Push 到 GitHub
+```mermaid
+flowchart LR
+    A[本機 VS Code] --> G[GitHub]
+    B[雲端 Coding Agent] --> G
+    G --> R[Render]
+    G --> V[Vercel]
 ```
 
-適合大型修改、查看完整錯誤、測試 PDF／音訊與同時啟動前後端。
+<CardGroup cols={3}>
+  <Card title="本機開發" icon="laptop-code">
+    適合第一次啟動、修改多個模組、測試 PDF／音訊，以及查看完整 Terminal 錯誤。
+  </Card>
 
-## 路線二：雲端開發
+  <Card title="雲端開發" icon="cloud">
+    適合透過桌機或手機進行 Prompt、文案、設定與小型修正，再建立 Commit 或 Pull Request。
+  </Card>
 
-```text
-桌機或手機
-  ↓
-Claude Code 雲端環境
-  ↓
-讀取 GitHub Repository
-  ↓
-建立 Commit 或 Pull Request
+  <Card title="混合式開發" icon="arrows-rotate">
+    大型修改在本機完成，臨時調整使用雲端環境，GitHub 保存唯一正式版本。
+  </Card>
+</CardGroup>
+
+## 我實際使用的流程
+
+開發 Data Machi 時，我主要在本機 VS Code 中搭配 Claude Code 或 Codex。需要遠端處理時，則透過 Claude Code 的桌面或手機介面開啟雲端環境，直接從 GitHub Repository 繼續修改。
+
+```mermaid
+sequenceDiagram
+    participant Dev as 開發者
+    participant Agent as AI Coding Agent
+    participant GH as GitHub
+    participant Deploy as Vercel / Render
+    Dev->>Agent: 描述目標與限制
+    Agent->>Dev: 說明修改計畫
+    Agent->>GH: 建立 Commit / PR
+    Dev->>GH: 檢查 Diff 並合併
+    GH->>Deploy: 觸發自動部署
+    Deploy-->>Dev: 回報部署結果
 ```
 
-適合修改 Prompt、文案、環境變數範例、小型功能與部署問題。雲端環境是否能完整執行專案，取決於它是否支援必要套件、檔案與外部服務。
-
-## 路線三：混合式開發
-
-這是作者主要使用的方法：
+## 什麼情況適合哪一種方式？
 
 | 情境 | 建議方式 |
 | --- | --- |
-| 第一次啟動與大型架構修改 | 本機 VS Code |
-| Prompt、文案、小型修正 | 本機或雲端皆可 |
-| 手機臨時修改 | 雲端 Coding Agent |
-| PDF、音訊與完整流程測試 | 本機 |
-| 查看正式環境狀態 | Render／Vercel Dashboard |
+| 第一次啟動前後端 | 本機 VS Code |
+| 修改 Agent 架構或多個工具 | 本機 VS Code |
+| 修改 Prompt、README、錯誤文案 | 本機或雲端皆可 |
+| 手機臨時修正 | 雲端 Coding Agent |
+| 測試 PDF、音訊、檔案上傳 | 本機較合適 |
+| 查看正式部署狀態 | Vercel／Render Dashboard |
 
-## 不論用哪個工具，都遵循同一流程
+## 安全的 Vibe Coding 節奏
+
+1. 先要求 AI 閱讀專案，不要立刻修改。
+2. 要求它列出會修改的檔案與原因。
+3. 限制不要把 API Key、Token 或真實資料寫入程式碼。
+4. 修改後查看 Diff，而不是只看 AI 的文字說明。
+5. 執行本篇驗收，再建立 Commit。
+
+## 建議 Prompt
 
 ```text
-描述目標 → AI 先檢查 → 提出計畫 → 修改 → 查看 Diff → 測試 → Commit
+請先閱讀目前 Repository 的 README、資料夾結構與部署設定。
+先不要修改，請回答：
+1. 這次需求會影響哪些檔案？
+2. 有哪些環境變數或外部服務相關風險？
+3. 如何用最小修改完成？
+4. 修改後應該如何驗收？
 ```
 
 <Warning>
-  不要直接接受所有修改。至少確認改了哪些檔案、是否新增套件、是否把 API Key 寫進程式，以及原本功能是否仍正常。
+  Vibe Coding 不是把所有決策交給 AI。你仍需要掌握目標、資料範圍、Secret 安全與驗收標準。
 </Warning>
 
-下一篇會說明 GitHub 如何成為本機、雲端開發與自動部署之間的共同中心。
+下一篇會說明 GitHub 如何把本機、雲端開發與自動部署串在一起。

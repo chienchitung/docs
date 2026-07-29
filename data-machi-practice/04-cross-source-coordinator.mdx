@@ -4,47 +4,62 @@ sidebarTitle: "實作 04｜Secret 地圖"
 description: "區分本機 .env、Render Environment、Vercel Environment 與 GitHub 中可公開的設定。"
 ---
 
-Data Machi 會使用多組 API Key、Token、Service Account JSON 與服務網址。對初學者來說，最容易出錯的不是申請，而是把憑證放錯地方。
+Data Machi 會使用多種 API Key、Token、網址與 Service Account 憑證。最常見的問題不是不會申請，而是**不知道取得之後應該放在哪裡**。
 
-## 四個環境的差異
+```mermaid
+flowchart TD
+    A[取得 API Key / Token] --> B{前端需要直接使用嗎？}
+    B -- 否 --> C[放 backend/.env 或 Render Environment]
+    B -- 是且可公開 --> D[放 Vercel Environment]
+    B -- 是但屬於 Secret --> E[改由後端代理，不放前端]
+    C --> F[加入 .gitignore]
+    D --> G[重新部署前端]
+```
 
-| 設定 | 本機 | Render | Vercel | GitHub |
-| --- | --- | --- | --- | --- |
-| Gemini API Key | `backend/.env` | Environment | 不放 | 不放 |
-| Service Account JSON | `backend/.env` | Environment／Secret | 不放 | 不放 |
-| Trello／Confluence Token | `backend/.env` | Environment | 不放 | 不放 |
-| Render Backend URL | 前端 `.env` | 不需 | Environment | 可放範例 |
-| Vercel 網址 | 不需 | CORS allowlist | 自動產生 | 可寫文件 |
+## 四個位置的差異
 
-## `.env.example` 的作用
+| 位置 | 適合放什麼 | 不應放什麼 |
+| --- | --- | --- |
+| `backend/.env` | 本機 Gemini、Trello、Confluence、Sheets 憑證 | 不提交 GitHub |
+| Render Environment | 正式後端 Secret 與服務設定 | 不放在公開程式碼 |
+| Vercel Environment | 前端需要的 Backend URL、公開設定 | 私密 API Key |
+| GitHub | `.env.example`、變數名稱與說明 | 真實 Key、Token、JSON |
 
-Repository 可以放變數名稱，但不能放真實值：
+## Data Machi 的 Secret 地圖
 
 ```env
+# 後端：本機 .env / Render Environment
 GOOGLE_API_KEY=
 GOOGLE_SERVICE_ACCOUNT_JSON=
 TRELLO_API_KEY=
 TRELLO_TOKEN=
-CONFLUENCE_URL=
+CONFLUENCE_API_TOKEN=
+
+# 前端：本機 .env / Vercel Environment
 VITE_API_BASE_URL=
 ```
 
-## 三個安全原則
-
-1. 真實憑證不得 Commit 到 GitHub。
-2. 前端程式可被使用者看到，因此敏感金鑰不能放在 Vite 前端環境變數。
-3. 憑證若曾公開，即使之後刪除，也應立即撤銷並重新建立。
-
-## 請 AI Coding Agent 檢查
-
-```text
-請檢查 Repository 是否包含 API Key、Token、Service Account JSON、
-正式 Sheet ID 或內部網址。只列出風險位置，不要在回覆中完整顯示憑證。
-同時確認 .gitignore 是否排除 .env 與憑證檔。
-```
-
 <Warning>
-  名稱以 `VITE_` 開頭的環境變數會被打包進前端，不能用來保存秘密。
+  任何以 `VITE_` 開頭的變數，都可能被打包進瀏覽器可以讀取的前端程式。不要把 Gemini、Trello、Confluence 或 Service Account Secret 放在前端。
 </Warning>
 
-下一篇開始準備第一個必要外部服務：Gemini API。
+## 本機與正式環境為什麼要分開？
+
+本機 `.env` 只存在你的電腦；Render 與 Vercel 不會自動讀取它。部署後必須到各平台 Dashboard 重新建立對應的 Environment Variables。反過來，平台上的 Secret 也不會自動下載到本機。
+
+## 本篇驗收
+
+- `.gitignore` 已排除 `.env`、金鑰 JSON 與本機索引檔。
+- GitHub 只保留 `.env.example`，內容沒有真實值。
+- 前端只保存 Backend URL 等可公開設定。
+- 每次新增環境變數後，都知道是否需要重新部署。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請檢查 Repository 中所有可能包含 Secret 的位置，包括 .env、JSON、前端環境變數與硬編碼網址。
+先列出風險，不要顯示任何完整金鑰值。
+請將可公開設定與私密設定分開，並更新 .env.example 與 .gitignore。
+```
+
+下一篇會開始申請第一個必要服務：Gemini API。
