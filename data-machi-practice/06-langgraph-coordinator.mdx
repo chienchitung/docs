@@ -1,0 +1,55 @@
+---
+title: "實作 06｜建立 LangGraph Coordinator 與平行工具節點"
+sidebarTitle: "實作 06｜LangGraph"
+description: "建立 StateGraph、工具循環、條件 Edge、平行工具執行與進度事件。"
+---
+
+這一篇把前面的工具放進同一張可控 Graph。先從最小 State 開始，再逐步加入工具、條件路由與進度通知。
+
+```python
+from typing import Annotated, TypedDict
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
+class AgentState(TypedDict):
+    messages: Annotated[list[BaseMessage], add_messages]
+```
+
+## 基本 Graph
+
+```text
+START → Agent Node
+          ├─ 沒有 Tool Call → END
+          └─ 有 Tool Call → Parallel Tool Node → Agent Node
+```
+
+Agent Node 負責理解與選擇；Tool Node 負責確定性執行。工具回傳後再回到 Agent Node，形成循環 Graph。
+
+## 平行工具執行
+
+當模型一次要求多個彼此獨立的工具時，可使用 `asyncio.gather()` 同時執行。每個結果都應保留 tool call ID，讓模型知道哪個結果屬於哪個請求。
+
+```python
+results = await asyncio.gather(
+    *[execute_tool(call) for call in tool_calls],
+    return_exceptions=True,
+)
+```
+
+單一工具失敗不應讓其他成功結果全部消失。應把 Exception 轉成對應的 ToolMessage，再讓後續節點決定是否重試或降級。
+
+## 進度事件
+
+工具開始、完成、失敗與整合階段都可以透過 callback 發送結構化進度：
+
+```python
+{"phase": "tool", "label": "正在查詢文件", "status": "running"}
+```
+
+## 驗收方式
+
+- 不需要工具的問題能直接結束。
+- 兩個獨立工具能平行執行。
+- 單一工具失敗不會讓整輪崩潰。
+- Graph 不會因模型持續呼叫工具而無限循環。
+- 前端能收到人類可讀的階段狀態。

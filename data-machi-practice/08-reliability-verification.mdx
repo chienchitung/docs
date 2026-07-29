@@ -1,0 +1,37 @@
+---
+title: "實作 08｜可靠性工程：Timeout、Fallback 與答案查核"
+sidebarTitle: "實作 08｜可靠性"
+description: "加入模型逾時、重試、備援模型、驗證預算與事實查核。"
+---
+
+正式 Agent 必須假設模型與外部 API 一定會失敗。可靠性不是多寫一句「請不要出錯」，而是為每一種失敗建立程式層級處理。
+
+## 雙模型分工
+
+- 主要模型：負責使用者可見的長回答。
+- 快速模型：負責路由、釐清、分類與查核。
+- Fallback 模型：主要模型過載或逾時時接手生成。
+
+內部 JSON 判斷可以使用較短 timeout，長回答則需要較寬鬆的生成上限；不要用同一個 timeout 套用所有步驟。
+
+## Retry 與 Fallback
+
+```python
+primary = build_model(timeout=120, max_retries=2)
+fallback = build_fast_model(timeout=120, max_retries=2)
+model = primary.with_fallbacks([fallback], exceptions_to_handle=(TimeoutError,))
+```
+
+Retry 適合暫時性錯誤；認證錯誤、非法參數與資料不存在則不應盲目重試。
+
+## 驗證時間預算
+
+回答生成後可以執行來源查核、數字一致性檢查與全年範圍驗證，但驗證也需要總時間上限。超過預算時應保留原回答並標記驗證狀態，而不是讓使用者無限等待。
+
+## 驗收方式
+
+- 模擬 503 時會切換備援模型。
+- 逾時錯誤不會被誤判成 API Key 問題。
+- 工具結果與回答中的主要數字能對照。
+- 驗證階段超時後仍能回傳結果。
+- metadata 能指出是否完成驗證與使用了哪些來源。

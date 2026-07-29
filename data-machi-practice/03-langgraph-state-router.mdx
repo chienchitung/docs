@@ -1,86 +1,65 @@
 ---
-title: "實作 03｜用 LangGraph 建立 State 與 Router"
-sidebarTitle: "實作 03｜State & Router"
-description: "定義 Data Machi 的 State、Node 與條件 Edge，建立第一個可控的查詢路由工作流。"
+title: "實作 03｜模組化 Prompt：把規則拆成可維護的層級"
+sidebarTitle: "實作 03｜模組化 Prompt"
+description: "將身份、限制、工作流、工具路由、資料結構與輸出格式拆成獨立 Prompt 模組。"
 ---
 
-當系統只有一個工具時，可以直接呼叫函式；當資料來源與流程開始增加，就需要用 State 保存任務進度，並用 Router 決定下一步。
-
-## 定義 Data Machi State
-
-```python
-from typing import TypedDict
-
-class DataMachiState(TypedDict):
-    messages: list
-    user_query: str
-    query_intent: str
-    selected_tools: list[str]
-    tool_results: dict
-    sources: list[dict]
-    retry_count: int
-    final_answer: str
-```
-
-這些欄位可以分成三類：
-
-- **使用者上下文**：messages、user\_query
-- **業務資料**：query\_intent、tool\_results、sources
-- **流程控制**：selected\_tools、retry\_count、final\_answer
-
-## 第一版 Graph
+當 System Prompt 開始同時包含身份、禁止事項、工具規則、資料 schema、輸出格式與語氣要求時，單一大字串會快速失控。Data Machi 的做法是把規則拆成有優先順序的模組。
 
 ```text
-START
-  ↓
-解析意圖
-  ↓
-Router
-  ├─ 指標問題 → Sheets Tool
-  ├─ 文件問題 → Document Search
-  └─ 一般問題 → Direct Answer
-  ↓
-整合答案
-  ↓
-END
+Layer 1｜Hard Constraints
+Layer 2｜Core Identity
+Layer 3｜Workflow Policy
+Layer 4｜Tool Routing / Data Schema
+Layer 5｜Response Formatting
+Layer 6｜Skills / Glossary
 ```
+
+## 載入 Prompt 模組
 
 ```python
-from langgraph.graph import StateGraph, END
+from pathlib import Path
 
-graph = StateGraph(DataMachiState)
-graph.add_node("classify", classify_intent)
-graph.add_node("query_sheets", query_sheets)
-graph.add_node("search_docs", search_docs)
-graph.add_node("direct_answer", direct_answer)
-graph.add_node("synthesize", synthesize)
+PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
-graph.set_entry_point("classify")
-graph.add_conditional_edges("classify", route_query, {
-    "sheets": "query_sheets",
-    "docs": "search_docs",
-    "direct": "direct_answer",
-})
-graph.add_edge("query_sheets", "synthesize")
-graph.add_edge("search_docs", "synthesize")
-graph.add_edge("direct_answer", END)
-graph.add_edge("synthesize", END)
+PROMPT_MODULES = {
+    "Hard Constraints": "hard_constraints.md",
+    "Core Identity": "core_identity.md",
+    "Workflow Policy": "workflow_policy.md",
+    "Tool Routing": "tool_routing.md",
+    "Data Schema": "data_schema.md",
+    "Response Formatting": "response_formatting.md",
+}
 
-app = graph.compile()
+def load_prompt_modules() -> str:
+    sections = []
+    for title, filename in PROMPT_MODULES.items():
+        content = (PROMPT_DIR / filename).read_text(encoding="utf-8").strip()
+        sections.append(f"## {title}\n\n{content}")
+    return "\n\n".join(sections)
 ```
 
-## Router 的測試方式
+## 為什麼需要優先順序？
 
-不要只測最終回答，也要直接測 Router：
+不同規則可能互相衝突，例如「保持友善」不能覆蓋「資料不足時禁止猜測」。明確的 Layer 可以讓團隊知道哪一條規則具有最高優先權，也讓修改更容易審查。
 
-```text
-「Q2 客訴有多少件？」       → sheets
-「SLA 的正式定義是什麼？」   → docs
-「請解釋什麼是 RAG」         → direct
-```
+## 去識別化原則
 
-<Note>
-  Router 的工作是選擇處理路徑，不是直接完成整個任務。當分類與執行責任分離後，錯誤會更容易定位。
-</Note>
+教學版 Prompt 不應出現真實組織名稱、部門、人名、資料網址、內部縮寫或實際政策內容。請改用：
 
-下一篇會讓一個問題同時查詢多個來源，建立真正的跨來源 Coordinator。
+- `Your Organization`
+- `Project Board`
+- `Knowledge Base`
+- `Structured Data Source`
+- 自訂測試 glossary
+
+## 驗收方式
+
+- 刪除任一非必要 Prompt 模組後，系統仍能啟動。
+- 高優先級規則不會被低優先級語氣要求覆蓋。
+- 工具 schema 修改時，只需更新對應模組。
+- Prompt 檔案可以單獨進行版本比較與 review。
+
+<Info>
+  Prompt 模組化解決的是可維護性；下一篇會建立第一個真正負責精確計算的結構化資料工具。
+</Info>

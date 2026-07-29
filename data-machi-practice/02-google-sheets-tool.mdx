@@ -1,69 +1,79 @@
 ---
-title: "實作 02｜建立 Google Sheets 查詢工具"
-sidebarTitle: "實作 02｜Sheets Tool"
-description: "建立可驗證的試算表查詢工具，讓程式負責精確計算，LLM 負責理解意圖與整理回答。"
+title: "實作 02｜設計聊天 API：請求、回應與錯誤契約"
+sidebarTitle: "實作 02｜API 契約"
+description: "使用 FastAPI 與 Pydantic 定義聊天訊息、歷史紀錄、釐清選項、文件上下文與產品化錯誤。"
 ---
 
-這一篇建立 Data Machi 的第一個工具。重點不是讓 LLM 直接閱讀整張試算表，而是把自然語言問題轉成結構化查詢，再交由 Pandas 或資料庫完成篩選與計算。
+Agent 系統不能只回傳一段文字。真實產品還需要傳遞對話歷史、Conversation ID、釐清選項、文件選擇、執行 metadata 與可分類的錯誤狀態。
 
-## 責任分工
-
-| 工作 | 執行者 |
-| --- | --- |
-| 理解「今年 Q2 客訴有多少件」 | LLM |
-| 解析期間與指標 | LLM 或結構化解析器 |
-| 篩選日期、計算筆數與比例 | Python / Pandas |
-| 組織自然語言回答 | LLM |
-| 回傳資料更新時間與欄位來源 | Tool |
-
-## 工具輸入與輸出
+## 核心請求模型
 
 ```python
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Any, Optional
 
-class TicketQuery(BaseModel):
-    start_date: str
-    end_date: str
-    category: str | None = None
-    metric: str = "count"
+class Message(BaseModel):
+    role: str
+    content: str
 
-class TicketResult(BaseModel):
-    value: float
-    row_count: int
-    data_updated_at: str
-    filters_applied: dict
+class ChatRequest(BaseModel):
+    message: str
+    history: list[Message] = Field(default_factory=list)
+    conversation_id: Optional[str] = None
+    clarifications: list[dict] = Field(default_factory=list)
+    turn_context: dict[str, Any] = Field(default_factory=dict)
+    active_documents: list[str] | None = None
+
+class ChatResponse(BaseModel):
+    response: str
+    error_code: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 ```
 
-Tool 不應只回傳一句文字，而應回傳能被驗證與再次使用的結構化結果。
+| 欄位 | 用途 |
+| --- | --- |
+| `history` | 保留目前瀏覽器中的近期對話 |
+| `conversation_id` | 讀取持久化記憶與先前工具結果 |
+| `clarifications` | 將使用者選擇的條件結構化送回後端 |
+| `turn_context` | 告訴後續流程這輪是追問、改寫或新問題 |
+| `active_documents` | 限制本輪只能查哪些文件 |
+| `metadata` | 回傳來源、工具、驗證與執行狀態 |
 
-## 最小流程
+## 錯誤不是 Exception 字串
 
-```text
-使用者問題
-   ↓
-解析查詢條件
-   ↓
-驗證日期與欄位
-   ↓
-讀取快取或 Google Sheets
-   ↓
-Pandas 篩選與計算
-   ↓
-回傳結構化結果
-   ↓
-LLM 整理答案
+```python
+def product_error(code: str, title: str, message: str, next_steps=None):
+    return {
+        "code": code,
+        "title": title,
+        "message": message,
+        "next_steps": next_steps or [],
+    }
 ```
 
-## 驗證重點
+建議至少區分模型未設定、模型逾時、知識庫未完成、查無支持資料、工具執行中斷與未預期錯誤。
 
-- 同一組篩選條件應得到相同數字
-- 缺少必要欄位時應明確報錯
-- 日期範圍不合法時不得自行猜測
-- 回答應包含資料更新時間或來源說明
-- 測試資料應涵蓋空結果與欄位別名
+## CORS 與前端來源
 
-<Warning>
-  不要要求模型自行加總大量列資料。模型可以理解「要算什麼」，但精確計算必須由程式完成。
-</Warning>
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
 
-下一篇會把工具放入 LangGraph，建立 Data Machi 的結構化 State 與 Router。
+正式環境不要使用無限制的 `*`。只允許自己的前端網域與本機開發網址。
+
+## 驗收方式
+
+1. 空白 history 也能正常送出。
+2. 非法資料型別會得到清楚的驗證訊息。
+3. 缺少 API Key 時回傳產品化錯誤。
+4. 前端能依 `error_code` 顯示不同操作建議。
+
+<Info>
+  API 契約穩定後，才適合繼續設計 Prompt 與 Agent，否則每增加一項功能都會反覆修改前後端介面。
+</Info>

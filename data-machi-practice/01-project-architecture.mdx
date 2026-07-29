@@ -1,56 +1,84 @@
 ---
-title: "實作 01｜認識 Data Machi 專案架構"
-sidebarTitle: "實作 01｜專案架構"
-description: "從使用者輸入到最終回答，理解 Data Machi 前端、後端、Agent、工具與資料來源之間的關係。"
+title: "實作 01｜啟動 Data Machi：前後端架構與本機環境"
+sidebarTitle: "實作 01｜啟動專案"
+description: "從開源專案結構開始，完成 React 前端、FastAPI 後端、環境變數與本機啟動。"
 ---
 
-開始寫 Agent 之前，先看懂整個系統。Data Machi 不是只有一個 Prompt，而是由介面、API、工作流、工具與資料來源共同組成。
+第一步不是立刻研究 Agent Prompt，而是先讓整個系統在本機跑起來。Data Machi 採用前後端分離架構：React/Vite 負責互動介面，FastAPI 負責模型、工具與文件處理。
 
-## 一個問題如何流過系統
-
-```text
-使用者輸入
-   ↓
-前端送出請求
-   ↓
-後端 API 建立任務
-   ↓
-LangGraph 載入 State
-   ↓
-Coordinator 判斷需要哪些工具
-   ↓
-工具查詢資料來源
-   ↓
-整合結果與來源
-   ↓
-前端呈現答案與執行狀態
-```
-
-## 建議的資料夾結構
+## 專案結構
 
 ```text
-data-machi/
-├─ app/
-│  ├─ api/              # API 與請求驗證
-│  ├─ graph/            # State、Node、Edge
-│  ├─ tools/            # Sheets、文件與專案工具
-│  ├─ services/         # 外部系統連線
-│  └─ schemas/          # 輸入輸出資料結構
-├─ tests/               # 單元與整合測試
-├─ .env.example         # 環境變數範例
-└─ README.md            # 安裝與啟動方式
+project-root/
+├─ backend/
+│  ├─ main.py                 # FastAPI 入口與 API schema
+│  ├─ agent_logic.py          # 一輪對話的組裝與後處理
+│  ├─ agents/
+│  │  ├─ coordinator.py       # LangGraph 與工具協調
+│  │  ├─ analyst.py           # 結構化資料查詢
+│  │  ├─ document.py          # 文件 RAG
+│  │  └─ ...                  # 其他外部系統工具
+│  ├─ prompts/                # 模組化系統規則
+│  └─ requirements.txt
+├─ frontend/
+│  ├─ src/                    # React UI 與狀態管理
+│  └─ package.json
+└─ render.yaml                # 後端部署設定範例
 ```
 
-## 第一版完成標準
+## 建立後端環境
 
-- 能從環境變數讀取模型金鑰
-- 能啟動後端服務
-- 能送出一個問題並取得模型回答
-- 錯誤時回傳可理解的訊息
-- 不把金鑰寫進程式碼或 Git
+```bash
+cd backend
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+python main.py
+```
+
+預設後端網址：
+
+```text
+http://localhost:8000
+```
+
+## 建立前端環境
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+預設前端網址通常是：
+
+```text
+http://localhost:5173
+```
+
+## 最小環境變數
+
+```env
+GOOGLE_API_KEY=your_model_api_key
+GEMINI_MODEL=your_primary_model
+GEMINI_FAST_MODEL=your_fast_model
+ALLOWED_ORIGINS=http://localhost:5173
+```
+
+其他工具的憑證先不要一次全部設定。建議每完成一個實作章節，再加入對應環境變數，避免無法判斷錯誤來自哪個整合。
+
+<Warning>
+  不要把 API Key、Service Account JSON、文件網址、看板 ID 或試算表 ID 提交到 Git。所有教學範例都應使用占位符與自己的測試資源。
+</Warning>
+
+## 驗收方式
+
+1. 後端可以啟動且沒有 import error。
+2. 前端可以開啟。
+3. 瀏覽器能向後端送出一則最簡單的聊天請求。
+4. 缺少模型金鑰時，系統回傳清楚錯誤，而不是整個服務崩潰。
 
 <Info>
-  這一篇先建立可執行骨架，不急著加入 RAG、Multi-Agent 或複雜記憶。系統能穩定啟動，才有資格繼續增加能力。
+  本篇完成的是「系統骨架」。下一篇會正式定義前端與 Agent 後端之間的 API 契約。
 </Info>
-
-下一篇將加入第一個真正可驗證的資料工具：Google Sheets 查詢。

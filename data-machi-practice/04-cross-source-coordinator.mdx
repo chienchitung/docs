@@ -1,74 +1,89 @@
 ---
-title: "實作 04｜建立跨來源 Coordinator"
-sidebarTitle: "實作 04｜跨來源查詢"
-description: "讓 Data Machi 同時查詢試算表、文件與專案進度，整合答案並保留來源與執行狀態。"
+title: "實作 04｜建立結構化資料工具：Sheets、Pandas 與欄位別名"
+sidebarTitle: "實作 04｜資料工具"
+description: "以 Google Sheets 為資料來源，使用 Pandas、欄位別名、憑證管理與 TTL 快取完成精確查詢。"
 ---
 
-真實企業問題很少只依賴一個資料來源。使用者可能同時想知道數字、正式定義與目前改善進度，因此 Data Machi 需要先拆解問題，再決定執行一個或多個工具。
+這一篇把自然語言問題轉成可驗證的資料查詢。核心原則是：LLM 負責理解需求，Python 負責篩選、計算與格式化數字。
 
-## 範例問題
-
-> 今年 Q3 延遲工單有多少件？SLA 的正式定義是什麼？目前有哪些改善項目正在進行？
-
-這個問題需要：
-
-- Google Sheets：計算延遲工單數
-- 文件系統：取得 SLA 定義
-- 專案工具：確認改善項目狀態
-
-## Coordinator 流程
-
-```text
-使用者問題
-   ↓
-分析需要哪些來源
-   ↓
-建立 selected_tools
-   ↓
-平行執行獨立工具
-   ├─ Sheets Tool
-   ├─ Document Tool
-   └─ Project Tool
-   ↓
-檢查各工具結果
-   ↓
-整合答案與來源
-```
-
-## State 更新原則
-
-每個工具只更新自己的結果，不直接覆蓋其他工具內容：
+## 安全載入憑證
 
 ```python
-def sheets_node(state: DataMachiState):
-    result = query_sheets_tool(state["user_query"])
-    return {
-        "tool_results": {"sheets": result},
-        "sources": [{"type": "sheet", "name": result["source"]}],
-    }
+import json, os
+from oauth2client.service_account import ServiceAccountCredentials
+
+SCOPES = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive",
+]
+
+def load_credentials():
+    raw = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not raw:
+        raise RuntimeError("Missing service account credentials")
+    return ServiceAccountCredentials.from_json_keyfile_dict(
+        json.loads(raw), SCOPES
+    )
 ```
 
-在實際程式中，`tool_results` 與 `sources` 應設定 reducer，讓平行節點的輸出可以安全合併。
+教學資料必須使用自己的測試試算表，環境變數中只放占位符，不保留任何真實 Sheet ID。
 
-## Synthesize Node 的責任
+## 欄位別名
 
-Synthesize Node 只使用工具提供的事實：
+```python
+COLUMN_ALIASES = {
+    "Status": ["狀態", "進度", "status"],
+    "Department": ["部門", "單位", "department"],
+    "Due Date": ["截止日期", "到期日", "due date"],
+}
+```
 
-- 區分「查詢結果」與「模型推論」
-- 在每段結論後標示來源
-- 某個來源失敗時，清楚說明缺少哪一部分
-- 不用其他來源補猜不存在的數字
+使用者不會精確記得資料表欄位名稱，因此工具需要把自然語言對應到 canonical column，再由程式驗證欄位是否存在。
 
-## 完成標準
+## 安全讀取與短期快取
 
-- 單一來源問題只呼叫必要工具
-- 跨來源問題可以平行執行獨立工具
-- 任一工具失敗時仍能回傳部分結果
-- 每項重要事實都能對應來源
-- 執行紀錄能顯示每個工具的開始、完成與失敗狀態
+```python
+import time
+
+CACHE_TTL = 60
+_cache = {}
+
+def get_records(cache_key, loader):
+    now = time.monotonic()
+    cached = _cache.get(cache_key)
+    if cached and now - cached[0] < CACHE_TTL:
+        return cached[1]
+    records = loader()
+    _cache[cache_key] = (now, records)
+    return records
+```
+
+短期快取可以避免同一輪對話重複抓取整張工作表，但 cache key 必須包含資料來源與工作表名稱，避免不同來源互相污染。
+
+## 查詢流程
+
+```text
+自然語言問題
+  ↓
+解析期間、欄位與篩選條件
+  ↓
+欄位別名轉換
+  ↓
+載入或命中快取
+  ↓
+Pandas 篩選與計算
+  ↓
+回傳數值、列數、條件與資料來源
+```
+
+## 驗收方式
+
+- 同一條件重複執行得到一致結果。
+- 空白列不會讓讀取提前停止。
+- 不存在的欄位會明確報錯。
+- 空結果不會被 LLM 補成推測答案。
+- 快取過期後能取得新資料。
 
 <Info>
-  完成這一步後，Data Machi 已不只是多工具聊天機器人，而是具備任務拆解、跨來源執行與證據整合能力的工作流系統。
+  下一篇會處理另一種資料型態：PDF 與非結構化文件的 RAG 檢索。
 </Info>
-
-後續實作將加入資料不足時的重試循環、Reviewer 查核、Human-in-the-Loop 與 Checkpointer。

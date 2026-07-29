@@ -1,58 +1,83 @@
 ---
-title: "Data Machi 實作篇｜從概念走向可執行系統"
+title: "Data Machi 實作篇｜從開源專案拆解可執行的 Agent 系統"
 sidebarTitle: "實作篇導讀"
-description: "說明 Data Machi 實作篇的學習方式、專案演進原則與每篇文章如何對應可執行版本。"
+description: "以 Data Machi 開源專案為主線，逐步拆解前後端、工具、LangGraph、RAG、記憶、查核與部署。"
 ---
 
-30 天系列建立的是企業 AI 工作流的觀念地圖；實作篇則會把這些觀念逐步放進同一個 Data Machi 專案中。這裡不再按照固定天數更新，也不為了湊篇數拆分內容，而是依照真實產品的建構順序，完成一個可執行、可測試、可持續擴充的系統。
+這個實作篇不會重新發明一套只存在於教學中的範例，而是以 Data Machi 的開源專案為基礎，將一個已經能運作的 AI Agent 系統拆成可理解、可執行、可測試的學習單元。
 
-## 實作篇的學習方式
+<Note>
+  教學會保留真實架構與工程決策，但所有資料來源、欄位名稱、帳號、網址、試算表識別碼與組織規則都會抽象化。讀者應使用自己的測試資料與 API 憑證，不應複製任何內部識別資訊。
+</Note>
 
-每一篇都會回答四個問題：
-
-1. 這個功能解決什麼真實問題？
-2. 它在整體架構中位於哪個位置？
-3. 如何用程式完成最小可行版本？
-4. 如何驗證它真的正確運作？
+## 這套實作會完成什麼？
 
 ```text
-需求與問題
+React 前端
+   ↓ HTTP / progress events
+FastAPI API
    ↓
-架構判斷
+對話脈絡與釐清判斷
    ↓
-最小可行實作
+LangGraph Coordinator
+   ├─ 結構化資料工具
+   ├─ 專案管理工具
+   ├─ 知識文件工具
+   └─ 本地文件 RAG
    ↓
-測試與觀察
+答案查核、來源整理與錯誤轉譯
    ↓
-再決定是否增加複雜度
+回傳可理解的結果與執行狀態
 ```
 
-## 第一階段路線圖
+## 實作章節
 
 <CardGroup cols={2}>
-  <Card title="實作 01｜專案架構" icon="folder-tree">
-    看懂 Data Machi 的前端、後端、Agent 與工具如何協作，完成本機環境與基本啟動流程。
+  <Card title="實作 01｜啟動專案" icon="play">
+    建立前後端環境、環境變數與最小可執行版本。
   </Card>
 
-  <Card title="實作 02｜Google Sheets Tool" icon="table">
-    讓程式負責精確計算，LLM 負責理解問題與組織答案。
+  <Card title="實作 02｜API 契約" icon="server">
+    設計 FastAPI 的聊天請求、回應、錯誤與進度事件。
   </Card>
 
-  <Card title="實作 03｜LangGraph State" icon="diagram-project">
-    建立 State、Node、Edge 與 Router，將決策從黑箱移到可管理的工作流。
+  <Card title="實作 03｜模組化 Prompt" icon="layer-group">
+    將身份、工作流、工具路由與輸出規則拆成可維護模組。
   </Card>
 
-  <Card title="實作 04｜跨來源 Coordinator" icon="arrows-split-up-and-left">
-    同時查詢試算表、文件與專案進度，整合答案並保留來源。
+  <Card title="實作 04｜結構化資料工具" icon="table">
+    使用 Google Sheets、Pandas、欄位別名與快取完成精確查詢。
+  </Card>
+
+  <Card title="實作 05｜文件 RAG" icon="file-magnifying-glass">
+    建立 PDF 解析、向量索引、文件篩選與來源回傳。
+  </Card>
+
+  <Card title="實作 06｜LangGraph Coordinator" icon="diagram-project">
+    建立 State、工具循環、平行執行與條件路由。
+  </Card>
+
+  <Card title="實作 07｜多輪記憶與釐清" icon="comments">
+    處理追問、上下文沿用、重新查詢與長對話摘要。
+  </Card>
+
+  <Card title="實作 08｜驗證與可靠性" icon="shield-check">
+    加入 Timeout、Retry、Fallback、答案查核與產品化錯誤訊息。
+  </Card>
+
+  <Card title="實作 09｜Agent UX" icon="display">
+    顯示工具進度、釐清面板、文件選擇與可行動錯誤。
+  </Card>
+
+  <Card title="實作 10｜會議與部署" icon="rocket">
+    整合會議記錄、行動項目、本機儲存、測試與部署。
   </Card>
 </CardGroup>
 
-## 版本原則
+## 學習原則
 
-實作文章應對應固定的 Git commit 或 tag。文章中的程式碼、環境變數與執行結果，都應能在相同版本中重現，避免主分支持續演進後，舊文章失去可執行性。
+每篇文章都會包含：真實問題、對應程式模組、最小實作、測試方法、常見失敗與可再演進的方向。教學重點不是複製完整程式，而是理解為什麼系統需要這一層，以及如何在自己的專案中重建相同能力。
 
-<Note>
-  實作篇的目標不是一次建立最複雜的 Multi-Agent，而是先完成單一 Coordinator、確定性 Tools、LangGraph 路由、驗證與重試。只有當真實需求出現，再把特定 Node 升級為完整 Agent。
-</Note>
-
-下一篇將先從專案全貌開始，理解一個問題進入 Data Machi 後，會經過哪些模組才形成最終回答。
+<Info>
+  建議先完成實作 01–06，建立核心 Agent 工作流；實作 07–10 則把系統從 Demo 推進到可長期使用的產品。
+</Info>

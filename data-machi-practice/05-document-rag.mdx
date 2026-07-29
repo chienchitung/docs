@@ -1,0 +1,45 @@
+---
+title: "實作 05｜建立文件 RAG：PDF、向量索引與來源篩選"
+sidebarTitle: "實作 05｜文件 RAG"
+description: "建立 PDF 解析、向量資料庫、Lazy Initialization、文件篩選與來源回傳。"
+---
+
+結構化資料適合精確計算，PDF 與文字文件則需要 RAG。這一篇建立文件載入、切割、Embedding、向量索引與搜尋流程。
+
+```text
+上傳文件 → 解析文字 → 切割 Chunk → Embedding → FAISS 索引
+                                               ↓
+使用者問題 → 文件篩選 → 相似度搜尋 → 來源片段 → 回答
+```
+
+## 延遲初始化
+
+不要在服務啟動時無條件重建知識庫。先檢查磁碟是否已有索引或可處理文件，再於第一次需要時載入。
+
+```python
+async def ensure_kb_initialized():
+    if vector_db is not None:
+        return
+    if not has_index_cache() and not has_source_files():
+        return
+    await load_or_build_vector_db()
+```
+
+## Active Documents
+
+前端允許使用者指定本輪可搜尋的文件，後端則把文件清單放入 request context。這可避免多份相似文件互相干擾，也能降低不必要的檢索範圍。
+
+## 查無資料時不要猜
+
+工具應明確回傳：搜尋詞、文件名稱、頁碼或 chunk metadata，以及是否找到足夠相關內容。若沒有支持資料，最終回答應轉為可行動提示。
+
+<Warning>
+  教學資料請使用公開或自製 PDF。不要上傳內部文件、未公開報告、帳號資訊或含個資的資料。
+</Warning>
+
+## 驗收方式
+
+- 服務重啟後可從磁碟索引恢復。
+- 限定文件後，不會引用其他文件。
+- 掃描型 PDF 能清楚提示需要 OCR 或視覺解析。
+- 最終回答能保留文件與頁碼來源。

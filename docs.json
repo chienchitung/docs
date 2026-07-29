@@ -88,7 +88,13 @@
           "data-machi-practice/01-project-architecture",
           "data-machi-practice/02-google-sheets-tool",
           "data-machi-practice/03-langgraph-state-router",
-          "data-machi-practice/04-cross-source-coordinator"
+          "data-machi-practice/04-cross-source-coordinator",
+          "data-machi-practice/05-document-rag",
+          "data-machi-practice/06-langgraph-coordinator",
+          "data-machi-practice/07-memory-clarification",
+          "data-machi-practice/08-reliability-verification",
+          "data-machi-practice/09-agent-ux",
+          "data-machi-practice/10-meeting-deployment"
         ]
       }
     ]
