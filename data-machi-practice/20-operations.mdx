@@ -1,7 +1,7 @@
 ---
-title: "實作 20｜正式驗收與遠端維護：完成你的 Data Machi"
-sidebarTitle: "實作 20｜驗收與維護"
-description: "完成安全、功能、部署與跨裝置驗收，並建立雲端 Vibe Coding 與版本回復流程。"
+title: "實作 21｜正式驗收、交接與遠端維護：完成你的 Data Machi"
+sidebarTitle: "實作 21｜驗收與維護"
+description: "完成安全、功能、部署、跨裝置與離職交接驗收，並建立雲端 Vibe Coding 與版本回復流程。"
 ---
 
 完成部署不等於產品已經完成。最後一篇要確認 Data Machi 在正式環境中真的可用，並建立日後透過本機或雲端 Coding Agent 持續維護的流程。
@@ -18,7 +18,7 @@ flowchart LR
     V -->|失敗| R[回復 Commit 或修正]
 ```
 
-## 四個層次的驗收
+## 五個層次的驗收
 
 ### 1. 功能驗收
 
@@ -67,6 +67,30 @@ flowchart TD
 - 回答完成、失敗、查核中等狀態不混淆。
 - 長回答、文件來源與錯誤訊息在小螢幕仍可閱讀。
 
+### 5. 所有權與交接驗收
+
+這一層確認 Data Machi 不會因為單一開發者離開而停止運作。
+
+```mermaid
+flowchart TD
+    H[交接測試] --> O[Repository 與部署平台屬於公司 Team]
+    H --> A[至少兩位管理者]
+    H --> K[可重新建立與輪替 Token]
+    H --> D[另一位管理者可獨立部署]
+    H --> R[移除原開發者後系統仍正常]
+```
+
+請安排另一位管理者實際操作，而不是只閱讀文件：
+
+- 找到公司 GitHub Organization、Render Workspace、Vercel Team 與 Google Cloud Project。
+- 依照文件重新部署前端與後端。
+- 找到 Secret 名稱與存放位置，但文件中沒有完整明文憑證。
+- 建立一組測試 Token、切換環境變數並撤銷舊 Token。
+- 確認 Trello、Confluence 與 Sheets 整合帳號只具必要權限。
+- 模擬移除主要開發者帳號後，服務仍可維護與運作。
+
+若以上任一步驟只能由原開發者完成，代表交接仍未完成，應回到〈實作 17｜權限與資訊安全〉補齊資產清冊、備援管理者與輪替流程。
+
 ## 遠端 Vibe Coding 維護流程
 
 當你不在主要電腦旁，可以透過 Claude Code 桌面或手機端啟動雲端開發：
@@ -104,6 +128,10 @@ sequenceDiagram
 - [ ] CORS、Environment Variables 與 Secret 正確
 - [ ] 多輪記憶與可靠性測試完成
 - [ ] GitHub PR、部署與版本回復流程可操作
+- [ ] Repository、Render、Vercel 與 Cloud Project 不綁定單一個人帳號
+- [ ] 至少有一位備援管理者可重新部署與輪替 Token
+- [ ] 資產與憑證清冊已建立，且不包含完整明文 Secret
+- [ ] 移除主要開發者權限後，系統仍可正常運作
 - [ ] 可從桌機與手機完成正式環境驗收
 
 ## 建議的 Vibe Coding Prompt
@@ -115,5 +143,5 @@ sequenceDiagram
 ```
 
 <Info>
-  完成這 20 篇後，你不只是複製一個聊天介面，而是理解如何用 GitHub、Vibe Coding、外部 API、LangGraph、Render 與 Vercel，建立並持續維護一套屬於自己的 Data Machi。
+  完成這 21 篇後，你不只是複製一個聊天介面，而是理解如何用 GitHub、Vibe Coding、外部 API、LangGraph、權限治理、Render 與 Vercel，建立、交接並持續維護一套屬於自己的 Data Machi。
 </Info>

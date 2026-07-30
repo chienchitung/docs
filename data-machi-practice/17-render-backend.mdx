@@ -1,10 +1,14 @@
 ---
-title: "實作 17｜將 FastAPI 後端部署到 Render"
-sidebarTitle: "實作 17｜Render 後端"
+title: "實作 18｜將 FastAPI 後端部署到 Render"
+sidebarTitle: "實作 18｜Render 後端"
 description: "連接 GitHub、設定 Root Directory、Build／Start Command、環境變數與健康檢查。"
 ---
 
 本機後端只在你的電腦開機時存在。要讓 Vercel 前端與其他裝置都能使用 Data Machi，需要把 FastAPI 部署到可公開存取的後端服務。這個專案使用 Render。
+
+<Warning>
+  開始前請先完成〈實作 17｜權限與資訊安全〉。正式 Render Service 應建立在公司或團隊 Workspace，至少有一位備援管理者；不要把個人帳號、個人付款方式與個人 Token 當成唯一的正式依賴。
+</Warning>
 
 ```mermaid
 flowchart LR

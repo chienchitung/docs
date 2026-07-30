@@ -76,4 +76,8 @@ Repository 不得包含 JSON Key，缺少權限時回傳清楚錯誤。
 請不要把任何真實 Sheet ID 寫進程式碼。
 ```
 
+<Warning>
+  Service Account 解決的是「讓程式不要綁定某位員工的登入狀態」，但它本身也必須屬於公司控制的 Google Cloud Project。正式環境不要把 Service Account 建在個人 Project，也不要讓建立者成為唯一可以重新產生或撤銷憑證的人。完整遷移與交接方式會在〈實作 17｜權限與資訊安全〉說明。
+</Warning>
+
 下一篇會介紹 Trello 與 Confluence API；這兩項是選配，不影響基礎版 Data Machi 完成。

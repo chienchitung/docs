@@ -14,23 +14,24 @@ description: "從開發方式、API 申請、資料來源串接，到 Render 與
 
 ## 你最後會完成什麼？
 
-```text
-使用者
-  ↓
-Vercel 前端
-  ↓
-Render 後端
-  ↓
-LangGraph Coordinator
-  ├─ Gemini API
-  ├─ Google Sheets
-  ├─ PDF 文件 RAG
-  ├─ Trello（選配）
-  ├─ Confluence（選配）
-  └─ Groq Whisper（選配）
+```mermaid
+flowchart TD
+    U[使用者] --> V[Vercel 前端]
+    V --> R[Render 後端]
+    R --> C[LangGraph Coordinator]
+    C --> G[Gemini API]
+    C --> S[Google Sheets]
+    C --> D[PDF 文件 RAG]
+    C --> T[Trello 選配]
+    C --> F[Confluence 選配]
+    C --> W[Groq Whisper 選配]
+
+    O[公司或團隊資產] -.擁有與管理.-> V
+    O -.擁有與管理.-> R
+    O -.管理專案與憑證.-> G
 ```
 
-## 四個階段
+## 五個階段
 
 <CardGroup cols={2}>
   <Card title="Part 0｜開發與服務地圖" icon="map">
@@ -45,18 +46,23 @@ LangGraph Coordinator
     從開源專案建立副本，依序加入模型、資料工具、RAG、Coordinator 與記憶。
   </Card>
 
-  <Card title="Part 3｜部署與持續開發" icon="cloud-arrow-up">
-    將後端部署到 Render、前端部署到 Vercel，設定 CORS、環境變數與正式驗收。
+  <Card title="Part 3｜權限與資訊安全" icon="shield-halved">
+    在正式部署前，處理公司資產所有權、最小權限、Token 輪替、備援管理者與離職交接。
+  </Card>
+
+  <Card title="Part 4｜部署與持續開發" icon="cloud-arrow-up">
+    將後端部署到 Render、前端部署到 Vercel，設定 CORS、正式驗收與遠端維護。
   </Card>
 </CardGroup>
 
-## 每篇文章都會回答五個問題
+## 每篇文章都會回答六個問題
 
 1. 這個工具或服務在系統中扮演什麼角色？
 2. 為什麼需要它？
 3. 要去哪裡申請或設定？
 4. 取得的 API Key、URL 或憑證應放在哪裡？
-5. 如何判斷串接成功？
+5. 這項資產與憑證應由個人還是公司擁有？
+6. 如何判斷串接、權限與交接都成功？
 
 <Note>
   本系列會分享作者開發 Data Machi 的真實流程：本機主要使用 VS Code 搭配 Claude Code 或 Codex；需要遠端修改時，則使用 Claude Code 的雲端環境，從桌機或手機連接 GitHub Repository。無論在哪裡開發，GitHub 都是專案唯一的正式版本來源。
