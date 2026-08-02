@@ -204,9 +204,13 @@
       ".dm-gm-bubble pre code{background:none;padding:0;}" +
       "@media (prefers-color-scheme: dark){.dm-gm-bubble code,.dm-gm-bubble pre{background:rgba(255,255,255,.1);}}" +
       ".dm-gm-bubble a{color:inherit;text-decoration:underline;}" +
-      ".dm-gm-typing::after{content:'\\258C';display:inline-block;margin-left:2px;" +
-      "animation:dmgmblink 1s steps(1) infinite;}" +
-      "@keyframes dmgmblink{50%{opacity:0;}}" +
+      ".dm-gm-dots{display:inline-flex;gap:4px;align-items:center;padding:4px 2px;}" +
+      ".dm-gm-dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.3;" +
+      "animation:dmgmdot 1s infinite ease-in-out;}" +
+      ".dm-gm-dots i:nth-child(2){animation-delay:.15s;}" +
+      ".dm-gm-dots i:nth-child(3){animation-delay:.3s;}" +
+      "@keyframes dmgmdot{0%,60%,100%{opacity:.3;transform:translateY(0);}" +
+      "30%{opacity:1;transform:translateY(-3px);}}" +
       ".dm-gm-footer{flex:0 0 auto;border-top:1px solid #e2e8f0;padding:10px;}" +
       "@media (prefers-color-scheme: dark){.dm-gm-footer{border-color:#1e293b;}}" +
       ".dm-gm-input-row{display:flex;gap:6px;}" +
@@ -284,6 +288,39 @@
     }
   }
 
+  function copyToClipboard(text, btnEl) {
+    function feedback() {
+      if (!btnEl) return;
+      var original = btnEl.innerHTML;
+      btnEl.innerHTML = "&#10003;";
+      setTimeout(function () {
+        btnEl.innerHTML = original;
+      }, 1200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(feedback, function () {
+        fallbackCopy(text);
+        feedback();
+      });
+    } else {
+      fallbackCopy(text);
+      feedback();
+    }
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+    } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
   function renderKeyForm(isSettings) {
     var current = getApiKey();
     var wrap = el(
@@ -293,12 +330,35 @@
         '沒有 Key？<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">' +
         "前往 Google AI Studio 申請</a>。"
     );
+    var iconBtnStyle =
+      "background:transparent;border:1px solid #cbd5e1;border-radius:8px;" +
+      "padding:0;width:32px;height:32px;cursor:pointer;color:inherit;flex:0 0 auto;font-size:14px;";
+
     var input = el("input", {
       type: "password",
       placeholder: "貼上你的 Gemini API Key",
       autocomplete: "off",
+      style: "flex:1;min-width:0;margin:0;",
     });
     if (isSettings && current) input.value = current;
+
+    var toggleBtn = el(
+      "button",
+      { type: "button", title: "顯示/隱藏 Key", "aria-label": "顯示或隱藏 Key", style: iconBtnStyle },
+      "&#128065;"
+    );
+    toggleBtn.addEventListener("click", function () {
+      input.type = input.type === "password" ? "text" : "password";
+    });
+
+    var copyBtn = el(
+      "button",
+      { type: "button", title: "複製 Key", "aria-label": "複製 Key", style: iconBtnStyle },
+      "&#128203;"
+    );
+    copyBtn.addEventListener("click", function () {
+      if (input.value) copyToClipboard(input.value, copyBtn);
+    });
 
     var saveBtn = el("button", {}, isSettings ? "更新" : "儲存並開始使用");
     saveBtn.addEventListener("click", function () {
@@ -310,7 +370,12 @@
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter") saveBtn.click();
     });
-    wrap.appendChild(input);
+
+    var inputRow = el("div", { style: "display:flex;gap:6px;align-items:center;margin:10px 0;" });
+    inputRow.appendChild(input);
+    inputRow.appendChild(toggleBtn);
+    inputRow.appendChild(copyBtn);
+    wrap.appendChild(inputRow);
 
     var btnRow = el("div", { style: "display:flex;gap:8px;align-items:center;" });
     btnRow.appendChild(saveBtn);
@@ -386,7 +451,8 @@
     body.appendChild(renderMessage("user", question));
 
     var modelMsg = el("div", { class: "dm-gm-msg model" });
-    var bubble = el("span", { class: "dm-gm-bubble dm-gm-typing" });
+    var bubble = el("span", { class: "dm-gm-bubble" });
+    bubble.appendChild(el("span", { class: "dm-gm-dots" }, "<i></i><i></i><i></i>"));
     modelMsg.appendChild(bubble);
     body.appendChild(modelMsg);
     body.scrollTop = body.scrollHeight;
@@ -395,19 +461,51 @@
     sendBtn.disabled = true;
     textarea.disabled = true;
 
-    var lastText = "";
-    askGeminiStream(question, function (partial) {
-      lastText = partial;
-      bubble.innerHTML = markdownToHtml(partial);
+    var target = "";
+    var revealed = "";
+    var streamDone = false;
+    var typing = false;
+    var typeTimer = null;
+
+    function renderReveal() {
+      bubble.innerHTML = markdownToHtml(revealed);
       body.scrollTop = body.scrollHeight;
+    }
+
+    function startTyping() {
+      typing = true;
+      typeTimer = setInterval(function () {
+        if (revealed.length < target.length) {
+          var remaining = target.length - revealed.length;
+          var step = remaining > 60 ? Math.ceil(remaining / 8) : 1;
+          revealed = target.slice(0, revealed.length + step);
+          renderReveal();
+        } else if (streamDone) {
+          clearInterval(typeTimer);
+          typeTimer = null;
+        }
+      }, 20);
+    }
+
+    function stopTyping() {
+      if (typeTimer) {
+        clearInterval(typeTimer);
+        typeTimer = null;
+      }
+    }
+
+    askGeminiStream(question, function (partial) {
+      target = partial;
+      if (!typing && target) startTyping();
     })
       .then(function (finalText) {
-        var text = finalText || lastText;
-        bubble.classList.remove("dm-gm-typing");
-        bubble.innerHTML = markdownToHtml(text) || "（沒有取得回應內容）";
-        history.push({ role: "model", text: text });
+        target = finalText || target || "（沒有取得回應內容）";
+        streamDone = true;
+        history.push({ role: "model", text: target });
+        if (!typing) startTyping();
       })
       .catch(function (err) {
+        stopTyping();
         modelMsg.className = "dm-gm-msg error";
         bubble.className = "dm-gm-bubble";
         bubble.textContent = err.message || "發生未知錯誤";
