@@ -333,26 +333,23 @@
   }
 
   function findNativeAssistantButton() {
-    var scopeEls = document.querySelectorAll(
-      "header, nav, [class*='nav' i], [class*='header' i]"
-    );
-    var scopes = scopeEls.length ? scopeEls : [document.body];
-    for (var s = 0; s < scopes.length; s++) {
-      var candidates = scopes[s].querySelectorAll("button, a, [role='button']");
-      for (var i = 0; i < candidates.length; i++) {
-        var node = candidates[i];
-        if (node.id === "dm-gm-toggle" || node.closest("#dm-gm-panel")) continue;
-        var text = (node.textContent || "").trim().toLowerCase();
-        var aria = (node.getAttribute("aria-label") || "").toLowerCase();
-        if (text.length > 40) continue;
-        var isMatch =
-          text.indexOf("ask assistant") !== -1 ||
-          aria.indexOf("ask assistant") !== -1 ||
-          (aria.indexOf("assistant") !== -1 && aria.length < 40);
-        if (isMatch) {
-          var rect = node.getBoundingClientRect();
-          if (rect.top < 200) return node;
-        }
+    var byId = document.getElementById("assistant-entry");
+    if (byId) return byId;
+
+    var candidates = document.querySelectorAll("button, a, [role='button']");
+    for (var i = 0; i < candidates.length; i++) {
+      var node = candidates[i];
+      if (node.id === "dm-gm-toggle" || node.closest("#dm-gm-panel")) continue;
+      var text = (node.textContent || "").trim().toLowerCase();
+      var aria = (node.getAttribute("aria-label") || "").toLowerCase();
+      if (text.length > 40) continue;
+      var isMatch =
+        text.indexOf("ask assistant") !== -1 ||
+        aria.indexOf("assistant panel") !== -1 ||
+        (aria.indexOf("assistant") !== -1 && aria.length < 40);
+      if (isMatch) {
+        var rect = node.getBoundingClientRect();
+        if (rect.top < 300) return node;
       }
     }
     return null;
