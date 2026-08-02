@@ -81,14 +81,32 @@ sequenceDiagram
 並補上如何測試 /docs、如何停止服務，以及常見的 CORS 與 Port 問題。
 ```
 
-## 建議補充的操作截圖
+## 確認本機專案結構
 
-> 📸 **操作截圖建議｜本機專案資料夾結構** 截取 VS Code Explorer，標示 `frontend`、`backend`、`.env.example` 與主要啟動檔案的位置。
+在執行指令前，先用 VS Code 開啟 Repository 根目錄，確認前端、後端與環境變數範本都在預期位置。若資料夾結構不同，後續安裝與啟動指令也要跟著調整。
 
-> 📸 **操作截圖建議｜啟動後端 FastAPI** 顯示終端機執行後端啟動指令、成功監聽的網址，以及瀏覽器開啟健康檢查或 `/docs` 的畫面。不得顯示 Secret 或本機使用者名稱。
+**圖 1｜Data Machi 的本機資料夾結構**
 
-> 📸 **操作截圖建議｜啟動 React 前端** 顯示另一個終端機執行前端啟動指令與 Vite Local URL，並附上瀏覽器成功開啟首頁的結果。
+> \[圖片預留位置：VS Code Explorer，標示 `frontend`、`backend`、`.env.example` 與主要啟動檔案\]
 
-> 📸 **操作截圖建議｜前後端同時運作** 建議用一張整體畫面呈現兩個 Terminal 與瀏覽器，幫助初學者理解前端與後端是兩個獨立服務。
+_圖說：以 Repository 根目錄開啟專案後，先確認前端與後端資料夾的位置。接下來的 Terminal 指令必須在正確資料夾執行，否則容易出現找不到套件或啟動檔案的錯誤。_
+
+**圖 2｜啟動 FastAPI 後端並開啟 `/docs`**
+
+> \[圖片預留位置：Terminal 的後端啟動指令、成功監聽網址，以及瀏覽器中的 `/docs`\]
+
+_圖說：在 `backend` 資料夾執行啟動指令後，Terminal 應顯示服務監聽網址。接著開啟健康檢查或 `/docs`，確認 FastAPI 已正常啟動。圖片中不要顯示 Secret、本機使用者名稱或私人路徑。_
+
+**圖 3｜啟動 React／Vite 前端**
+
+> \[圖片預留位置：第二個 Terminal 的前端啟動指令、Vite Local URL 與瀏覽器首頁\]
+
+_圖說：另開一個 Terminal，在 `frontend` 資料夾啟動 Vite。Terminal 顯示 Local URL 後，用瀏覽器開啟首頁，確認前端可以獨立載入。_
+
+**圖 4｜前端、後端與瀏覽器同時運作**
+
+> \[圖片預留位置：兩個 Terminal 與瀏覽器的整體畫面\]
+
+_圖說：Data Machi 的前端與後端是兩個獨立服務。開發時通常需要同時保留一個 FastAPI Terminal、一個 Vite Terminal，以及瀏覽器測試畫面。關閉其中任一服務，都可能讓聊天功能失效。_
 
 下一篇會先只串接 Gemini，完成最小 AI 對話主幹。

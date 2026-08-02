@@ -189,14 +189,48 @@ flowchart TD
 請先輸出盤點表與風險分級，不要立即修改、撤銷或產生任何新憑證。
 ```
 
-## 建議補充的操作截圖
+## 檢查 GitHub Organization 與 Repository 權限
 
-> 📸 **操作截圖建議｜GitHub Organization 與 Repository 權限** 截取 Repository 的 People／Teams 權限頁，標示至少兩位管理者與團隊角色；所有姓名、Email 與公司名稱應匿名化。
+1. 進入公司 GitHub Organization 或 Repository Settings。
+2. 開啟 People、Collaborators 或 Teams 權限頁面。
+3. 確認 Repository 不只由單一個人帳號控制。
+4. 至少安排一位備援管理者，並檢查每個角色是否符合最小權限。
+5. 將 Repository 所有者、主要管理者與備援管理者記錄到資產清冊。
 
-> 📸 **操作截圖建議｜雲端平台成員與角色** 分別示範 Render Workspace、Vercel Team 與 Google Cloud IAM 的成員管理畫面，重點標示 Owner、Developer、Viewer 等角色差異，不需展示真實成員資料。
+**圖 1｜檢查 Repository 的 People 與 Teams 權限**
 
-> 📸 **操作截圖建議｜憑證清冊範例** 使用假資料呈現服務、Secret 名稱、存放位置、權限範圍、輪替日期與備援管理者；不可顯示完整憑證。
+> \[圖片預留位置：GitHub Repository 的 People／Teams 權限頁，標示角色欄位\]
 
-> 📸 **操作截圖建議｜Token 輪替前後** 以兩張圖呈現新 Secret 已加入環境、重新部署成功，以及舊 Token 被撤銷的順序，避免讀者先撤銷造成服務中斷。
+_圖說：正式 Repository 應由公司 Organization 擁有，並至少有兩位能處理緊急維護的管理者。教學圖片中的姓名、Email、Organization 與公司名稱都必須匿名化。_
+
+**圖 2｜確認備援管理者與最小權限**
+
+> \[圖片預留位置：成員角色或 Team 權限設定，標示 Admin、Maintain、Write 等角色\]
+
+_圖說：不是所有人都需要 Admin。依實際工作分配角色，並確認主要開發者離開或帳號停用後，備援管理者仍能修改設定、合併 PR 與重新部署。_
+
+**圖 3｜檢查 Render、Vercel 與 Google Cloud 的成員角色**
+
+> \[圖片預留位置：Render Workspace、Vercel Team 與 Google Cloud IAM 的角色設定拼圖\]
+
+_圖說：各平台的角色名稱不同，但都應依最小權限分配 Owner、Developer、Viewer 等能力。正式環境至少要有一位備援管理者；圖片不需展示真實成員姓名、Email 或公司資訊。_
+
+**圖 4｜建立憑證與資產清冊**
+
+> \[圖片預留位置：使用假資料的清冊，包含服務、Secret 名稱、存放位置、權限範圍、輪替日期與備援管理者\]
+
+_圖說：清冊只記錄憑證名稱、用途、存放位置與管理責任，不保存完整 Secret。透過輪替日期與備援管理者欄位，可以降低憑證過期或人員異動造成的風險。_
+
+**圖 5｜先加入新 Token 並完成重新部署**
+
+> \[圖片預留位置：新 Secret 已加入環境變數，以及重新部署成功的畫面\]
+
+_圖說：Token 輪替時，先建立新 Token、更新環境變數並重新部署。完成實際功能驗證前，不要先撤銷舊 Token，否則可能造成服務中斷。_
+
+**圖 6｜驗證成功後撤銷舊 Token**
+
+> \[圖片預留位置：舊 Token 的撤銷畫面與清冊更新結果\]
+
+_圖說：確認新 Token 已在正式環境正常運作後，再撤銷舊 Token，並更新憑證清冊中的輪替日期與管理者。_
 
 下一篇才會將 FastAPI 後端部署到 Render。部署之前先完成這份盤點，才能避免把個人帳號與過高權限一起帶進正式環境。

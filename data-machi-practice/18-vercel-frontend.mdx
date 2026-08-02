@@ -85,14 +85,51 @@ Preview 很適合檢查前端版面與基本流程，但若後端 CORS 只允許
 並提供 Browser Console、Network 與部署 Log 的驗收方式。
 ```
 
-## 建議補充的操作截圖
+## 在 Vercel 建立前端 Project
 
-> 📸 **操作截圖建議｜Import Git Repository** 截取 Vercel 新增 Project、選擇 GitHub Repository 與確認部署 Branch 的畫面。
+1. 登入 Vercel，進入公司或團隊 Team。
+2. 選擇新增 Project。
+3. 從 GitHub 匯入 Data Machi Repository。
+4. 確認部署 Branch。
+5. 將 Root Directory 設為 `frontend`。
+6. 確認 Framework Preset 為 Vite，並檢查 Build Command 與 Output Directory。
+7. 建立 `VITE_API_BASE_URL` 等前端環境變數。
+8. 開始部署並檢查 Build Log。
 
-> 📸 **操作截圖建議｜Framework 與 Root Directory** 顯示 Framework Preset 為 Vite、Root Directory 指向 `frontend`，以及 Build／Output 設定的位置。
+**圖 1｜從 GitHub 匯入 Data Machi Repository**
 
-> 📸 **操作截圖建議｜前端 Environment Variable** 顯示 `VITE_API_BASE_URL` 的新增位置與 Production／Preview／Development 範圍；後端 URL 可使用示意網址，避免暴露私人 Preview 網址。
+> \[圖片預留位置：Vercel 新增 Project 與 Import Git Repository 畫面\]
 
-> 📸 **操作截圖建議｜部署成功與正式網址** 顯示 Deployment 狀態為 Ready、正式 Domain 與前端首頁成功載入的畫面。
+_圖說：在 Vercel Team 中新增 Project，找到 Data Machi 的 GitHub Repository 並選擇 Import。正式專案建議放在團隊 Team，而不是只存在個人帳號。_
+
+**圖 2｜設定 frontend Root Directory 與 Vite**
+
+> \[圖片預留位置：Root Directory、Framework Preset、Build Command 與 Output Directory\]
+
+_圖說：因為 React／Vite 前端位於 `frontend`，Root Directory 應指向該資料夾。確認 Vercel 正確辨識 Vite，並依 Repository 實際設定檢查建置指令。_
+
+**圖 3｜設定前端 Backend URL**
+
+> \[圖片預留位置：Vercel Environment Variables，顯示 `VITE_API_BASE_URL` 名稱與匿名網址\]
+
+_圖說：將 Render 後端網址填入 `VITE_API_BASE_URL`。這個值會被打包到瀏覽器前端，因此只能放可公開的 API Base URL，不可放任何私密 API Key。_
+
+**圖 4｜確認 Vite、Root Directory 與 Build 設定**
+
+> \[圖片預留位置：Vercel 設定頁，標示 Framework Preset、Root Directory、Build Command 與 Output Directory\]
+
+_圖說：部署前逐欄確認 Framework Preset 為 Vite、Root Directory 指向 `frontend`，並依 Repository 實際設定核對 Build Command 與 Output Directory。_
+
+**圖 5｜設定前端 Environment Variable 的套用範圍**
+
+> \[圖片預留位置：`VITE_API_BASE_URL` 新增畫面與 Production／Preview／Development 選項\]
+
+_圖說：建立 `VITE_API_BASE_URL` 時，依需求選擇套用到 Production、Preview 與 Development。教學中可使用示意 Render 網址，避免暴露私人 Preview 網域。_
+
+**圖 6｜確認 Vercel Deployment 與正式網址**
+
+> \[圖片預留位置：Deployment 狀態為 Ready、正式 Domain 與前端首頁\]
+
+_圖說：Vercel 顯示 Ready 後，開啟 Production Domain，確認前端首頁可以載入。這一步只代表前端部署成功，下一篇還要驗證它能否正確呼叫 Render 後端。_
 
 下一篇會正式串接 Vercel 與 Render，處理 CORS、網址與環境差異。

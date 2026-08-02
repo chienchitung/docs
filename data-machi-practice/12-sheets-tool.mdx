@@ -83,14 +83,42 @@ flowchart LR
 精確計算必須由 Pandas 完成，不要讓 LLM 自行加總資料列。
 ```
 
-## 建議補充的操作截圖
+## 建立匿名測試 Sheet
 
-> 📸 **操作截圖建議｜匿名 Google Sheet 範例** 截取測試試算表的欄位名稱與 3–5 筆匿名資料，並標示 Sheet ID 位於網址中的位置；實際 ID 請遮蔽大部分字元。
+1. 建立一份新的 Google Sheet。
+2. 加入欄位名稱，例如 `Request ID`、`Created Date`、`Category` 與 `Status`。
+3. 填入 3～5 筆匿名測試資料。
+4. 從瀏覽器網址辨識 Sheet ID，並填入後端環境變數。
+5. 將試算表分享給前一篇建立的 Service Account Email，權限設定為 Viewer。
 
-> 📸 **操作截圖建議｜分享權限確認** 顯示試算表已分享給 Service Account Email 且權限為 Viewer，避免讀者誤以為只設定 JSON Key 就能存取。
+**圖 1｜匿名 Google Sheet 的欄位與測試資料**
 
-> 📸 **操作截圖建議｜Sheets Tool 查詢結果** 截取 Data Machi 提問、工具執行狀態與可人工對照的答案，並在旁邊放上 Sheet 中對應資料，形成「原始資料—問題—答案」的驗證畫面。
+> \[圖片預留位置：Google Sheet，顯示欄位名稱與 3～5 筆匿名資料\]
 
-> 📸 **操作截圖建議｜權限錯誤示範** 暫時移除分享權限後截取清楚的 Permission Denied 訊息，說明如何判斷是憑證有效但資源未授權。
+_圖說：先用簡單且可人工核對的匿名資料驗證 Sheets Tool。欄位名稱應與程式預期一致，避免一開始就使用複雜或含有企業資訊的正式資料。_
+
+**圖 2｜從網址辨識 Google Sheet ID**
+
+> \[圖片預留位置：瀏覽器網址列，框選 `/d/` 與 `/edit` 之間的 Sheet ID\]
+
+_圖說：Google Sheet ID 位於網址中的 `/d/` 與下一個斜線之間。填入環境變數時使用完整 ID；教學圖片則應遮蔽大部分字元。_
+
+**圖 3｜確認 Sheet 已分享給 Service Account**
+
+> \[圖片預留位置：Google Sheets 分享視窗，顯示 Service Account Email 與 Viewer 權限\]
+
+_圖說：JSON Key 只能證明後端身分，不能自動取得試算表權限。請確認匿名測試 Sheet 已分享給 Service Account Email，且第一版只授予 Viewer。_
+
+**圖 4｜人工核對 Sheets Tool 查詢結果**
+
+> \[圖片預留位置：匿名 Sheet 原始資料、Data Machi 問題、工具狀態與回答的組合畫面\]
+
+_圖說：將原始資料、使用者問題與最終答案放在同一個驗證畫面中，確認筆數、金額或狀態統計能被人工重算。第一個 Sheets Tool 測試應選擇簡單且可核對的問題。_
+
+**圖 5｜辨識 Service Account 的權限錯誤**
+
+> \[圖片預留位置：暫時移除 Sheet 分享權限後的 Permission Denied 訊息\]
+
+_圖說：若憑證可以被載入，但目標 Sheet 沒有分享給 Service Account，系統通常會回傳 Permission Denied。這代表身分驗證成功，但資源授權不足；重新分享為 Viewer 後再測試。_
 
 下一篇會加入 PDF RAG，讓 Data Machi 可以回答文件內容並保留來源。

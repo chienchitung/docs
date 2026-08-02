@@ -82,12 +82,46 @@ sequenceDiagram
   Vibe Coding 不是把所有決策交給 AI。你仍需要掌握目標、資料範圍、Secret 安全與驗收標準。
 </Warning>
 
-## 建議補充的操作截圖
+## 使用本機 VS Code 與 AI Coding Agent
 
-> 📸 **操作截圖建議｜本機 VS Code \+ AI Coding Agent** 截取 VS Code 中 Repository、Terminal 與 Claude Code／Codex 對話區的整體畫面，標示「閱讀專案、提出計畫、修改檔案、執行測試」的工作區域。
+1. 用 VS Code 開啟 Data Machi Repository 根目錄。
+2. 開啟 Terminal，確認目前路徑位於專案資料夾。
+3. 啟動 Claude Code、Codex 或其他 AI Coding Agent。
+4. 先要求 Agent 閱讀 README、資料夾結構與部署設定，不要立刻修改。
+5. 檢查 Agent 提出的修改計畫後，再讓它開始執行。
 
-> 📸 **操作截圖建議｜雲端 Coding Agent 連接 Repository** 顯示如何選擇 GitHub Repository、Branch 與建立雲端工作環境；Repository 名稱與帳號資訊請使用公開範例。
+**圖 1｜VS Code、Terminal 與 AI Coding Agent 的工作區**
 
-> 📸 **操作截圖建議｜檢查 Diff 再提交** 截取變更檔案清單與 Diff 檢視畫面，標示新增、刪除內容，以及建立 Commit／Pull Request 前應檢查的位置。
+> \[圖片預留位置：VS Code Explorer、Terminal 與 Agent 對話區的完整畫面\]
+
+_圖說：本機開發時，Repository、Terminal 與 AI Coding Agent 通常會同時使用。開始修改前，先讓 Agent 閱讀專案並說明計畫，避免在不了解架構時直接改動多個檔案。_
+
+## 使用雲端 Coding Agent
+
+1. 登入雲端 Coding Agent。
+2. 連接 GitHub 帳號並選擇 Data Machi Repository。
+3. 選擇要工作的 Branch；重要修改不要直接在 `main` 進行。
+4. 建立雲端工作環境後，先要求 Agent說明目前 Repository 狀態。
+5. 完成修改後建立 Commit 或 Pull Request，交由 GitHub 保存正式版本。
+
+**圖 2｜雲端 Coding Agent 連接 Repository 與 Branch**
+
+> \[圖片預留位置：Repository 選擇、Branch 選擇與建立工作環境的畫面\]
+
+_圖說：雲端 Agent 應連接指定 Repository 與 Branch。教學截圖使用公開範例名稱，並遮蔽帳號、私人 Repository 與組織資訊。_
+
+## 檢查 Diff 再提交
+
+1. 開啟 Source Control 或 Agent 提供的變更清單。
+2. 逐一檢查被修改的檔案。
+3. 確認新增與刪除內容符合原本需求。
+4. 搜尋是否誤加入 API Key、Token、真實網址或企業資料。
+5. 執行測試後，才建立 Commit 或 Pull Request。
+
+**圖 3｜提交前檢查檔案 Diff**
+
+> \[圖片預留位置：變更檔案清單與 Diff 檢視，標示新增、刪除與 Commit／PR 入口\]
+
+_圖說：不要只閱讀 Agent 的文字摘要。提交前必須實際檢查 Diff，確認修改範圍、Secret 安全與測試結果，再建立 Commit 或 Pull Request。_
 
 下一篇會說明 GitHub 如何把本機、雲端開發與自動部署串在一起。

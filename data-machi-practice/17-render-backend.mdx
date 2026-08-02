@@ -107,14 +107,57 @@ sequenceDiagram
 修改後提供一份從部署 Log 到 /docs 的驗收清單。
 ```
 
-## 建議補充的操作截圖
+## 在 Render 建立 Web Service
 
-> 📸 **操作截圖建議｜建立 Render Web Service** 依序截取 New Web Service、連接 GitHub Repository、選擇 Branch 與設定 Root Directory 的畫面。
+1. 登入 Render，進入公司或團隊 Workspace。
+2. 選擇 **New Web Service**。
+3. 連接 GitHub，並選擇 Data Machi Repository。
+4. 選擇正式部署使用的 Branch。
+5. 將 Root Directory 設為 `backend`。
+6. 設定 Build Command 與 Start Command。
+7. 建立後端需要的 Environment Variables。
+8. 開始部署並查看 Build Log。
 
-> 📸 **操作截圖建議｜Build／Start Command 設定** 顯示 Runtime、Build Command、Start Command 與 `$PORT` 的完整設定位置，讓讀者可以逐欄核對。
+**圖 1｜建立新的 Render Web Service**
 
-> 📸 **操作截圖建議｜Environment Variables** 截取變數名稱清單與新增入口，所有值必須完全遮蔽；不要讓瀏覽器自動填入的 Secret 出現在畫面中。
+> \[圖片預留位置：Render Dashboard 的 New Web Service 入口\]
 
-> 📸 **操作截圖建議｜部署成功與 Log** 顯示 Service 狀態為 Live、公開 URL、成功啟動 Uvicorn 的 Log，以及 `/docs` 或 `/health` 正常回應。
+_圖說：在團隊 Workspace 中建立新的 Web Service。正式服務不應只存在於個人 Workspace，並應事先加入備援管理者。_
+
+**圖 2｜連接 GitHub Repository 與部署 Branch**
+
+> \[圖片預留位置：Repository 與 Branch 選擇畫面\]
+
+_圖說：選擇 Data Machi 所在的 GitHub Repository，以及預計觸發正式部署的 Branch。一般情況下可使用 `main`，但仍應依實際版本流程調整。_
+
+**圖 3｜設定 Root Directory 與啟動指令**
+
+> \[圖片預留位置：Root Directory、Build Command 與 Start Command 欄位\]
+
+_圖說：因為 FastAPI 位於 `backend`，Root Directory 應指向 `backend`。Build Command 負責安裝套件，Start Command 則以 `$PORT` 啟動 Uvicorn。_
+
+**圖 4｜新增 Render Environment Variables**
+
+> \[圖片預留位置：Environment Variables 設定頁，只顯示變數名稱\]
+
+_圖說：將 Gemini、Google Sheets 與 CORS 等後端設定建立在 Render Environment。圖片只顯示變數名稱，不可顯示任何真實 Secret。_
+
+**圖 5｜逐欄核對 Runtime、Build 與 Start Command**
+
+> \[圖片預留位置：Render 設定頁，標示 Runtime、Build Command、Start Command 與 `$PORT`\]
+
+_圖說：部署失敗時，先逐欄核對 Python Runtime、安裝依賴的 Build Command，以及啟動 FastAPI 的 Start Command。Start Command 必須使用 Render 提供的 `$PORT`，不能寫死本機 Port。_
+
+**圖 6｜檢查 Render Environment Variables 清單**
+
+> \[圖片預留位置：Render Environment Variables 清單與新增入口，只顯示變數名稱\]
+
+_圖說：部署前確認所有必要變數名稱都已建立，並檢查拼字是否與程式一致。圖片中的值必須完全遮蔽，也要留意瀏覽器自動填入或密碼管理工具浮層是否意外顯示 Secret。_
+
+**圖 7｜確認 Render 部署成功與服務健康狀態**
+
+> \[圖片預留位置：Service 狀態為 Live、公開 URL、Uvicorn 啟動 Log，以及 `/docs` 或 `/health` 回應\]
+
+_圖說：部署完成後，先確認 Service 狀態為 Live，再檢查 Log 是否成功啟動 Uvicorn。最後開啟公開 URL 的 `/docs` 或 `/health`，確認後端不只建置成功，也能實際回應請求。_
 
 下一篇會將 React／Vite 前端部署到 Vercel。

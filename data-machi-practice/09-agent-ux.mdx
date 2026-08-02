@@ -57,12 +57,36 @@ VITE_API_BASE_URL=
 不要刪除功能，只移除識別資訊與硬編碼設定。
 ```
 
-## 建議補充的操作截圖
+## 建立自己的 Repository 副本
 
-> 📸 **操作截圖建議｜Fork 或建立 Repository 副本** 截取 GitHub Repository 的 Fork／Use this template 操作入口，以及建立副本時的 Owner、Repository name 與 Visibility。請使用公開範例名稱。
+1. 進入原始 GitHub Repository。
+2. 依專案提供的方式選擇 **Fork** 或 **Use this template**。
+3. 選擇 Repository 所屬的 Owner。
+4. 輸入新的 Repository 名稱，並設定 Visibility。
+5. 建立完成後，確認網址已經切換成自己的 Repository。
 
-> 📸 **操作截圖建議｜Repository 搜尋去識別化資訊** 顯示 GitHub 或 VS Code 全域搜尋品牌名稱、網址、Email 與資料來源 ID 的結果，讓讀者理解如何逐項清理；搜尋內容需使用假資料。
+**圖 1｜從原始專案建立副本**
 
-> 📸 **操作截圖建議｜`.env.example` 與 `.gitignore`** 並排顯示 `.env.example` 只保留變數名稱，以及 `.gitignore` 已排除 `.env`、JSON Key 等敏感檔案。
+> \[圖片預留位置：GitHub Repository 首頁，標示 Fork 或 Use this template\]
+
+_圖說：從原始 Data Machi 專案建立自己的副本。若專案提供 Template，優先依教學指定方式操作；若使用 Fork，後續仍要檢查原專案識別資訊與部署設定。_
+
+**圖 2｜設定 Repository Owner、名稱與 Visibility**
+
+> \[圖片預留位置：建立 Repository 的設定畫面\]
+
+_圖說：選擇 Repository 所屬帳號或 Organization，填入新的專案名稱並確認公開或私人設定。教學畫面請使用匿名範例名稱，不要顯示公司內部 Organization。_
+
+**圖 3｜全域搜尋需要去識別化的資訊**
+
+> \[圖片預留位置：GitHub 或 VS Code 全域搜尋結果，標示品牌名稱、網址、Email 與資料來源 ID\]
+
+_圖說：建立副本後，使用全域搜尋逐項檢查品牌、網址、Email、Sheet ID、Board ID 與其他環境設定。搜尋範例與畫面內容都應使用假資料，避免公開真實識別資訊。_
+
+**圖 4｜確認 `.env.example` 與 `.gitignore`**
+
+> \[圖片預留位置：並排顯示 `.env.example` 與 `.gitignore`\]
+
+_圖說：`.env.example` 只保留環境變數名稱與用途，`.gitignore` 則排除 `.env`、Service Account JSON 與其他敏感檔案。建立副本後，應在第一次 Commit 前完成這項檢查。_
 
 下一篇會在本機啟動前端與後端，確認專案骨架可以運作。
