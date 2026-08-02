@@ -55,20 +55,25 @@
       "border-radius:50%;border:none;background:#16A34A;color:#fff;cursor:pointer;" +
       "box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;}" +
       "#dm-gm-toggle:hover{background:#15803D;}" +
-      "#dm-gm-panel{position:fixed;right:20px;bottom:88px;z-index:999999;" +
-      "width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 140px));" +
-      "background:#fff;color:#0f172a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25);" +
-      "display:none;flex-direction:column;overflow:hidden;" +
+      "#dm-gm-panel{position:fixed;top:0;right:0;z-index:999999;" +
+      "width:min(420px,100vw);height:100vh;height:100dvh;" +
+      "background:#fff;color:#0f172a;box-shadow:-8px 0 30px rgba(0,0,0,.18);" +
+      "display:flex;flex-direction:column;overflow:hidden;" +
       "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
-      "border:1px solid #e2e8f0;}" +
-      "#dm-gm-panel.dm-gm-open{display:flex;}" +
+      "border-left:1px solid #e2e8f0;" +
+      "transform:translateX(100%);transition:transform .25s ease;visibility:hidden;}" +
+      "#dm-gm-panel.dm-gm-open{transform:translateX(0);visibility:visible;}" +
       "@media (prefers-color-scheme: dark){#dm-gm-panel{background:#0f172a;color:#e2e8f0;border-color:#1e293b;}}" +
       ".dm-gm-header{display:flex;align-items:center;justify-content:space-between;" +
-      "padding:12px 14px;background:#16A34A;color:#fff;flex:0 0 auto;}" +
+      "padding:14px 16px;flex:0 0 auto;border-bottom:1px solid #e2e8f0;}" +
+      "@media (prefers-color-scheme: dark){.dm-gm-header{border-color:#1e293b;}}" +
       ".dm-gm-header strong{font-size:14px;}" +
-      ".dm-gm-header-actions button{background:transparent;border:none;color:#fff;cursor:pointer;" +
-      "font-size:15px;padding:4px 6px;opacity:.9;}" +
+      ".dm-gm-header-actions button{background:transparent;border:none;color:inherit;cursor:pointer;" +
+      "font-size:15px;padding:4px 6px;opacity:.6;}" +
       ".dm-gm-header-actions button:hover{opacity:1;}" +
+      ".dm-gm-disclaimer{flex:0 0 auto;text-align:center;font-size:11.5px;font-style:italic;opacity:.55;" +
+      "padding:8px 16px;}" +
+      "#dm-gm-content{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}" +
       ".dm-gm-body{flex:1 1 auto;overflow-y:auto;padding:12px 14px;}" +
       ".dm-gm-msg{margin-bottom:10px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;}" +
       ".dm-gm-msg.user{text-align:right;}" +
@@ -124,11 +129,7 @@
 
   function buildPanel() {
     var panel = el("div", { id: "dm-gm-panel", role: "dialog", "aria-label": "AI 問答小幫手" });
-    var header = el(
-      "div",
-      { class: "dm-gm-header" },
-      '<strong>問 AI（使用你自己的 Gemini API Key）</strong>'
-    );
+    var header = el("div", { class: "dm-gm-header" }, "<strong>&#10022; Assistant</strong>");
     var actions = el("div", { class: "dm-gm-header-actions" });
     var resetBtn = el("button", { title: "更換 API Key", "aria-label": "更換 API Key" }, "&#9881;");
     resetBtn.addEventListener("click", function () {
@@ -144,8 +145,15 @@
     actions.appendChild(closeBtn);
     header.appendChild(actions);
 
+    var disclaimer = el(
+      "div",
+      { class: "dm-gm-disclaimer" },
+      "回答由 Gemini 產生，使用你自己的 API Key，可能包含錯誤"
+    );
+
     var body = el("div", { id: "dm-gm-content" });
     panel.appendChild(header);
+    panel.appendChild(disclaimer);
     panel.appendChild(body);
     return panel;
   }
@@ -192,7 +200,7 @@
   }
 
   function renderChat() {
-    var wrap = el("div", { style: "display:flex;flex-direction:column;height:100%;" });
+    var wrap = el("div", { style: "display:flex;flex-direction:column;flex:1 1 auto;min-height:0;" });
     var body = el("div", { class: "dm-gm-body", "aria-live": "polite" });
     history.forEach(function (turn) {
       body.appendChild(renderMessage(turn.role, turn.text));
@@ -324,10 +332,65 @@
       });
   }
 
+  function findNativeAssistantButton() {
+    var scopeEls = document.querySelectorAll(
+      "header, nav, [class*='nav' i], [class*='header' i]"
+    );
+    var scopes = scopeEls.length ? scopeEls : [document.body];
+    for (var s = 0; s < scopes.length; s++) {
+      var candidates = scopes[s].querySelectorAll("button, a, [role='button']");
+      for (var i = 0; i < candidates.length; i++) {
+        var node = candidates[i];
+        if (node.id === "dm-gm-toggle" || node.closest("#dm-gm-panel")) continue;
+        var text = (node.textContent || "").trim().toLowerCase();
+        var aria = (node.getAttribute("aria-label") || "").toLowerCase();
+        if (text.length > 40) continue;
+        var isMatch =
+          text.indexOf("ask assistant") !== -1 ||
+          aria.indexOf("ask assistant") !== -1 ||
+          (aria.indexOf("assistant") !== -1 && aria.length < 40);
+        if (isMatch) {
+          var rect = node.getBoundingClientRect();
+          if (rect.top < 200) return node;
+        }
+      }
+    }
+    return null;
+  }
+
+  var nativeHidden = false;
+  function tryHideNative() {
+    if (nativeHidden) return true;
+    var btn = findNativeAssistantButton();
+    if (btn) {
+      btn.style.display = "none";
+      nativeHidden = true;
+      return true;
+    }
+    return false;
+  }
+
+  function watchForNative() {
+    if (tryHideNative()) return;
+    var attempts = 0;
+    var interval = setInterval(function () {
+      attempts++;
+      if (tryHideNative() || attempts > 20) clearInterval(interval);
+    }, 400);
+    var observer = new MutationObserver(function () {
+      if (tryHideNative()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    setTimeout(function () {
+      observer.disconnect();
+    }, 15000);
+  }
+
   function init() {
     injectStyles();
     document.body.appendChild(buildToggle());
     document.body.appendChild(buildPanel());
+    watchForNative();
   }
 
   if (document.readyState === "loading") {
