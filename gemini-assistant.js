@@ -160,6 +160,11 @@
 
   function injectStyles() {
     var css =
+      "#dm-gm-mobile-toggle{position:fixed;right:20px;bottom:20px;z-index:999998;" +
+      "width:52px;height:52px;border-radius:50%;border:none;background:#16A34A;color:#fff;" +
+      "cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);align-items:center;justify-content:center;" +
+      "display:none;}" +
+      "#dm-gm-mobile-toggle:hover{background:#15803D;}" +
       "#dm-gm-panel{position:fixed;top:0;right:0;z-index:999999;" +
       "width:min(420px,100vw);height:100vh;height:100dvh;" +
       "background:#fff;color:#0f172a;box-shadow:-8px 0 30px rgba(0,0,0,.18);" +
@@ -235,6 +240,7 @@
     var panel = document.getElementById("dm-gm-panel");
     var open = panel.classList.toggle("dm-gm-open");
     if (open) render();
+    syncMobileToggle();
   }
 
   function buildPanel() {
@@ -250,6 +256,7 @@
     var closeBtn = el("button", { title: "關閉", "aria-label": "關閉" }, "&#10005;");
     closeBtn.addEventListener("click", function () {
       panel.classList.remove("dm-gm-open");
+      syncMobileToggle();
     });
     actions.appendChild(resetBtn);
     actions.appendChild(closeBtn);
@@ -565,17 +572,66 @@
     return true;
   }
 
+  // ---- Mobile fallback ---------------------------------------------------
+  // The native button is "hidden lg:flex" (desktop-only). On small screens
+  // it never renders, so we surface our own floating entry point instead —
+  // driven by the button's actual measured visibility, not a guessed
+  // breakpoint, so it tracks whatever responsive rules Mintlify ships.
+
+  function buildMobileToggle() {
+    var btn = el(
+      "button",
+      { id: "dm-gm-mobile-toggle", "aria-label": "開啟 AI 問答小幫手" },
+      '<svg width="22" height="22" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M5.65799 2.99L4.39499 2.569L3.97399 1.306C3.83699 0.898 3.16199 0.898 3.02499 1.306L2.60399 2.569L1.34099 2.99C1.13699 3.058 0.998993 3.249 0.998993 3.464C0.998993 3.679 1.13699 3.87 1.34099 3.938L2.60399 4.359L3.02499 5.622C3.09299 5.826 3.28499 5.964 3.49999 5.964C3.71499 5.964 3.90599 5.826 3.97499 5.622L4.39599 4.359L5.65899 3.938C5.86299 3.87 6.00099 3.679 6.00099 3.464C6.00099 3.249 5.86199 3.058 5.65799 2.99Z" fill="white" stroke="none"/>' +
+        '<path d="M9.5 2.75L11.412 7.587L16.25 9.5L11.412 11.413L9.5 16.25L7.587 11.413L2.75 9.5L7.587 7.587L9.5 2.75Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        "</svg>"
+    );
+    btn.addEventListener("click", openPanel);
+    return btn;
+  }
+
+  function isNativeVisible() {
+    var btn = document.getElementById("assistant-entry");
+    if (!btn) return false;
+    if (btn.offsetParent === null) return false;
+    var style = window.getComputedStyle(btn);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    var rect = btn.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function syncMobileToggle() {
+    var mobileBtn = document.getElementById("dm-gm-mobile-toggle");
+    var panel = document.getElementById("dm-gm-panel");
+    if (!mobileBtn || !panel) return;
+    if (panel.classList.contains("dm-gm-open")) {
+      mobileBtn.style.display = "none";
+      return;
+    }
+    mobileBtn.style.display = isNativeVisible() ? "none" : "flex";
+  }
+
   function watchForNative() {
     tryBindNative();
+    syncMobileToggle();
     var observer = new MutationObserver(function () {
       tryBindNative();
+      syncMobileToggle();
     });
     observer.observe(document.body, { childList: true, subtree: true });
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(syncMobileToggle, 150);
+    });
   }
 
   function init() {
     injectStyles();
     document.body.appendChild(buildPanel());
+    document.body.appendChild(buildMobileToggle());
     watchForNative();
   }
 
