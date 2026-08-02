@@ -196,8 +196,9 @@
       ".dm-gm-bubble p:last-child{margin-bottom:0;}" +
       ".dm-gm-bubble h1,.dm-gm-bubble h2,.dm-gm-bubble h3,.dm-gm-bubble h4,.dm-gm-bubble h5,.dm-gm-bubble h6{" +
       "margin:10px 0 6px;font-size:1em;font-weight:700;}" +
-      ".dm-gm-bubble ul,.dm-gm-bubble ol{margin:0 0 8px;padding-left:1.3em;}" +
-      ".dm-gm-bubble li{margin:2px 0;}" +
+      ".dm-gm-bubble ul{list-style:disc;margin:0 0 8px;padding-left:1.3em;}" +
+      ".dm-gm-bubble ol{list-style:decimal;margin:0 0 8px;padding-left:1.3em;}" +
+      ".dm-gm-bubble li{list-style:inherit;margin:2px 0;display:list-item;}" +
       ".dm-gm-bubble code{background:rgba(0,0,0,.08);border-radius:4px;padding:1px 4px;font-size:.92em;" +
       "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}" +
       ".dm-gm-bubble pre{background:rgba(0,0,0,.08);border-radius:8px;padding:8px 10px;overflow-x:auto;margin:0 0 8px;}" +
