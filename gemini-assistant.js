@@ -215,7 +215,6 @@
       ".dm-gm-input-row button{background:#16A34A;color:#fff;border:none;border-radius:10px;" +
       "padding:0 14px;cursor:pointer;font-size:13px;flex:0 0 auto;}" +
       ".dm-gm-input-row button:disabled{opacity:.5;cursor:not-allowed;}" +
-      ".dm-gm-hint{font-size:11px;opacity:.6;margin-top:6px;}" +
       ".dm-gm-setup{padding:16px 14px;font-size:13px;line-height:1.6;}" +
       ".dm-gm-setup input{width:100%;box-sizing:border-box;padding:8px 10px;margin:10px 0;" +
       "border-radius:8px;border:1px solid #cbd5e1;font-size:13px;background:transparent;color:inherit;}" +
@@ -247,11 +246,13 @@
     var panel = el("div", { id: "dm-gm-panel", role: "dialog", "aria-label": "AI 問答小幫手" });
     var header = el("div", { class: "dm-gm-header" }, "<strong>&#10022; Assistant</strong>");
     var actions = el("div", { class: "dm-gm-header-actions" });
-    var resetBtn = el("button", { title: "更換 API Key", "aria-label": "更換 API Key" }, "&#9881;");
+    var resetBtn = el("button", { title: "API Key 設定", "aria-label": "API Key 設定" }, "&#9881;");
     resetBtn.addEventListener("click", function () {
-      clearApiKey();
-      history = [];
-      render();
+      var content = document.getElementById("dm-gm-content");
+      if (content) {
+        content.innerHTML = "";
+        content.appendChild(renderKeyForm(true));
+      }
     });
     var closeBtn = el("button", { title: "關閉", "aria-label": "關閉" }, "&#10005;");
     closeBtn.addEventListener("click", function () {
@@ -262,11 +263,7 @@
     actions.appendChild(closeBtn);
     header.appendChild(actions);
 
-    var disclaimer = el(
-      "div",
-      { class: "dm-gm-disclaimer" },
-      "回答由 Gemini 產生，使用你自己的 API Key，可能包含錯誤"
-    );
+    var disclaimer = el("div", { class: "dm-gm-disclaimer" }, "回答由 Gemini 產生，可能有誤");
 
     var body = el("div", { id: "dm-gm-content" });
     panel.appendChild(header);
@@ -281,27 +278,29 @@
     content.innerHTML = "";
     var apiKey = getApiKey();
     if (!apiKey) {
-      content.appendChild(renderSetup());
+      content.appendChild(renderKeyForm(false));
     } else {
       content.appendChild(renderChat());
     }
   }
 
-  function renderSetup() {
+  function renderKeyForm(isSettings) {
+    var current = getApiKey();
     var wrap = el(
       "div",
       { class: "dm-gm-setup" },
-      "此問答功能由你自己的 Gemini API Key 驅動，Key 只會儲存在你目前這個瀏覽器中（localStorage），" +
-        "不會傳送給 Data Machi 網站或任何第三方伺服器。<br/>" +
-        '還沒有 Key？前往 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">' +
-        "Google AI Studio</a> 免費申請。"
+      "Key 僅存於你的瀏覽器，不會外傳。" +
+        '沒有 Key？<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">' +
+        "前往 Google AI Studio 申請</a>。"
     );
     var input = el("input", {
       type: "password",
       placeholder: "貼上你的 Gemini API Key",
       autocomplete: "off",
     });
-    var saveBtn = el("button", {}, "儲存並開始使用");
+    if (isSettings && current) input.value = current;
+
+    var saveBtn = el("button", {}, isSettings ? "更新" : "儲存並開始使用");
     saveBtn.addEventListener("click", function () {
       var val = input.value.trim();
       if (!val) return;
@@ -312,7 +311,23 @@
       if (e.key === "Enter") saveBtn.click();
     });
     wrap.appendChild(input);
-    wrap.appendChild(saveBtn);
+
+    var btnRow = el("div", { style: "display:flex;gap:8px;align-items:center;" });
+    btnRow.appendChild(saveBtn);
+    if (isSettings && current) {
+      var clearBtn = el(
+        "button",
+        { style: "background:transparent;color:#991b1b;padding:0;" },
+        "清除 Key"
+      );
+      clearBtn.addEventListener("click", function () {
+        clearApiKey();
+        history = [];
+        render();
+      });
+      btnRow.appendChild(clearBtn);
+    }
+    wrap.appendChild(btnRow);
     return wrap;
   }
 
@@ -345,9 +360,6 @@
     row.appendChild(textarea);
     row.appendChild(sendBtn);
     footer.appendChild(row);
-    footer.appendChild(
-      el("div", { class: "dm-gm-hint" }, "由 Gemini 3.6 Flash 產生的回答可能有誤，請自行查證。")
-    );
 
     wrap.appendChild(body);
     wrap.appendChild(footer);
