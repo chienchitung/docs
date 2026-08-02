@@ -52,13 +52,11 @@ flowchart LR
 並確保 Groq API Key 不會寫入 log、Repository 或長期資料庫。
 ```
 
-## 建立 Groq API Key
+## 建立並測試 Groq 語音轉文字
 
-1. 登入 Groq Console，進入 API Keys 頁面。
-2. 選擇建立新的 API Key。
-3. 使用容易辨識的名稱，例如 `data-machi-transcription`。
-4. 建立完成後立即複製 Key，並保存到密碼管理工具。
-5. 不要把 Key 寫入 GitHub、公開文件或後端 Log。
+### 步驟 1：進入 Groq API Keys 頁面
+
+登入 Groq Console，進入 API Keys 頁面。
 
 **圖 1｜進入 Groq API Keys 頁面**
 
@@ -66,17 +64,37 @@ flowchart LR
 
 _圖說：登入 Groq Console 後，進入 API Keys 頁面並建立 Data Machi 專用 Key。介面可能隨版本更新而調整，請以 API Keys 或 Create API Key 等選項為準。_
 
+### 步驟 2：建立並保存 Groq API Key
+
+選擇建立新的 API Key，使用容易辨識的名稱，例如 `data-machi-transcription`。建立完成後立即複製並保存到密碼管理工具。
+
 **圖 2｜命名並保存 Groq API Key**
 
 > \[圖片預留位置：Key 名稱欄位與建立完成畫面\]
 
 _圖說：使用可辨識的用途名稱建立 Key。完整 Key 通常只會顯示一次，請立即保存；圖片中必須完全遮蔽 Key。_
 
+### 步驟 3：準備匿名測試音檔
+
+準備一段 10～20 秒、不含真實姓名、公司資訊或會議內容的音檔。若格式不支援，再使用 ffmpeg 轉換。
+
+### 步驟 4：輸入 Groq Key 並上傳音檔
+
+進入 Data Machi 的會議功能，輸入本次使用的 Groq Key，再選擇錄音或上傳匿名音檔。
+
 **圖 3｜在會議功能輸入 Groq Key 並上傳音檔**
 
 > \[圖片預留位置：Data Machi 會議頁面，標示 Groq Key、錄音與上傳音檔的位置\]
 
 _圖說：進入會議功能後，先輸入本次使用的 Groq Key，再選擇錄音或上傳匿名音檔。請使用測試檔名與測試內容，不要讓真實會議名稱、逐字稿或參與者資訊出現在圖片中。_
+
+### 步驟 5：確認 Groq 逐字稿
+
+先檢查音檔是否成功轉成文字。若此階段失敗，應優先檢查 Key、音訊格式、檔案大小與 API 回應。
+
+### 步驟 6：確認 Gemini 摘要結果
+
+逐字稿成功後，再確認 Gemini 是否完成摘要、議程與行動項目整理。
 
 **圖 4｜檢查逐字稿與會議摘要結果**
 

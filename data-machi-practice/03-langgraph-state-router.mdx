@@ -92,7 +92,9 @@ Vercel 與 Render 都可以連接指定 Repository 與 Branch。當主要分支�
   AI Coding Agent 可以更換，但 GitHub 應該是所有開發方式共用的唯一正式版本來源。
 </Info>
 
-## 認識 Repository、Branch 與 Commit
+## 完成一次 GitHub 版本流程
+
+### 步驟 1：確認 Repository、Branch 與最新 Commit
 
 進入自己的 GitHub Repository 後，先確認目前所在 Branch、最新 Commit 與專案檔案列表。這三個位置會是後續版本管理最常使用的入口。
 
@@ -102,13 +104,9 @@ Vercel 與 Render 都可以連接指定 Repository 與 Branch。當主要分支�
 
 _圖說：Repository 首頁會顯示目前 Branch、最新 Commit 與專案檔案。開始修改前先確認自己位於正確 Repository 與 Branch，避免把變更提交到錯誤版本。_
 
-## 從 `main` 建立 Feature Branch
+### 步驟 2：從 `main` 建立 Feature Branch
 
-1. 回到 Repository 首頁。
-2. 點選 Branch 選擇器。
-3. 輸入新 Branch 名稱，例如 `feature/add-sheets-tool`。
-4. 確認新 Branch 是從最新的 `main` 建立。
-5. 切換到新 Branch 後，再開始交給 AI Coding Agent 修改。
+回到 Repository 首頁，點選 Branch 選擇器，輸入新 Branch 名稱，例如 `feature/add-sheets-tool`。確認新 Branch 是從最新的 `main` 建立後，再開始修改。
 
 **圖 2｜建立新的 Feature Branch**
 
@@ -116,13 +114,9 @@ _圖說：Repository 首頁會顯示目前 Branch、最新 Commit 與專案檔�
 
 _圖說：重要修改應在獨立 Branch 進行。名稱建議描述這次工作的目的，例如 `feature/add-sheets-tool` 或 `fix/render-timeout`，不要使用難以辨識的隨機名稱。_
 
-## 建立 Pull Request 並檢查 Diff
+### 步驟 3：提交修改並建立 Pull Request
 
-1. 將修改提交到 Feature Branch。
-2. 在 GitHub 建立 Pull Request。
-3. 填寫修改目的、影響範圍與測試方式。
-4. 開啟 **Files changed**，逐一檢查新增與刪除內容。
-5. 確認沒有 Secret、真實網址或企業資料後，再合併到 `main`。
+將修改提交到 Feature Branch，在 GitHub 建立 Pull Request，並填寫修改目的、影響範圍與測試方式。
 
 **圖 3｜建立 Pull Request 並填寫修改說明**
 
@@ -130,13 +124,17 @@ _圖說：重要修改應在獨立 Branch 進行。名稱建議描述這次工�
 
 _圖說：PR 說明應讓未參與修改的人也能理解改動目的、測試結果與可能風險。建立前請再次確認 base 是 `main`，compare 是本次 Feature Branch。_
 
+### 步驟 4：在 Files changed 檢查 Diff
+
+開啟 **Files changed**，逐一檢查新增與刪除內容。確認沒有 Secret、真實網址或企業資料後，再合併到 `main`。
+
 **圖 4｜在 Files changed 檢查 Diff**
 
 > \[圖片預留位置：Files changed 頁面，標示新增、刪除與檔案清單\]
 
 _圖說：Files changed 是合併前最重要的檢查畫面。逐檔確認修改是否符合需求，並特別搜尋 API Key、Token、Email、正式網域與硬編碼設定。_
 
-## 確認自動部署狀態
+### 步驟 5：合併並確認自動部署狀態
 
 PR 合併後，GitHub 可能顯示 Vercel、Render 或 GitHub Actions 的部署檢查。若狀態失敗，應先點進詳細頁面查看是哪一個階段出錯。
 

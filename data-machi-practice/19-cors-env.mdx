@@ -57,17 +57,6 @@ flowchart TD
 
 Preview URL 可能每次都不同。你可以選擇只在 Production 做完整 API 測試，或設計適合的 Preview CORS 策略，但不要為方便而永久開放所有來源。
 
-## 串接步驟
-
-1. 在 Render 複製正式 Backend URL。
-2. 到 Vercel 設定 `VITE_API_BASE_URL`。
-3. 重新部署 Vercel。
-4. 在 Vercel 複製 Production URL。
-5. 到 Render 設定 `ALLOWED_ORIGINS`。
-6. 重新啟動或部署 Render。
-7. 從 Vercel 正式網址送出測試問題。
-8. 同時查看 Browser Network 與 Render Log。
-
 ## 常見判斷方式
 
 - 瀏覽器顯示 CORS，但 Render 沒收到請求：可能在 Preflight 階段被擋。
@@ -95,12 +84,17 @@ Preview URL 可能每次都不同。你可以選擇只在 Production 做完整 A
 
 ## 將 Vercel 與 Render 正式串接
 
-1. 從 Vercel Project 複製 Production Domain。
-2. 回到 Render 的 Environment Variables。
-3. 將 Vercel 網址加入 `ALLOWED_ORIGINS`。
-4. 確認網址包含正確的 `https://`，且沒有多餘路徑。
-5. 儲存設定並重新部署 Render 後端。
-6. 回到 Vercel 正式網站，重新測試聊天請求。
+### 步驟 1：取得 Render Backend URL
+
+在 Render Service 中複製正式後端網址，確認網址能開啟 `/docs` 或 `/health`。
+
+### 步驟 2：設定 Vercel 的 `VITE_API_BASE_URL`
+
+回到 Vercel Environment Variables，將 Render 公開網址填入 `VITE_API_BASE_URL`，再重新部署前端。
+
+### 步驟 3：取得 Vercel Production Domain
+
+從 Vercel Project 複製 Production Domain。
 
 **圖 1｜複製 Vercel Production Domain**
 
@@ -108,11 +102,23 @@ Preview URL 可能每次都不同。你可以選擇只在 Production 做完整 A
 
 _圖說：在 Vercel Project 中找到正式網域。請使用完整 Origin，例如 `https://your-app.vercel.app`，不要複製特定頁面路徑。_
 
+### 步驟 4：將 Vercel Domain 加入 CORS Allowlist
+
+回到 Render Environment Variables，將完整 Vercel Origin 加入 `ALLOWED_ORIGINS`。確認包含正確的 `https://`，且沒有多餘路徑。
+
 **圖 2｜在 Render 設定 `ALLOWED_ORIGINS`**
 
 > \[圖片預留位置：Render Environment Variables，標示 `ALLOWED_ORIGINS` 與匿名 Vercel 網址\]
 
 _圖說：將 Vercel Production Domain 加入後端 CORS allowlist。網址不可多出 API 路徑，是否保留結尾斜線則應與後端解析方式一致。_
+
+### 步驟 5：重新部署前端與後端
+
+Vercel 與 Render 的環境變數修改後都必須重新部署，新的設定才會生效。
+
+### 步驟 6：從 Network 驗證正式連線
+
+回到 Vercel 正式網站送出測試問題，並使用瀏覽器 Network 面板檢查 OPTIONS、POST、Status Code 與 Request URL。
 
 **圖 3｜從瀏覽器 Network 驗證正式連線**
 
@@ -120,25 +126,27 @@ _圖說：將 Vercel Production Domain 加入後端 CORS allowlist。網址不�
 
 _圖說：重新送出聊天問題後，從 Network 檢查請求是否送往正確的 Render URL。若 OPTIONS 或 POST 被阻擋，優先檢查 CORS、Backend URL 與重新部署是否完成。_
 
-**圖 4｜設定 Vercel 的 `VITE_API_BASE_URL`**
+### 步驟 7：辨識並修正 CORS 錯誤
 
-> \[圖片預留位置：Vercel Environment Variables，標示 `VITE_API_BASE_URL`、Render 網址與環境範圍\]
+若請求失敗，先從 Console 與 Network 比對 Origin、Request URL、OPTIONS 與 POST 狀態，再回頭修正 `ALLOWED_ORIGINS`。
 
-_圖說：`VITE_API_BASE_URL` 應指向 Render 公開網址。Production 與 Preview 可以使用不同後端環境；修改後必須重新部署，新的變數值才會進入前端建置結果。_
-
-**圖 5｜辨識瀏覽器中的 CORS 錯誤**
+**圖 4｜辨識瀏覽器中的 CORS 錯誤**
 
 > \[圖片預留位置：瀏覽器 Console／Network 的 CORS 錯誤，標示 Origin、Request URL 與錯誤訊息\]
 
 _圖說：CORS 設定錯誤時，瀏覽器通常會在 Console 或 Network 顯示請求被來源政策阻擋。先核對前端 Origin、後端 Request URL 與 `ALLOWED_ORIGINS` 是否一致。_
 
-**圖 6｜更新 allowlist 並重新部署後請求成功**
+**圖 5｜更新 allowlist 並重新部署後請求成功**
 
 > \[圖片預留位置：修正 Render 環境變數、重新部署，以及 Network 中成功回應的畫面\]
 
 _圖說：更新 `ALLOWED_ORIGINS` 後必須重新部署後端。重新測試時，確認 OPTIONS 與 POST 請求成功，並比較修正前後的 Status Code 與 Response。_
 
-**圖 7｜完成正式環境的完整對話測試**
+### 步驟 8：完成正式環境對話驗收
+
+從 Vercel Production Domain 提出一個測試問題，確認前端、Render、Gemini 與資料工具能完成整條請求鏈。
+
+**圖 6｜完成正式環境的完整對話測試**
 
 > \[圖片預留位置：從 Vercel 正式網址提出問題、前端顯示工具狀態並成功取得回答\]
 

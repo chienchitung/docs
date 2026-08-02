@@ -121,14 +121,29 @@ flowchart TD
     I --> J[更新清冊與交接文件]
 ```
 
-建議依序處理：
+### 步驟 1：盤點目前資產與憑證
 
-1. GitHub Repository 移至公司 Organization，加入第二位 Owner。
-2. Render 與 Vercel 移至公司 Workspace／Team。
-3. Gemini 與 Sheets 移至公司 Google Cloud Project。
-4. Confluence、Trello 改用公司控制的低權限整合身分。
-5. Groq 改用公司 Project Key。
-6. 全部驗證成功後，才撤銷個人憑證。
+列出 GitHub、Render、Vercel、Google Cloud、Atlassian 與 Groq 的所有者、管理者、Secret 名稱與目前存放位置。
+
+### 步驟 2：建立公司 Team、Project 與備援管理者
+
+將 GitHub Repository 移至公司 Organization，Render 與 Vercel 移至公司 Workspace／Team，並至少加入一位備援管理者。
+
+### 步驟 3：建立低權限新憑證
+
+將 Gemini 與 Sheets 移至公司 Google Cloud Project，Confluence、Trello 改用公司控制的低權限整合身分，Groq 改用公司 Project Key。
+
+### 步驟 4：先在測試環境驗證
+
+把新憑證放入測試環境，確認功能、資料範圍與錯誤處理符合預期。
+
+### 步驟 5：切換正式環境並重新部署
+
+更新正式環境 Secret，重新部署前端與後端，再執行完整驗收。
+
+### 步驟 6：撤銷舊憑證並更新清冊
+
+只有在新憑證驗證成功後，才撤銷個人舊 Token，並更新資產清冊、輪替日期與交接文件。
 
 ## 什麼時候需要 OAuth 或 RBAC？
 
@@ -189,13 +204,11 @@ flowchart TD
 請先輸出盤點表與風險分級，不要立即修改、撤銷或產生任何新憑證。
 ```
 
-## 檢查 GitHub Organization 與 Repository 權限
+## 盤點平台權限與完成 Token 輪替
 
-1. 進入公司 GitHub Organization 或 Repository Settings。
-2. 開啟 People、Collaborators 或 Teams 權限頁面。
-3. 確認 Repository 不只由單一個人帳號控制。
-4. 至少安排一位備援管理者，並檢查每個角色是否符合最小權限。
-5. 將 Repository 所有者、主要管理者與備援管理者記錄到資產清冊。
+### 步驟 1：檢查 GitHub Organization 與 Repository 權限
+
+進入公司 GitHub Organization 或 Repository Settings，開啟 People、Collaborators 或 Teams 權限頁面。確認 Repository 不只由單一個人帳號控制，並至少安排一位備援管理者。
 
 **圖 1｜檢查 Repository 的 People 與 Teams 權限**
 
@@ -203,11 +216,19 @@ flowchart TD
 
 _圖說：正式 Repository 應由公司 Organization 擁有，並至少有兩位能處理緊急維護的管理者。教學圖片中的姓名、Email、Organization 與公司名稱都必須匿名化。_
 
+### 步驟 2：確認備援管理者與最小權限
+
+依實際工作分配 Admin、Maintain、Write 或 Viewer 等角色，確保主要開發者離開後仍有人能維護系統。
+
 **圖 2｜確認備援管理者與最小權限**
 
 > \[圖片預留位置：成員角色或 Team 權限設定，標示 Admin、Maintain、Write 等角色\]
 
 _圖說：不是所有人都需要 Admin。依實際工作分配角色，並確認主要開發者離開或帳號停用後，備援管理者仍能修改設定、合併 PR 與重新部署。_
+
+### 步驟 3：檢查其他雲端平台的成員角色
+
+逐一檢查 Render Workspace、Vercel Team 與 Google Cloud IAM，確認正式環境至少有一位備援管理者，並避免所有人都使用最高權限。
 
 **圖 3｜檢查 Render、Vercel 與 Google Cloud 的成員角色**
 
@@ -215,17 +236,29 @@ _圖說：不是所有人都需要 Admin。依實際工作分配角色，並確�
 
 _圖說：各平台的角色名稱不同，但都應依最小權限分配 Owner、Developer、Viewer 等能力。正式環境至少要有一位備援管理者；圖片不需展示真實成員姓名、Email 或公司資訊。_
 
+### 步驟 4：建立憑證與資產清冊
+
+將服務所有者、Secret 名稱、存放位置、權限範圍、輪替日期與備援管理者記錄到清冊，但不要保存完整 Secret。
+
 **圖 4｜建立憑證與資產清冊**
 
 > \[圖片預留位置：使用假資料的清冊，包含服務、Secret 名稱、存放位置、權限範圍、輪替日期與備援管理者\]
 
 _圖說：清冊只記錄憑證名稱、用途、存放位置與管理責任，不保存完整 Secret。透過輪替日期與備援管理者欄位，可以降低憑證過期或人員異動造成的風險。_
 
+### 步驟 5：加入新 Token 並完成重新部署
+
+先建立新 Token、更新環境變數並重新部署。完成實際功能驗證前，不要先撤銷舊 Token。
+
 **圖 5｜先加入新 Token 並完成重新部署**
 
 > \[圖片預留位置：新 Secret 已加入環境變數，以及重新部署成功的畫面\]
 
 _圖說：Token 輪替時，先建立新 Token、更新環境變數並重新部署。完成實際功能驗證前，不要先撤銷舊 Token，否則可能造成服務中斷。_
+
+### 步驟 6：驗證成功後撤銷舊 Token
+
+確認新 Token 已在正式環境正常運作，再撤銷舊 Token，並更新憑證清冊中的輪替日期與管理者。
 
 **圖 6｜驗證成功後撤銷舊 Token**
 

@@ -14,16 +14,6 @@ flowchart LR
     URL --> R[Render Backend URL]
 ```
 
-## 建立 Vercel Project
-
-1. 登入 Vercel，選擇 **Add New Project**。
-2. 匯入同一個 GitHub Repository。
-3. Root Directory 設為 `frontend`。
-4. Framework Preset 選擇 Vite。
-5. 確認 Build Command 與 Output Directory。
-6. 建立前端環境變數。
-7. 執行第一次部署。
-
 ## 前端最重要的環境變數
 
 ```env
@@ -87,14 +77,9 @@ Preview 很適合檢查前端版面與基本流程，但若後端 CORS 只允許
 
 ## 在 Vercel 建立前端 Project
 
-1. 登入 Vercel，進入公司或團隊 Team。
-2. 選擇新增 Project。
-3. 從 GitHub 匯入 Data Machi Repository。
-4. 確認部署 Branch。
-5. 將 Root Directory 設為 `frontend`。
-6. 確認 Framework Preset 為 Vite，並檢查 Build Command 與 Output Directory。
-7. 建立 `VITE_API_BASE_URL` 等前端環境變數。
-8. 開始部署並檢查 Build Log。
+### 步驟 1：從 GitHub 匯入 Repository
+
+登入 Vercel，進入公司或團隊 Team，新增 Project 並從 GitHub 匯入 Data Machi Repository。
 
 **圖 1｜從 GitHub 匯入 Data Machi Repository**
 
@@ -102,11 +87,19 @@ Preview 很適合檢查前端版面與基本流程，但若後端 CORS 只允許
 
 _圖說：在 Vercel Team 中新增 Project，找到 Data Machi 的 GitHub Repository 並選擇 Import。正式專案建議放在團隊 Team，而不是只存在個人帳號。_
 
+### 步驟 2：確認 Branch、Root Directory 與 Vite
+
+確認部署 Branch，將 Root Directory 設為 `frontend`，並檢查 Framework Preset、Build Command 與 Output Directory。
+
 **圖 2｜設定 frontend Root Directory 與 Vite**
 
 > \[圖片預留位置：Root Directory、Framework Preset、Build Command 與 Output Directory\]
 
 _圖說：因為 React／Vite 前端位於 `frontend`，Root Directory 應指向該資料夾。確認 Vercel 正確辨識 Vite，並依 Repository 實際設定檢查建置指令。_
+
+### 步驟 3：設定前端 Backend URL
+
+建立 `VITE_API_BASE_URL`，將值指向 Render 的公開後端網址。
 
 **圖 3｜設定前端 Backend URL**
 
@@ -114,17 +107,29 @@ _圖說：因為 React／Vite 前端位於 `frontend`，Root Directory 應指向
 
 _圖說：將 Render 後端網址填入 `VITE_API_BASE_URL`。這個值會被打包到瀏覽器前端，因此只能放可公開的 API Base URL，不可放任何私密 API Key。_
 
+### 步驟 4：再次核對 Build 設定
+
+部署前逐欄核對 Framework Preset、Root Directory、Build Command 與 Output Directory，避免專案雖成功匯入卻無法建置。
+
 **圖 4｜確認 Vite、Root Directory 與 Build 設定**
 
 > \[圖片預留位置：Vercel 設定頁，標示 Framework Preset、Root Directory、Build Command 與 Output Directory\]
 
 _圖說：部署前逐欄確認 Framework Preset 為 Vite、Root Directory 指向 `frontend`，並依 Repository 實際設定核對 Build Command 與 Output Directory。_
 
+### 步驟 5：選擇環境變數套用範圍
+
+依實際需求選擇 `VITE_API_BASE_URL` 套用到 Production、Preview 與 Development 的範圍。
+
 **圖 5｜設定前端 Environment Variable 的套用範圍**
 
 > \[圖片預留位置：`VITE_API_BASE_URL` 新增畫面與 Production／Preview／Development 選項\]
 
 _圖說：建立 `VITE_API_BASE_URL` 時，依需求選擇套用到 Production、Preview 與 Development。教學中可使用示意 Render 網址，避免暴露私人 Preview 網域。_
+
+### 步驟 6：部署並驗證 Production Domain
+
+開始部署並查看 Build Log。Deployment 顯示 Ready 後，開啟 Production Domain，確認首頁可正常載入。
 
 **圖 6｜確認 Vercel Deployment 與正式網址**
 

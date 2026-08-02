@@ -24,12 +24,13 @@ flowchart LR
 
 ## Trello 需要準備
 
-### 取得 Trello API Key 與 User Token
+### 步驟 1：準備匿名測試 Board
 
-1. 進入 Trello 的開發者 API 頁面，確認目前登入的是準備用於整合的低權限帳號。
-2. 找到 API Key 區塊並複製 Key。
-3. 依頁面指示產生 User Token，閱讀授權範圍後再確認授權。
-4. 將 API Key 與 Token 保存到密碼管理工具，稍後再填入後端環境變數。
+先建立一個不含真實專案名稱、人員資訊或機密卡片的測試 Board。後續取得的 Board ID、API Key 與 Token，都應先用這個測試 Board 驗證。
+
+### 步驟 2：取得 Trello API Key
+
+進入 Trello 的開發者 API 頁面，確認目前登入的是準備用於整合的低權限帳號，再找到 API Key 區塊。
 
 **圖 1｜Trello API Key 管理入口**
 
@@ -37,16 +38,23 @@ flowchart LR
 
 _圖說：進入 Trello API 管理頁後，先找到 API Key。圖片中不可顯示完整 Key、Workspace 名稱或真實 Board 資訊。_
 
+### 步驟 3：產生 Trello User Token
+
+依頁面指示產生 User Token，閱讀授權範圍後再確認授權。
+
 **圖 2｜產生 Trello User Token**
 
 > \[圖片預留位置：User Token 授權畫面，標示授權按鈕與權限說明\]
 
 _圖說：User Token 會繼承目前登入帳號可存取的 Trello 範圍。確認使用的是低權限整合帳號後，再完成授權；圖片中必須完全遮蔽 Token。_
 
-- Trello 帳號與匿名測試 Board
-- Board ID
-- API Key
-- User Token
+### 步驟 4：取得 Board ID
+
+從匿名測試 Board 的網址或 API 回應取得 Board ID，並確認它對應的是教學用 Board，而不是真實工作看板。
+
+### 步驟 5：設定後端環境變數
+
+將 Board ID、API Key 與 User Token 保存到密碼管理工具，再填入 `backend/.env` 或 Render Environment。
 
 ```env
 TRELLO_BOARD_ID=
@@ -69,13 +77,13 @@ flowchart LR
 
 ## Confluence 需要準備
 
-### 建立 Confluence API Token
+### 步驟 1：準備測試 Space 與頁面
 
-1. 進入 Atlassian 帳號的 API Token 管理頁。
-2. 選擇建立新的 API Token。
-3. 使用容易辨識的名稱，例如 `data-machi-readonly`。
-4. 建立完成後立即複製 Token，並保存到密碼管理工具。
-5. 記錄這組 Token 所屬帳號、用途與預計輪替日期。
+先建立一個只含匿名內容的 Confluence 測試 Space 或頁面，並確認整合帳號具備讀取權限。
+
+### 步驟 2：進入 API Token 管理頁
+
+登入準備用於整合的低權限 Atlassian 帳號，進入 API Token 管理頁。
 
 **圖 3｜進入 Atlassian API Token 管理頁**
 
@@ -83,17 +91,23 @@ flowchart LR
 
 _圖說：從 Atlassian 帳號設定進入 API Token 管理頁，建立 Data Machi 專用 Token。請確認目前登入的是低權限整合帳號，而不是全站管理者。_
 
+### 步驟 3：建立並保存 API Token
+
+建立新的 API Token，使用容易辨識的名稱，例如 `data-machi-readonly`。建立完成後立即複製並保存到密碼管理工具。
+
 **圖 4｜命名並建立 Confluence API Token**
 
 > \[圖片預留位置：Token 命名欄位與建立完成提示\]
 
 _圖說：為 Token 填入可辨識的用途名稱。Token 建立完成後通常只會顯示一次，請立即複製；截圖時必須完全遮蔽，不要保留可辨識輪廓。_
 
-- Atlassian 帳號
-- Confluence Site URL
-- 登入 Email
-- API Token
-- 該帳號可讀取的測試 Space 或頁面
+### 步驟 4：確認 Site URL 與登入 Email
+
+記錄 Confluence Site URL，以及建立 Token 的 Atlassian 登入 Email。兩者必須與後端設定一致。
+
+### 步驟 5：設定後端環境變數
+
+將 Site URL、登入 Email 與 API Token 填入 `backend/.env` 或 Render Environment。
 
 ```env
 CONFLUENCE_URL=

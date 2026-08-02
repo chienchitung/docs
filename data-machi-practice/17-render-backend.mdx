@@ -18,17 +18,6 @@ flowchart LR
     U --> URL[取得公開 Backend URL]
 ```
 
-## 建立 Render Web Service
-
-1. 登入 Render，選擇 **New Web Service**。
-2. 連接你的 GitHub Repository。
-3. 選擇正式部署使用的 Branch。
-4. 將 Root Directory 設為 `backend`。
-5. 設定 Python Runtime。
-6. 填入 Build Command 與 Start Command。
-7. 建立 Environment Variables。
-8. 部署並查看 Log。
-
 ## 常見設定範例
 
 ```text
@@ -109,14 +98,9 @@ sequenceDiagram
 
 ## 在 Render 建立 Web Service
 
-1. 登入 Render，進入公司或團隊 Workspace。
-2. 選擇 **New Web Service**。
-3. 連接 GitHub，並選擇 Data Machi Repository。
-4. 選擇正式部署使用的 Branch。
-5. 將 Root Directory 設為 `backend`。
-6. 設定 Build Command 與 Start Command。
-7. 建立後端需要的 Environment Variables。
-8. 開始部署並查看 Build Log。
+### 步驟 1：建立新的 Web Service
+
+登入 Render，進入公司或團隊 Workspace，選擇 **New Web Service**。
 
 **圖 1｜建立新的 Render Web Service**
 
@@ -124,11 +108,19 @@ sequenceDiagram
 
 _圖說：在團隊 Workspace 中建立新的 Web Service。正式服務不應只存在於個人 Workspace，並應事先加入備援管理者。_
 
+### 步驟 2：連接 GitHub Repository 並選擇 Branch
+
+連接 GitHub，選擇 Data Machi Repository，以及正式部署使用的 Branch。
+
 **圖 2｜連接 GitHub Repository 與部署 Branch**
 
 > \[圖片預留位置：Repository 與 Branch 選擇畫面\]
 
 _圖說：選擇 Data Machi 所在的 GitHub Repository，以及預計觸發正式部署的 Branch。一般情況下可使用 `main`，但仍應依實際版本流程調整。_
+
+### 步驟 3：設定 Root Directory、Runtime 與啟動指令
+
+將 Root Directory 設為 `backend`，確認 Python Runtime，並填入 Build Command 與 Start Command。
 
 **圖 3｜設定 Root Directory 與啟動指令**
 
@@ -136,11 +128,19 @@ _圖說：選擇 Data Machi 所在的 GitHub Repository，以及預計觸發正�
 
 _圖說：因為 FastAPI 位於 `backend`，Root Directory 應指向 `backend`。Build Command 負責安裝套件，Start Command 則以 `$PORT` 啟動 Uvicorn。_
 
+### 步驟 4：建立 Environment Variables
+
+依功能建立 Gemini、Google Sheets、CORS 與其他後端需要的環境變數。選配服務只在實際使用時加入。
+
 **圖 4｜新增 Render Environment Variables**
 
 > \[圖片預留位置：Environment Variables 設定頁，只顯示變數名稱\]
 
 _圖說：將 Gemini、Google Sheets 與 CORS 等後端設定建立在 Render Environment。圖片只顯示變數名稱，不可顯示任何真實 Secret。_
+
+### 步驟 5：部署前逐欄核對設定
+
+再次確認 Runtime、Build Command、Start Command 與 `$PORT`，避免使用本機設定直接部署。
 
 **圖 5｜逐欄核對 Runtime、Build 與 Start Command**
 
@@ -148,11 +148,19 @@ _圖說：將 Gemini、Google Sheets 與 CORS 等後端設定建立在 Render En
 
 _圖說：部署失敗時，先逐欄核對 Python Runtime、安裝依賴的 Build Command，以及啟動 FastAPI 的 Start Command。Start Command 必須使用 Render 提供的 `$PORT`，不能寫死本機 Port。_
 
+### 步驟 6：檢查環境變數清單
+
+確認所有必要變數名稱都已建立，拼字與程式完全一致，且沒有把 Secret 放到公開欄位。
+
 **圖 6｜檢查 Render Environment Variables 清單**
 
 > \[圖片預留位置：Render Environment Variables 清單與新增入口，只顯示變數名稱\]
 
 _圖說：部署前確認所有必要變數名稱都已建立，並檢查拼字是否與程式一致。圖片中的值必須完全遮蔽，也要留意瀏覽器自動填入或密碼管理工具浮層是否意外顯示 Secret。_
+
+### 步驟 7：部署並驗證服務健康狀態
+
+開始部署並查看 Build Log。部署完成後，開啟公開 URL、`/docs` 或 `/health`，確認後端可以實際回應請求。
 
 **圖 7｜確認 Render 部署成功與服務健康狀態**
 

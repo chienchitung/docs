@@ -66,12 +66,15 @@ VITE_API_BASE_URL=
   把 Secret 放對位置，只解決「不要外洩」；它不代表憑證的所有權、權限範圍與離職交接已經完成。正式部署前，還要在〈實作 17｜權限與資訊安全〉盤點資產所有者、備援管理者、最小權限與 Token 輪替方式。
 </Note>
 
-## 建立本機 `.env` 與 `.env.example`
+## 建立專案環境變數
 
-1. 在 `backend` 資料夾建立 `.env`，放入本機實際使用的 Secret。
-2. 在 Repository 中保留 `.env.example`，只列出變數名稱與用途。
-3. 不要把真實值複製到 `.env.example`。
-4. 前端若需要環境變數，僅放可公開的設定，例如 Backend URL。
+### 步驟 1：建立本機 `.env`
+
+在 `backend` 資料夾建立 `.env`，放入本機實際使用的 Secret。前端若需要環境變數，只放可公開設定，例如 Backend URL。
+
+### 步驟 2：建立 `.env.example`
+
+在 Repository 中保留 `.env.example`，只列出變數名稱與用途，不要放入任何真實值。
 
 **圖 1｜比較 `.env` 與 `.env.example`**
 
@@ -79,11 +82,9 @@ VITE_API_BASE_URL=
 
 _圖說：`.env` 保存本機實際值，不可提交 GitHub；`.env.example` 則提供變數名稱與設定範例，讓其他開發者知道需要準備哪些項目。教學圖片中的所有值都應改成假資料。_
 
-## 使用 `.gitignore` 排除敏感檔案
+### 步驟 3：使用 `.gitignore` 排除敏感檔案
 
-1. 開啟 Repository 根目錄的 `.gitignore`。
-2. 加入 `.env`、Service Account JSON、索引檔與其他本機產生檔案。
-3. 若檔案曾經被 Git 追蹤，只修改 `.gitignore` 並不會自動移除歷史紀錄，還要另外停止追蹤並檢查 Git 歷史。
+開啟 Repository 根目錄的 `.gitignore`，加入 `.env`、Service Account JSON、索引檔與其他本機產生檔案。若檔案曾經被 Git 追蹤，只修改 `.gitignore` 並不會自動移除歷史紀錄，還要另外停止追蹤並檢查 Git 歷史。
 
 **圖 2｜在 `.gitignore` 排除 Secret 與本機檔案**
 
@@ -91,12 +92,9 @@ _圖說：`.env` 保存本機實際值，不可提交 GitHub；`.env.example` �
 
 _圖說：`.gitignore` 能降低誤提交風險，但不能取代提交前檢查。若 Secret 曾經進入 Commit，應立即撤銷並重新建立憑證，而不是只刪除檔案。_
 
-## 在 Render 建立後端 Secret
+### 步驟 4：在 Render 建立後端 Secret
 
-1. 進入 Render Web Service 的 Environment 頁面。
-2. 依序新增 Gemini、Google Sheets、Trello 與 Confluence 等後端變數。
-3. 確認變數名稱與程式讀取名稱完全一致。
-4. 儲存後重新部署或重新啟動服務。
+進入 Render Web Service 的 Environment 頁面，新增 Gemini、Google Sheets、Trello 與 Confluence 等後端變數。確認名稱與程式讀取名稱完全一致，儲存後重新部署或重新啟動服務。
 
 **圖 3｜Render Environment Variables**
 
@@ -104,12 +102,13 @@ _圖說：`.gitignore` 能降低誤提交風險，但不能取代提交前檢查
 
 _圖說：正式後端 Secret 應建立在 Render Environment，而不是寫進 Repository。圖片只保留變數名稱，所有值都必須完整遮蔽。_
 
-## 在 Vercel 建立前端環境變數
+### 步驟 5：在 Vercel 建立前端環境變數
 
-1. 進入 Vercel Project Settings 的 Environment Variables。
-2. 新增 `VITE_API_BASE_URL` 等可公開設定。
-3. 選擇要套用的 Production、Preview 與 Development 環境。
-4. 儲存後重新部署前端。
+進入 Vercel Project Settings 的 Environment Variables，新增 `VITE_API_BASE_URL` 等可公開設定，選擇 Production、Preview 與 Development 的套用範圍，儲存後重新部署前端。
+
+### 步驟 6：重新部署並驗證
+
+完成 Render 與 Vercel 設定後，重新部署兩個服務，確認後端能讀取 Secret、前端能讀取公開設定，且 GitHub 中沒有出現任何真實值。
 
 **圖 4｜Vercel Environment Variables 與套用範圍**
 
