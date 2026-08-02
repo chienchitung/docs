@@ -533,14 +533,20 @@
     });
   }
 
-  function findNativeAssistantButton() {
-    var byId = document.getElementById("assistant-entry");
-    if (byId) return byId;
+  // Mintlify exposes at least three native entry points to the (broken,
+  // hobby-plan) assistant: the top-nav button, an "Ask Assistant" tab
+  // inside the ⌘K search modal, and a persistent bottom-docked chat input.
+  // We redirect all of them into our own panel instead of hiding them.
 
-    var candidates = document.querySelectorAll("button, a, [role='button']");
+  function findNativeButtons() {
+    var found = [];
+    var byId = document.getElementById("assistant-entry");
+    if (byId) found.push(byId);
+
+    var candidates = document.querySelectorAll("button, a, [role='button'], [role='tab']");
     for (var i = 0; i < candidates.length; i++) {
       var node = candidates[i];
-      if (node.closest("#dm-gm-panel")) continue;
+      if (node.closest("#dm-gm-panel") || found.indexOf(node) !== -1) continue;
       var text = (node.textContent || "").trim().toLowerCase();
       var aria = (node.getAttribute("aria-label") || "").toLowerCase();
       if (text.length > 40) continue;
@@ -548,19 +554,21 @@
         text.indexOf("ask assistant") !== -1 ||
         aria.indexOf("assistant panel") !== -1 ||
         (aria.indexOf("assistant") !== -1 && aria.length < 40);
-      if (isMatch) {
-        var rect = node.getBoundingClientRect();
-        if (rect.top < 300) return node;
-      }
+      if (isMatch) found.push(node);
     }
-    return null;
+    return found;
   }
 
-  function tryBindNative() {
-    var btn = findNativeAssistantButton();
-    if (!btn || btn.dataset.dmGmBound === "1") return !!btn;
-    btn.dataset.dmGmBound = "1";
-    btn.addEventListener(
+  function findNativeInputs() {
+    return document.querySelectorAll(
+      "#chat-assistant-textarea, .chat-assistant-input, .chat-assistant-send-button"
+    );
+  }
+
+  function bindClickRedirect(node) {
+    if (node.dataset.dmGmBound === "1") return;
+    node.dataset.dmGmBound = "1";
+    node.addEventListener(
       "click",
       function (e) {
         e.preventDefault();
@@ -569,7 +577,28 @@
       },
       true
     );
-    return true;
+  }
+
+  function bindInputRedirect(node) {
+    if (node.dataset.dmGmBound === "1") return;
+    node.dataset.dmGmBound = "1";
+    var redirect = function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (typeof node.blur === "function") node.blur();
+      openPanel();
+    };
+    node.addEventListener("mousedown", redirect, true);
+    node.addEventListener("focus", redirect, true);
+    node.addEventListener("click", redirect, true);
+  }
+
+  function tryBindNative() {
+    var buttons = findNativeButtons();
+    buttons.forEach(bindClickRedirect);
+    var inputs = findNativeInputs();
+    for (var i = 0; i < inputs.length; i++) bindInputRedirect(inputs[i]);
+    return buttons.length > 0 || inputs.length > 0;
   }
 
   // ---- Mobile fallback ---------------------------------------------------
