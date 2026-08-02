@@ -23,9 +23,11 @@ flowchart LR
 - API Key
 - 了解免費額度與計費方式
 
-## 申請流程
+## 申請 Gemini API
 
-1. 進入 Google AI Studio。
+### 步驟 1：進入 Google AI Studio
+
+登入 Google AI Studio，找到 API Key 管理入口。
 
 **圖 1｜進入 Google AI Studio 的 API Key 管理入口**
 
@@ -33,7 +35,9 @@ flowchart LR
 
 _圖說：進入 Google AI Studio 後，先找到 API Key 管理入口。實際介面文字可能因版本更新而略有不同，請以畫面中的 API Key 或 Get API key 選項為準。_
 
-2. 建立或選擇一個 Project。
+### 步驟 2：選擇或建立 Google Cloud Project
+
+API Key 必須隸屬於一個 Google Cloud Project。你可以建立新的教學專案，或選擇既有專案。
 
 **圖 2｜選擇或建立 Google Cloud Project**
 
@@ -41,7 +45,9 @@ _圖說：進入 Google AI Studio 後，先找到 API Key 管理入口。實際�
 
 _圖說：API Key 必須隸屬於一個 Google Cloud Project。若是第一次操作，可以建立新的教學專案；若已有專案，則選擇預計用於 Data Machi 的專案。截圖時請遮蔽公司名稱、Project ID 與帳號資訊。_
 
-3. 建立 API Key。
+### 步驟 3：建立 Gemini API Key
+
+選定 Project 後建立新的 API Key，並立即將 Key 複製到密碼管理工具。
 
 **圖 3｜建立 Gemini API Key**
 
@@ -49,8 +55,13 @@ _圖說：API Key 必須隸屬於一個 Google Cloud Project。若是第一次�
 
 _圖說：選定 Project 後建立新的 Gemini API Key。Key 建立完成後通常只會完整顯示一次，請立即複製並保存到密碼管理工具。教學圖片不可顯示完整 Key，建議只保留前後各 3～4 個字元作為示意。_
 
-4. 複製後立即放入密碼管理工具，不要貼進聊天或公開文件。
-5. 在本機建立 `backend/.env`。
+### 步驟 4：保存 API Key
+
+將 API Key 放入密碼管理工具，不要貼進聊天、文件或 GitHub。
+
+### 步驟 5：在後端建立 `.env`
+
+在本機的 `backend` 資料夾建立 `.env`，並加入 Gemini API Key 與模型名稱。
 
 **圖 4｜在後端建立 `.env` 設定**
 

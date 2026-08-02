@@ -20,9 +20,11 @@ flowchart LR
 | Gemini API Key | 呼叫模型 |
 | Service Account JSON | 代表後端讀取被分享的 Google Sheet |
 
-## 建立流程
+## 建立 Google Service Account
 
-1. 在 Google Cloud 建立或選擇 Project。
+### 步驟 1：選擇或建立 Google Cloud Project
+
+進入 Google Cloud Console，選擇既有 Project，或建立一個專門供 Data Machi 使用的新 Project。
 
 **圖 1｜選擇或建立 Google Cloud Project**
 
@@ -30,7 +32,9 @@ flowchart LR
 
 _圖說：Service Account 與 Google Sheets API 都必須建立在指定的 Google Cloud Project 中。正式環境建議使用公司或團隊控制的 Project；截圖時請遮蔽組織名稱、Project ID 與帳號資訊。_
 
-2. 啟用 Google Sheets API；需要時也啟用 Drive API。
+### 步驟 2：啟用 Google Sheets API
+
+在 API Library 搜尋並啟用 Google Sheets API；若後續需要依檔名搜尋或列出檔案，再視需求啟用 Google Drive API。
 
 **圖 2｜在 API Library 啟用 Google Sheets API**
 
@@ -38,7 +42,9 @@ _圖說：Service Account 與 Google Sheets API 都必須建立在指定的 Goog
 
 _圖說：在 API Library 搜尋並開啟 Google Sheets API，確認服務名稱後按下 Enable。若後續程式需要透過檔案清單尋找試算表，再依需求啟用 Google Drive API。_
 
-3. 建立 Service Account。
+### 步驟 3：建立 Service Account
+
+在 IAM 與管理後台建立新的 Service Account，名稱建議能清楚辨識用途，例如 `data-machi-sheets-reader`。
 
 **圖 3｜建立 Data Machi 專用 Service Account**
 
@@ -46,7 +52,9 @@ _圖說：在 API Library 搜尋並開啟 Google Sheets API，確認服務名稱
 
 _圖說：建立專門供 Data Machi 使用的 Service Account。名稱可使用 `data-machi-reader` 等容易辨識的匿名範例，並在描述中註明用途。第一版只需讀取指定試算表，不必授予專案管理者權限。_
 
-4. 建立 JSON Key，下載後妥善保管。
+### 步驟 4：建立並下載 JSON Key
+
+進入 Service Account 的 Keys 頁籤，新增 JSON Key。下載後請妥善保存，且不要上傳到 GitHub。
 
 **圖 4｜為 Service Account 建立 JSON Key**
 
@@ -54,8 +62,13 @@ _圖說：建立專門供 Data Machi 使用的 Service Account。名稱可使用
 
 _圖說：進入 Service Account 的 Keys 頁籤，依序選擇 Add key、Create new key 與 JSON。下載完成後請立即移到安全位置，圖片與文章中都不要展示 JSON 內容。_
 
-5. 找到 Service Account Email。
-6. 將測試 Sheet 分享給這個 Email，權限先使用 Viewer。
+### 步驟 5：取得 Service Account Email
+
+回到 Service Account 詳細頁，複製這個程式帳號的 Email。
+
+### 步驟 6：將測試 Sheet 分享給 Service Account
+
+開啟匿名測試試算表，把 Service Account Email 加入分享名單，權限先設定為 Viewer。
 
 **圖 5｜將測試 Sheet 分享給 Service Account**
 
