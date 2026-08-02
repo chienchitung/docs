@@ -66,4 +66,14 @@ VITE_API_BASE_URL=
   把 Secret 放對位置，只解決「不要外洩」；它不代表憑證的所有權、權限範圍與離職交接已經完成。正式部署前，還要在〈實作 17｜權限與資訊安全〉盤點資產所有者、備援管理者、最小權限與 Token 輪替方式。
 </Note>
 
+## 建議補充的操作截圖
+
+> 📸 **操作截圖建議｜本機 `.env` 與 `.env.example` 差異** 並排顯示 `.env` 含有本機實際值、`.env.example` 僅保留變數名稱；實際值一律改成假資料。
+
+> 📸 **操作截圖建議｜`.gitignore` 排除敏感檔案** 截取 `.gitignore` 中排除 `.env`、Service Account JSON、索引檔與其他本機檔案的規則。
+
+> 📸 **操作截圖建議｜Render Environment Variables** 顯示後端 Secret 應新增在 Render 的位置，僅保留變數名稱，所有值完整遮蔽。
+
+> 📸 **操作截圖建議｜Vercel Environment Variables** 顯示前端只放 `VITE_API_BASE_URL` 等可公開設定，並標示 Production、Preview、Development 的套用範圍。
+
 下一篇會開始申請第一個必要服務：Gemini API。

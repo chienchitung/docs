@@ -189,4 +189,14 @@ flowchart TD
 請先輸出盤點表與風險分級，不要立即修改、撤銷或產生任何新憑證。
 ```
 
+## 建議補充的操作截圖
+
+> 📸 **操作截圖建議｜GitHub Organization 與 Repository 權限** 截取 Repository 的 People／Teams 權限頁，標示至少兩位管理者與團隊角色；所有姓名、Email 與公司名稱應匿名化。
+
+> 📸 **操作截圖建議｜雲端平台成員與角色** 分別示範 Render Workspace、Vercel Team 與 Google Cloud IAM 的成員管理畫面，重點標示 Owner、Developer、Viewer 等角色差異，不需展示真實成員資料。
+
+> 📸 **操作截圖建議｜憑證清冊範例** 使用假資料呈現服務、Secret 名稱、存放位置、權限範圍、輪替日期與備援管理者；不可顯示完整憑證。
+
+> 📸 **操作截圖建議｜Token 輪替前後** 以兩張圖呈現新 Secret 已加入環境、重新部署成功，以及舊 Token 被撤銷的順序，避免讀者先撤銷造成服務中斷。
+
 下一篇才會將 FastAPI 後端部署到 Render。部署之前先完成這份盤點，才能避免把個人帳號與過高權限一起帶進正式環境。

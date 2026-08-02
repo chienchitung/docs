@@ -93,4 +93,14 @@ Preview URL 可能每次都不同。你可以選擇只在 Production 做完整 A
 不要使用 * 作為正式環境的永久解法。
 ```
 
+## 建議補充的操作截圖
+
+> 📸 **操作截圖建議｜Vercel 正式網址填入 Render** 顯示在 Render 的 `ALLOWED_ORIGINS` 中加入 Vercel Production Domain 的位置，並說明網址不可多出路徑或錯誤斜線。
+
+> 📸 **操作截圖建議｜Vercel Backend URL 設定** 顯示 `VITE_API_BASE_URL` 指向 Render 公開網址，並標示 Production 與 Preview 的環境範圍差異。
+
+> 📸 **操作截圖建議｜CORS 錯誤與修正後結果** 第一張截取瀏覽器 Console／Network 中的 CORS 錯誤，第二張顯示更新 allowlist 並重新部署後請求成功，方便讀者比較。
+
+> 📸 **操作截圖建議｜正式環境完整對話** 從 Vercel 網址提出問題，顯示前端成功呼叫 Render 並取得回答，作為前後端正式串接的最終證據。
+
 下一篇會進行完整驗收，並建立遠端 Vibe Coding、版本回復與持續維護流程。

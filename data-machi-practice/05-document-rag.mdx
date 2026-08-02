@@ -26,10 +26,21 @@ flowchart LR
 ## 申請流程
 
 1. 進入 Google AI Studio。
+
+> 📸 **操作截圖建議｜Google AI Studio 首頁** 截取進入 AI Studio 後可看到「Get API key」或 API Key 管理入口的畫面，並以框線標示下一步要點擊的位置。
+
 2. 建立或選擇一個 Project。
+
+> 📸 **操作截圖建議｜選擇 Google Cloud Project** 截取 Project 選擇視窗，示範如何建立新專案或選擇既有專案；請遮蔽公司名稱、Project ID 與帳號資訊。
+
 3. 建立 API Key。
+
+> 📸 **操作截圖建議｜建立 Gemini API Key** 截取建立 Key 的按鈕與建立完成畫面，但不可讓完整 API Key 出現在圖片中；建議只保留前後各 3–4 個字元作為示意。
+
 4. 複製後立即放入密碼管理工具，不要貼進聊天或公開文件。
 5. 在本機建立 `backend/.env`。
+
+> 📸 **操作截圖建議｜本機 `.env` 設定** 截取 VS Code 中 `backend/.env` 的檔案位置與變數名稱，所有值統一改成 `your_key_here` 等假資料。
 
 ```env
 GOOGLE_API_KEY=your_key_here

@@ -23,11 +23,25 @@ flowchart LR
 ## 建立流程
 
 1. 在 Google Cloud 建立或選擇 Project。
+
+> 📸 **操作截圖建議｜Google Cloud 專案選擇器** 顯示如何選擇或建立 Project，並遮蔽組織名稱、Project ID 與帳號資訊。
+
 2. 啟用 Google Sheets API；需要時也啟用 Drive API。
+
+> 📸 **操作截圖建議｜啟用 Google Sheets API** 截取 API Library 搜尋結果與「Enable」按鈕，讓讀者確認自己進入的是 Google Sheets API，而不是其他同名服務。
+
 3. 建立 Service Account。
+
+> 📸 **操作截圖建議｜建立 Service Account** 截取 Service Accounts 頁面的「Create service account」、帳號名稱與描述欄位；名稱請使用匿名範例。
+
 4. 建立 JSON Key，下載後妥善保管。
+
+> 📸 **操作截圖建議｜建立 JSON Key** 截取 Keys 頁籤、Add key 與 JSON 選項。不要展示下載後 JSON 的任何真實內容。
+
 5. 找到 Service Account Email。
 6. 將測試 Sheet 分享給這個 Email，權限先使用 Viewer。
+
+> 📸 **操作截圖建議｜將 Sheet 分享給 Service Account** 截取 Google Sheets 分享視窗，示範貼上 Service Account Email 並選擇 Viewer；請使用匿名 Sheet 與假帳號。
 
 ```mermaid
 flowchart TD
