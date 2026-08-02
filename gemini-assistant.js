@@ -645,8 +645,8 @@
 
   // Mintlify exposes at least three native entry points to the (broken,
   // hobby-plan) assistant: the top-nav button, an "Ask Assistant" tab
-  // inside the ⌘K search modal, and a persistent bottom-docked chat input.
-  // We redirect all of them into our own panel instead of hiding them.
+  // inside the ⌘K search modal — both redirected into our own panel — and
+  // a persistent bottom-docked chat input, which we hide outright instead.
 
   function findNativeButtons() {
     var found = [];
@@ -669,12 +669,6 @@
     return found;
   }
 
-  function findNativeInputs() {
-    return document.querySelectorAll(
-      "#chat-assistant-textarea, .chat-assistant-input, .chat-assistant-send-button"
-    );
-  }
-
   function bindClickRedirect(node) {
     if (node.dataset.dmGmBound === "1") return;
     node.dataset.dmGmBound = "1";
@@ -689,26 +683,34 @@
     );
   }
 
-  function bindInputRedirect(node) {
-    if (node.dataset.dmGmBound === "1") return;
-    node.dataset.dmGmBound = "1";
-    var redirect = function (e) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      if (typeof node.blur === "function") node.blur();
-      openPanel();
-    };
-    node.addEventListener("mousedown", redirect, true);
-    node.addEventListener("focus", redirect, true);
-    node.addEventListener("click", redirect, true);
+  // The bottom-docked chat bar is "persistent" (stays put while the page
+  // scrolls), which in practice means some ancestor of the textarea is
+  // position:fixed — walk up to that ancestor and hide the whole thing
+  // rather than guessing at wrapper class names we can't see.
+  function findFixedAncestor(node, maxLevels) {
+    var el = node;
+    for (var i = 0; i < maxLevels && el && el !== document.body; i++) {
+      if (window.getComputedStyle(el).position === "fixed") return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function hideNativeBottomBar() {
+    var ta = document.getElementById("chat-assistant-textarea");
+    if (!ta) return false;
+    var container = findFixedAncestor(ta, 8) || ta;
+    if (container.dataset.dmGmHidden === "1") return true;
+    container.dataset.dmGmHidden = "1";
+    container.style.display = "none";
+    return true;
   }
 
   function tryBindNative() {
     var buttons = findNativeButtons();
     buttons.forEach(bindClickRedirect);
-    var inputs = findNativeInputs();
-    for (var i = 0; i < inputs.length; i++) bindInputRedirect(inputs[i]);
-    return buttons.length > 0 || inputs.length > 0;
+    var barHidden = hideNativeBottomBar();
+    return buttons.length > 0 || barHidden;
   }
 
   // ---- Mobile fallback ---------------------------------------------------
