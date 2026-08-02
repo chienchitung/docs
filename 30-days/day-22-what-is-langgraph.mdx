@@ -159,6 +159,34 @@ flowchart TD
 
 好的架構不是自主性越高越好，而是只在真正需要推理與探索的位置保留自主性。
 
+## 使用 LangGraph，不代表系統一定是 Multi-Agent
+
+LangGraph 是工作流與 Agent orchestration 的工具，但「使用 `StateGraph`」本身不能用來判斷一個系統是不是 Multi-Agent。Graph 中的 Node 可以是一般 Python 函式、一次模型判斷、工具執行器、Router、Verification Step、人工批准節點，也可以是一個擁有自己 Prompt、State 與工具循環的完整 Agent。
+
+```mermaid
+flowchart TD
+    G[LangGraph] --> P[Python Function Node]
+    G --> L[LLM Classification Node]
+    G --> T[Tool Execution Node]
+    G --> H[Human Approval Node]
+    G --> A[Agent Node]
+```
+
+因此，下列兩個 Graph 都可能使用 LangGraph，但只有第二個比較接近 Multi-Agent：
+
+```text
+單一 Agent Graph：Coordinator → Tool Node → Coordinator
+Multi-Agent Graph：Supervisor → Specialist Agent → Reviewer Agent
+```
+
+Michael Albada 將單一 Agent 描述為由一個 Agent 負責決策、規劃與工具使用；Multi-Agent 則需要多個 Agent 彼此分工、協調或平行處理。真正的判斷重點是「是否存在多個相對獨立的決策主體」，而不是 Graph 中有多少個 Node。
+
+<Note>
+  Data Machi 目前雖然使用 LangGraph，也有多個工具與處理節點，但核心仍是單一 Coordinator Agent。只有未來把 Analyst、Document、Trello 或 Reviewer 拆成各自擁有模型、上下文與決策循環的節點，才會進一步演變成真正的 Multi-Agent Graph。
+</Note>
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 2, “Architecture Design Patterns,” pp. 32–34；Chapter 8, “From One Agent to Many,” pp. 163–177.
+
 ## 白箱思維：讓決策浮出水面
 
 `AgentExecutor` 的問題是很多關鍵決策「藏在模型內部」——你只能透過觀察輸出來猜測模型在每一步做了什麼判斷。LangGraph 鼓勵的是「白箱思維」：把必須確定執行的邏輯寫成程式，讓模型專注於它真正擅長的語意理解。

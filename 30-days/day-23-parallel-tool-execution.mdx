@@ -174,6 +174,38 @@ async def execute_tool_async(tool_call: dict):
 
 這種透明度不只是視覺上的改善，也讓使用者能即時判斷哪個系統回應較慢，以及是否有某個工具失敗需要關注。
 
+## 平行工具執行，不等於平行 Agent
+
+當 Coordinator 同時查詢 Google Sheets、Confluence 與 Trello 時，這代表的是 **Parallel Tool Execution**，不代表系統裡已經有三個 Agent。
+
+```mermaid
+flowchart LR
+    C[Coordinator Agent] --> S[Sheets Tool]
+    C --> R[Confluence Tool]
+    C --> T[Trello Tool]
+    S --> M[合併工具結果]
+    R --> M
+    T --> M
+```
+
+這些 Tool 通常沒有自己的模型、目標、記憶、規劃循環或溝通協議。它們只是由同一個 Coordinator 同時呼叫的能力單元。只有當各個執行者能獨立理解子任務、選擇自己的工具、管理自己的上下文，並將結果交回其他 Agent 時，才比較接近平行 Agent。
+
+```mermaid
+flowchart LR
+    M[Manager Agent] --> A[Analyst Agent]
+    M --> D[Document Agent]
+    A --> X[整合結果]
+    D --> X
+```
+
+Michael Albada 將平行處理列為 Multi-Agent 的可能優勢之一，但書中也另外討論了單一 Agent 內的 Parallel Tool Execution。換句話說，「同時執行」描述的是拓撲與效能策略；「是不是 Multi-Agent」則取決於執行單元是否為獨立的決策主體。
+
+<Note>
+  Data Machi 目前實作的是單一 Coordinator 產生多個 Tool Call，再由 Action Node 平行執行。這可以降低跨來源查詢的延遲，但仍屬於單一 Agent 加多工具的架構。
+</Note>
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 2, “Multiagent Architectures: Collaboration, Parallelism, and Coordination,” pp. 32–34；Chapter 5, “Tool Execution,” pp. 105–109.
+
 ## 企業 AI 的延遲來源分析
 
 延遲問題不只來自模型的推論速度。在企業 AI 系統中，整體回應時間通常由以下幾個因素共同決定：

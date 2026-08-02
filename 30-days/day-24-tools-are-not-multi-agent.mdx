@@ -107,6 +107,57 @@ coordinator = create_react_agent(llm, tools=tools)
 
 這種架構並不削弱系統價值，反而讓整個系統更容易理解與維護。
 
+## 應該從單一 Agent 開始，還是直接設計 Multi-Agent？
+
+Michael Albada 在《Building Applications with AI Agents》中提出一個很實用的原則：**先從最簡單的架構開始，只有當複雜度真的超出單一 Agent 的負荷時，再增加 Agent。**
+
+單一 Agent 通常具有以下優勢：
+
+- 實作與維護較簡單
+- 模型呼叫與 Token 成本較低
+- 沒有 Agent 之間的通訊與同步負擔
+- 回應延遲較短
+- 問題較容易追蹤與除錯
+
+Multi-Agent 的價值則通常出現在：
+
+- 工具數量過多，單一 Agent 的選擇準確率下降
+- 任務跨越多個差異明顯的專業領域
+- 不同角色需要獨立 Prompt、模型、上下文或權限
+- 子任務需要平行執行、正式交接或互相審核
+- 各部分需要獨立測試、部署或擴充
+
+| 判斷面向 | 維持單一 Agent | 考慮 Multi-Agent |
+| --- | --- | --- |
+| 工具數量 | 數量有限、用途清楚 | 工具很多且描述容易重疊 |
+| 任務範圍 | 同一工作領域 | 多個差異明顯的專業領域 |
+| Prompt 與 Context | 可共用核心規則 | 需要隔離不同角色的背景資訊 |
+| 權限 | 工具權限相近 | 不同角色需不同資料或操作權限 |
+| 執行方式 | 單一循環可以完成 | 需要平行、交接、審核或重做 |
+| 成本與延遲 | 希望保持較低 | 接受更多模型呼叫與協調成本 |
+
+書中也提醒，Multi-Agent 雖然可能帶來專業分工、平行化、擴充性與韌性，但同時會增加通訊、同步、維護與 Token 成本。如果沒有清楚的分工理由，增加 Agent 反而可能降低效率。
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 2, “Architecture Design Patterns,” pp. 32–34；Chapter 8, “How Many Agents Do I Need?” pp. 163–177.
+
+## Data Machi 的架構演進位置
+
+```mermaid
+flowchart LR
+    A[階段 1<br/>單一聊天模型] --> B[階段 2<br/>單一 Agent + 多個 Tools]
+    B --> C[階段 3<br/>工具分組與路由]
+    C --> D[階段 4<br/>Supervisor + 專家 Agents]
+    D --> E[階段 5<br/>分散式 Multi-Agent]
+```
+
+Data Machi 目前位於第二到第三階段之間：已有單一 Coordinator、領域工具分組、工具路由與平行執行，也具備記憶、釐清與 Verification；但 Analyst、Document、Trello 與 Confluence 尚未各自成為擁有獨立模型、State 與決策循環的 Agent。
+
+<Info>
+  這不是尚未完成的缺陷，而是根據目前工具數量、任務範圍、延遲與維護成本做出的架構選擇。書中也建議，在拆成 Multi-Agent 前，可以先改善工具 description、語意選擇或階層式 Tool Selection；只有這些方式仍不足時，才進一步拆分 Agent。
+</Info>
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 5, “Tool Selection,” pp. 93–105；Chapter 8, “Single-Agent Scenarios,” pp. 163–169.
+
 ## 未來可能的拆分時機
 
 若 Data Machi 未來遇到以下需求，才會考慮真正的 Multi-Agent 拆分：
@@ -118,10 +169,10 @@ coordinator = create_react_agent(llm, tools=tools)
 
   ```mermaid
   flowchart LR
-  A[Analyst Agent] -->|分析草稿| R[Reviewer Agent]
-  R -->|通過| W[Writer Agent]
-  R -->|退回修正| A
-  W --> F[最終報告]
+A[Analyst Agent] -->|分析草稿| R[Reviewer Agent]
+R -->|通過| W[Writer Agent]
+R -->|退回修正| A
+W --> F[最終報告]
   ```
 
   **場景二：工具數量爆炸**

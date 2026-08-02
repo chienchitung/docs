@@ -104,6 +104,38 @@ def coordinator_node(state: AgentState) -> AgentState:
   **Domain Hint 的正確定位**：分類器告訴 Agent「這個問題可能需要查詢 Trello」，但實際執行時仍需考慮：工具是否可用？資料是否存在？使用者的問題是否需要先釐清？分類錯誤不代表失敗，Agent 的觀察能力可以在過程中修正方向。
 </Note>
 
+## 如果未來拆成 Multi-Agent，Coordinator 會成為 Manager
+
+Michael Albada 將這類集中式協調方式稱為 **Manager Coordination**：由一個 Manager 負責理解整體需求、分配工作、收回結果並處理衝突，專家 Agent 主要與 Manager 溝通，而不是彼此全面互連。這種做法能簡化溝通路徑與責任分配，但也可能讓 Manager 成為單點故障或效能瓶頸。
+
+```mermaid
+flowchart TD
+    U[使用者問題] --> C[Coordinator / Manager]
+    C --> A[Analyst Agent]
+    C --> D[Document Agent]
+    C --> T[Trello Agent]
+    C --> F[Confluence Agent]
+    A --> C
+    D --> C
+    T --> C
+    F --> C
+    C --> R[最終回答]
+```
+
+在真正的 Manager Coordination 中，每個專家通常會有自己的 Prompt、上下文、工具集，甚至獨立的 State 與執行循環。Coordinator 的責任則包括：
+
+1. 判斷任務應交給哪個專家。
+2. 傳遞完成任務所需、但不過量的上下文。
+3. 收集並比較不同專家的結果。
+4. 處理衝突、失敗與重新分派。
+5. 將多個輸出整合成最終交付物。
+
+<Note>
+  Data Machi 目前還不是這種完整的 Supervisor Multi-Agent。現階段比較準確的描述，是單一 Coordinator Agent 綁定多組領域工具。上圖代表未來只有在各領域需要獨立 Prompt、State、權限與工作循環時，才可能採用的演進方向。
+</Note>
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 8, “Manager Coordination,” pp. 180–182.
+
 ## 常見的分派陷阱
 
 <Accordion title="只靠關鍵字路由">
