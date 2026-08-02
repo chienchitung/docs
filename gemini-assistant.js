@@ -288,11 +288,29 @@
     }
   }
 
+  var ICON_EYE =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>';
+  var ICON_EYE_OFF =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M6.6 6.7C4.3 8.1 2 12 2 12s3.6 7 10 7c1.6 0 3-.4 4.2-1M10.6 5.1c.45-.07.92-.1 1.4-.1 6.4 0 10 7 10 7-.6 1.1-1.5 2.4-2.7 3.5" ' +
+    'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M9.9 10c-.3.5-.4 1-.4 1.6a2.5 2.5 0 0 0 3.6 2.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M3 3l18 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  var ICON_COPY =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/>' +
+    '<path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_CHECK =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M4 12.5l5 5L20 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   function copyToClipboard(text, btnEl) {
     function feedback() {
       if (!btnEl) return;
       var original = btnEl.innerHTML;
-      btnEl.innerHTML = "&#10003;";
+      btnEl.innerHTML = ICON_CHECK;
       setTimeout(function () {
         btnEl.innerHTML = original;
       }, 1200);
@@ -332,7 +350,8 @@
     );
     var iconBtnStyle =
       "background:transparent;border:1px solid #cbd5e1;border-radius:8px;" +
-      "padding:0;width:32px;height:32px;cursor:pointer;color:inherit;flex:0 0 auto;font-size:14px;";
+      "padding:0;width:32px;height:32px;cursor:pointer;color:inherit;flex:0 0 auto;" +
+      "display:flex;align-items:center;justify-content:center;";
 
     var input = el("input", {
       type: "password",
@@ -344,17 +363,19 @@
 
     var toggleBtn = el(
       "button",
-      { type: "button", title: "顯示/隱藏 Key", "aria-label": "顯示或隱藏 Key", style: iconBtnStyle },
-      "&#128065;"
+      { type: "button", title: "顯示 Key", "aria-label": "顯示或隱藏 Key", style: iconBtnStyle },
+      ICON_EYE
     );
     toggleBtn.addEventListener("click", function () {
-      input.type = input.type === "password" ? "text" : "password";
+      var hidden = input.type === "password";
+      input.type = hidden ? "text" : "password";
+      toggleBtn.innerHTML = hidden ? ICON_EYE_OFF : ICON_EYE;
     });
 
     var copyBtn = el(
       "button",
       { type: "button", title: "複製 Key", "aria-label": "複製 Key", style: iconBtnStyle },
-      "&#128203;"
+      ICON_COPY
     );
     copyBtn.addEventListener("click", function () {
       if (input.value) copyToClipboard(input.value, copyBtn);
