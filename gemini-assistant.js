@@ -8,7 +8,10 @@
   var SYSTEM_PREFIX =
     "你是 Data Machi 文件網站的問答助手，使用繁體中文回答。以下是使用者目前所在頁面的內容，" +
     "請優先根據這些內容回答使用者的問題；如果頁面內容沒有涵蓋，也可以根據你自己的知識回答，" +
-    "並清楚說明這部分是額外補充而非頁面原文。回答請簡潔、有條理，適時使用 Markdown（如清單、粗體、程式碼）。\n\n頁面內容：\n";
+    "並清楚說明這部分是額外補充而非頁面原文。回答請簡潔、有條理，適時使用 Markdown。" +
+    "排版規則：段落標題一律用 ## 或 ### 開頭，不要用「1. **標題**」這種編號當標題；" +
+    "只有在內容真的是有先後順序的步驟時才用 1. 2. 3. 編號清單，其餘並列項目一律用 - 條列；" +
+    "清單項目不要加多餘縮排，直接從行首開始。\n\n頁面內容：\n";
 
   if (document.getElementById("dm-gm-panel")) return;
 
@@ -120,7 +123,7 @@
         continue;
       }
 
-      var heading = line.match(/^(#{1,6})\s+(.*)$/);
+      var heading = line.match(/^\s{0,3}(#{1,6})\s+(.*)$/);
       if (heading) {
         flushList();
         var level = heading[1].length;
@@ -128,8 +131,8 @@
         continue;
       }
 
-      var ul = line.match(/^[-*]\s+(.*)$/);
-      var ol = line.match(/^\d+\.\s+(.*)$/);
+      var ul = line.match(/^\s{0,3}[-*]\s+(.*)$/);
+      var ol = line.match(/^\s{0,3}\d+\.\s+(.*)$/);
       if (ul) {
         if (listType !== "ul") {
           flushList();
