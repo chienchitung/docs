@@ -3,17 +3,14 @@
 
   var STORAGE_KEY = "dm_gemini_api_key";
   var MODEL = "gemini-3.6-flash";
-  var API_URL =
-    "https://generativelanguage.googleapis.com/v1beta/models/" +
-    MODEL +
-    ":generateContent";
+  var BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL;
   var MAX_CONTEXT_CHARS = 6000;
   var SYSTEM_PREFIX =
     "你是 Data Machi 文件網站的問答助手，使用繁體中文回答。以下是使用者目前所在頁面的內容，" +
     "請優先根據這些內容回答使用者的問題；如果頁面內容沒有涵蓋，也可以根據你自己的知識回答，" +
-    "並清楚說明這部分是額外補充而非頁面原文。回答請簡潔、有條理。\n\n頁面內容：\n";
+    "並清楚說明這部分是額外補充而非頁面原文。回答請簡潔、有條理，適時使用 Markdown（如清單、粗體、程式碼）。\n\n頁面內容：\n";
 
-  if (document.getElementById("dm-gm-toggle")) return;
+  if (document.getElementById("dm-gm-panel")) return;
 
   var history = [];
   var busy = false;
@@ -49,12 +46,120 @@
     } catch (e) {}
   }
 
+  // ---- Minimal, safe Markdown -> HTML ----------------------------------
+  // All raw text is HTML-escaped first; our own tags are the only markup
+  // ever inserted, so a reply can never smuggle in executable HTML/JS.
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function sanitizeUrl(url) {
+    var trimmed = (url || "").trim();
+    if (/^(https?:|mailto:)/i.test(trimmed)) return trimmed;
+    return "#";
+  }
+
+  function inlineMd(text) {
+    text = text.replace(/`([^`]+)`/g, function (m, code) {
+      return "<code>" + code + "</code>";
+    });
+    text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    text = text.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+    text = text.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (m, label, url) {
+      return (
+        '<a href="' +
+        sanitizeUrl(url) +
+        '" target="_blank" rel="noopener noreferrer">' +
+        label +
+        "</a>"
+      );
+    });
+    return text;
+  }
+
+  function markdownToHtml(md) {
+    var escaped = escapeHtml(md || "");
+    var lines = escaped.split("\n");
+    var out = [];
+    var inCode = false;
+    var codeBuf = [];
+    var listType = null;
+    var listBuf = [];
+
+    function flushList() {
+      if (listType) {
+        out.push("<" + listType + ">" + listBuf.join("") + "</" + listType + ">");
+        listType = null;
+        listBuf = [];
+      }
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      if (/^```/.test(line)) {
+        if (inCode) {
+          out.push("<pre><code>" + codeBuf.join("\n") + "</code></pre>");
+          codeBuf = [];
+          inCode = false;
+        } else {
+          flushList();
+          inCode = true;
+        }
+        continue;
+      }
+      if (inCode) {
+        codeBuf.push(line);
+        continue;
+      }
+
+      var heading = line.match(/^(#{1,6})\s+(.*)$/);
+      if (heading) {
+        flushList();
+        var level = heading[1].length;
+        out.push("<h" + level + ">" + inlineMd(heading[2]) + "</h" + level + ">");
+        continue;
+      }
+
+      var ul = line.match(/^[-*]\s+(.*)$/);
+      var ol = line.match(/^\d+\.\s+(.*)$/);
+      if (ul) {
+        if (listType !== "ul") {
+          flushList();
+          listType = "ul";
+        }
+        listBuf.push("<li>" + inlineMd(ul[1]) + "</li>");
+        continue;
+      }
+      if (ol) {
+        if (listType !== "ol") {
+          flushList();
+          listType = "ol";
+        }
+        listBuf.push("<li>" + inlineMd(ol[1]) + "</li>");
+        continue;
+      }
+      flushList();
+
+      if (line.trim() === "") continue;
+      out.push("<p>" + inlineMd(line) + "</p>");
+    }
+    flushList();
+    if (inCode && codeBuf.length) {
+      out.push("<pre><code>" + codeBuf.join("\n") + "</code></pre>");
+    }
+    return out.join("");
+  }
+
   function injectStyles() {
     var css =
-      "#dm-gm-toggle{position:fixed;right:20px;bottom:20px;z-index:999999;width:56px;height:56px;" +
-      "border-radius:50%;border:none;background:#16A34A;color:#fff;cursor:pointer;" +
-      "box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;}" +
-      "#dm-gm-toggle:hover{background:#15803D;}" +
       "#dm-gm-panel{position:fixed;top:0;right:0;z-index:999999;" +
       "width:min(420px,100vw);height:100vh;height:100dvh;" +
       "background:#fff;color:#0f172a;box-shadow:-8px 0 30px rgba(0,0,0,.18);" +
@@ -75,13 +180,28 @@
       "padding:8px 16px;}" +
       "#dm-gm-content{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}" +
       ".dm-gm-body{flex:1 1 auto;overflow-y:auto;padding:12px 14px;}" +
-      ".dm-gm-msg{margin-bottom:10px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;}" +
-      ".dm-gm-msg.user{text-align:right;}" +
+      ".dm-gm-msg{margin-bottom:10px;font-size:13.5px;line-height:1.55;}" +
+      ".dm-gm-msg.user{text-align:right;white-space:pre-wrap;}" +
       ".dm-gm-msg.user .dm-gm-bubble{background:#16A34A;color:#fff;}" +
-      ".dm-gm-msg.model .dm-gm-bubble{background:#f1f5f9;color:#0f172a;}" +
+      ".dm-gm-msg.model .dm-gm-bubble{background:#f1f5f9;color:#0f172a;text-align:left;}" +
       "@media (prefers-color-scheme: dark){.dm-gm-msg.model .dm-gm-bubble{background:#1e293b;color:#e2e8f0;}}" +
-      ".dm-gm-msg.error .dm-gm-bubble{background:#fee2e2;color:#991b1b;}" +
+      ".dm-gm-msg.error .dm-gm-bubble{background:#fee2e2;color:#991b1b;white-space:pre-wrap;}" +
       ".dm-gm-bubble{display:inline-block;padding:8px 12px;border-radius:12px;max-width:90%;}" +
+      ".dm-gm-bubble p{margin:0 0 8px;}" +
+      ".dm-gm-bubble p:last-child{margin-bottom:0;}" +
+      ".dm-gm-bubble h1,.dm-gm-bubble h2,.dm-gm-bubble h3,.dm-gm-bubble h4,.dm-gm-bubble h5,.dm-gm-bubble h6{" +
+      "margin:10px 0 6px;font-size:1em;font-weight:700;}" +
+      ".dm-gm-bubble ul,.dm-gm-bubble ol{margin:0 0 8px;padding-left:1.3em;}" +
+      ".dm-gm-bubble li{margin:2px 0;}" +
+      ".dm-gm-bubble code{background:rgba(0,0,0,.08);border-radius:4px;padding:1px 4px;font-size:.92em;" +
+      "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}" +
+      ".dm-gm-bubble pre{background:rgba(0,0,0,.08);border-radius:8px;padding:8px 10px;overflow-x:auto;margin:0 0 8px;}" +
+      ".dm-gm-bubble pre code{background:none;padding:0;}" +
+      "@media (prefers-color-scheme: dark){.dm-gm-bubble code,.dm-gm-bubble pre{background:rgba(255,255,255,.1);}}" +
+      ".dm-gm-bubble a{color:inherit;text-decoration:underline;}" +
+      ".dm-gm-typing::after{content:'\\258C';display:inline-block;margin-left:2px;" +
+      "animation:dmgmblink 1s steps(1) infinite;}" +
+      "@keyframes dmgmblink{50%{opacity:0;}}" +
       ".dm-gm-footer{flex:0 0 auto;border-top:1px solid #e2e8f0;padding:10px;}" +
       "@media (prefers-color-scheme: dark){.dm-gm-footer{border-color:#1e293b;}}" +
       ".dm-gm-input-row{display:flex;gap:6px;}" +
@@ -111,20 +231,10 @@
     return node;
   }
 
-  function buildToggle() {
-    var btn = el(
-      "button",
-      { id: "dm-gm-toggle", "aria-label": "開啟 AI 問答小幫手" },
-      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-        '<path d="M4 4h16v12H7l-3 3V4z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>' +
-        "</svg>"
-    );
-    btn.addEventListener("click", function () {
-      var panel = document.getElementById("dm-gm-panel");
-      var open = panel.classList.toggle("dm-gm-open");
-      if (open) render();
-    });
-    return btn;
+  function openPanel() {
+    var panel = document.getElementById("dm-gm-panel");
+    var open = panel.classList.toggle("dm-gm-open");
+    if (open) render();
   }
 
   function buildPanel() {
@@ -241,10 +351,13 @@
   }
 
   function renderMessage(role, text) {
-    var cls = "dm-gm-msg " + role;
-    var msg = el("div", { class: cls });
+    var msg = el("div", { class: "dm-gm-msg " + role });
     var bubble = el("span", { class: "dm-gm-bubble" });
-    bubble.textContent = text;
+    if (role === "model") {
+      bubble.innerHTML = markdownToHtml(text);
+    } else {
+      bubble.textContent = text;
+    }
     msg.appendChild(bubble);
     return msg;
   }
@@ -252,38 +365,44 @@
   function appendAndSend(question, body, sendBtn, textarea) {
     history.push({ role: "user", text: question });
     body.appendChild(renderMessage("user", question));
-    var loading = renderMessage("model", "思考中…");
-    body.appendChild(loading);
+
+    var modelMsg = el("div", { class: "dm-gm-msg model" });
+    var bubble = el("span", { class: "dm-gm-bubble dm-gm-typing" });
+    modelMsg.appendChild(bubble);
+    body.appendChild(modelMsg);
     body.scrollTop = body.scrollHeight;
 
     busy = true;
     sendBtn.disabled = true;
     textarea.disabled = true;
 
-    askGemini(question)
-      .then(function (answer) {
-        loading.remove();
-        history.push({ role: "model", text: answer });
-        body.appendChild(renderMessage("model", answer));
-        body.scrollTop = body.scrollHeight;
+    var lastText = "";
+    askGeminiStream(question, function (partial) {
+      lastText = partial;
+      bubble.innerHTML = markdownToHtml(partial);
+      body.scrollTop = body.scrollHeight;
+    })
+      .then(function (finalText) {
+        var text = finalText || lastText;
+        bubble.classList.remove("dm-gm-typing");
+        bubble.innerHTML = markdownToHtml(text) || "（沒有取得回應內容）";
+        history.push({ role: "model", text: text });
       })
       .catch(function (err) {
-        loading.remove();
-        body.appendChild(renderMessage("error", err.message || "發生未知錯誤"));
-        body.scrollTop = body.scrollHeight;
+        modelMsg.className = "dm-gm-msg error";
+        bubble.className = "dm-gm-bubble";
+        bubble.textContent = err.message || "發生未知錯誤";
       })
       .finally(function () {
         busy = false;
         sendBtn.disabled = false;
         textarea.disabled = false;
         textarea.focus();
+        body.scrollTop = body.scrollHeight;
       });
   }
 
-  function askGemini(question) {
-    var apiKey = getApiKey();
-    if (!apiKey) return Promise.reject(new Error("尚未設定 API Key"));
-
+  function buildRequestBody(question) {
     var contents = history
       .filter(function (t) {
         return t.role === "user" || t.role === "model";
@@ -292,44 +411,119 @@
         return { role: t.role, parts: [{ text: t.text }] };
       });
     contents.push({ role: "user", parts: [{ text: question }] });
-
-    var body = {
+    return {
       contents: contents,
-      systemInstruction: {
-        parts: [{ text: SYSTEM_PREFIX + getPageContext() }],
-      },
+      systemInstruction: { parts: [{ text: SYSTEM_PREFIX + getPageContext() }] },
     };
+  }
 
-    return fetch(API_URL + "?key=" + encodeURIComponent(apiKey), {
+  function errorFromResponse(res) {
+    return res
+      .json()
+      .catch(function () {
+        return null;
+      })
+      .then(function (data) {
+        var msg = data && data.error && data.error.message;
+        if (res.status === 400 || res.status === 403) {
+          return new Error(
+            "API Key 無效或沒有權限，請按右上角齒輪重新設定。（" + (msg || res.status) + "）"
+          );
+        }
+        if (res.status === 429) {
+          return new Error("已達 Gemini API 用量上限，請稍後再試。");
+        }
+        return new Error("請求失敗（HTTP " + res.status + "）：" + (msg || ""));
+      });
+  }
+
+  function askGeminiStream(question, onChunk) {
+    var apiKey = getApiKey();
+    if (!apiKey) return Promise.reject(new Error("尚未設定 API Key"));
+
+    var url = BASE_URL + ":streamGenerateContent?alt=sse&key=" + encodeURIComponent(apiKey);
+    var body = buildRequestBody(question);
+
+    return fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    })
-      .then(function (res) {
-        if (!res.ok) {
-          return res
-            .json()
-            .catch(function () {
-              return null;
-            })
-            .then(function (data) {
-              var msg = data && data.error && data.error.message;
-              if (res.status === 400 || res.status === 403) {
-                throw new Error("API Key 無效或沒有權限，請按右上角齒輪重新設定。（" + (msg || res.status) + "）");
-              }
-              if (res.status === 429) {
-                throw new Error("已達 Gemini API 用量上限，請稍後再試。");
-              }
-              throw new Error("請求失敗（HTTP " + res.status + "）：" + (msg || ""));
-            });
+    }).then(function (res) {
+      if (!res.ok) {
+        return errorFromResponse(res).then(function (err) {
+          throw err;
+        });
+      }
+      if (!res.body || !res.body.getReader) {
+        return res.json().then(function (data) {
+          var parts =
+            data &&
+            data.candidates &&
+            data.candidates[0] &&
+            data.candidates[0].content &&
+            data.candidates[0].content.parts;
+          var text = parts
+            ? parts
+                .map(function (p) {
+                  return p.text || "";
+                })
+                .join("")
+            : "";
+          onChunk(text);
+          return text;
+        });
+      }
+
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = "";
+      var fullText = "";
+
+      function handleBlock(block) {
+        var blockLines = block.split("\n");
+        for (var i = 0; i < blockLines.length; i++) {
+          var line = blockLines[i].trim();
+          if (line.slice(0, 5) !== "data:") continue;
+          var jsonStr = line.slice(5).trim();
+          if (!jsonStr || jsonStr === "[DONE]") continue;
+          try {
+            var data = JSON.parse(jsonStr);
+            var parts =
+              data.candidates &&
+              data.candidates[0] &&
+              data.candidates[0].content &&
+              data.candidates[0].content.parts;
+            var delta = parts
+              ? parts
+                  .map(function (p) {
+                    return p.text || "";
+                  })
+                  .join("")
+              : "";
+            if (delta) {
+              fullText += delta;
+              onChunk(fullText);
+            }
+          } catch (e) {}
         }
-        return res.json();
-      })
-      .then(function (data) {
-        var parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
-        var text = parts ? parts.map(function (p) { return p.text || ""; }).join("") : "";
-        return text || "（沒有取得回應內容）";
-      });
+      }
+
+      function pump() {
+        return reader.read().then(function (result) {
+          if (result.done) {
+            if (buffer.trim()) handleBlock(buffer);
+            return fullText;
+          }
+          buffer += decoder.decode(result.value, { stream: true });
+          var blocks = buffer.split("\n\n");
+          buffer = blocks.pop();
+          blocks.forEach(handleBlock);
+          return pump();
+        });
+      }
+
+      return pump();
+    });
   }
 
   function findNativeAssistantButton() {
@@ -339,7 +533,7 @@
     var candidates = document.querySelectorAll("button, a, [role='button']");
     for (var i = 0; i < candidates.length; i++) {
       var node = candidates[i];
-      if (node.id === "dm-gm-toggle" || node.closest("#dm-gm-panel")) continue;
+      if (node.closest("#dm-gm-panel")) continue;
       var text = (node.textContent || "").trim().toLowerCase();
       var aria = (node.getAttribute("aria-label") || "").toLowerCase();
       if (text.length > 40) continue;
@@ -355,37 +549,32 @@
     return null;
   }
 
-  var nativeHidden = false;
-  function tryHideNative() {
-    if (nativeHidden) return true;
+  function tryBindNative() {
     var btn = findNativeAssistantButton();
-    if (btn) {
-      btn.style.display = "none";
-      nativeHidden = true;
-      return true;
-    }
-    return false;
+    if (!btn || btn.dataset.dmGmBound === "1") return !!btn;
+    btn.dataset.dmGmBound = "1";
+    btn.addEventListener(
+      "click",
+      function (e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        openPanel();
+      },
+      true
+    );
+    return true;
   }
 
   function watchForNative() {
-    if (tryHideNative()) return;
-    var attempts = 0;
-    var interval = setInterval(function () {
-      attempts++;
-      if (tryHideNative() || attempts > 20) clearInterval(interval);
-    }, 400);
+    tryBindNative();
     var observer = new MutationObserver(function () {
-      if (tryHideNative()) observer.disconnect();
+      tryBindNative();
     });
     observer.observe(document.body, { childList: true, subtree: true });
-    setTimeout(function () {
-      observer.disconnect();
-    }, 15000);
   }
 
   function init() {
     injectStyles();
-    document.body.appendChild(buildToggle());
     document.body.appendChild(buildPanel());
     watchForNative();
   }
