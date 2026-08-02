@@ -4,6 +4,23 @@ sidebarTitle: "Day 02｜知識工作"
 description: "把抽象的「知識工作」拆解成 Find、Understand、Decide、Act、Track 五個階段，理解 AI 應插入哪個環節才能提升效率。"
 ---
 
+<div
+  role="img"
+  aria-label="知識工作從搜尋、理解、決策、行動到追蹤的五階段旅程"
+  style={{
+  width: "100%",
+  aspectRatio: "16 / 9",
+  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
+  backgroundSize: "100% 1000%",
+  backgroundPosition: "center 11.111%",
+  backgroundRepeat: "no-repeat",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.25)"
+}}
+/>
+
+_圖 1｜知識工作從找資料到追蹤成果的完整旅程_
+
 我們常聽到「AI 可以提升知識工作效率」，但很少有人停下來問：知識工作本身到底是什麼？它不是單純地打字、做簡報或查資料，而是一連串需要**理解情境、判斷資訊、推動下一步**的活動。如果不先搞清楚知識工作的組成，AI 導入計畫往往只會自動化最不重要的那一段，而漏掉真正費時費力的核心環節。
 
 ## 五個基本階段：FUDAT 框架
@@ -38,15 +55,19 @@ description: "把抽象的「知識工作」拆解成 Find、Understand、Decide
   <Card title="Find：找資料" icon="magnifying-glass">
     確認需求工單存放在哪個 Google Sheets、時間範圍應該怎麼設定、以及是否需要同時參考去年資料做比較。
   </Card>
+
   <Card title="Understand：理解定義" icon="book-open">
     查閱 Confluence，確認「需求工單」的分類規則是什麼、某些分類在不同季度是否有定義調整、哪些工單應該被排除（例如測試單）。
   </Card>
+
   <Card title="Decide：選擇方向" icon="compass">
     判斷主管想要的是數量趨勢、分類佔比，還是按市場分布的比較。確認輸出的維度與呈現方式。
   </Card>
+
   <Card title="Act：產出結論" icon="pen-to-square">
     彙整各分類件數、畫出趨勢、附上關鍵洞察，並指出值得關注的異常點。
   </Card>
+
   <Card title="Track：後續追蹤" icon="clock-rotate-left">
     確認報告是否被閱讀、主管有沒有後續提問，以及洞察是否帶動了下一步行動。
   </Card>
@@ -63,6 +84,7 @@ description: "把抽象的「知識工作」拆解成 Find、Understand、Decide
 如果在設計 AI 系統時沒有先拆解工作流程，最常見的結果是：**只自動化了最後的「寫答案」環節，前面的資料取得、定義確認與查核仍由人工處理**。
 
 這會造成一個假象：
+
 - 表面上「用了 AI」
 - 實際上只是把最後一小段工作變快
 - 前面費時費力的環節完全沒有改變
@@ -74,7 +96,7 @@ description: "把抽象的「知識工作」拆解成 Find、Understand、Decide
 Data Machi 的設計思路，正是讓不同工具分別支援這五個階段：
 
 | 工具 | 支援階段 | 功能說明 |
-|------|----------|----------|
+| --- | --- | --- |
 | Google Sheets | Find, Act | 取得結構化資料、執行統計 |
 | Confluence | Understand | 提供欄位定義、業務規則 |
 | Trello | Find, Track | 確認任務進度、負責人 |
@@ -88,6 +110,7 @@ Data Machi 的設計思路，正是讓不同工具分別支援這五個階段：
 你可以把 AI 想成一位**新進的專案助理**。
 
 一位真正有用的助理，不只是整理你交給他的資料——他還要：
+
 - 知道缺了什麼資料
 - 知道去哪裡找
 - 知道何時需要向你確認
@@ -107,6 +130,7 @@ Data Machi 的設計思路，正是讓不同工具分別支援這五個階段：
   很多團隊在開始 AI 導入時，第一個問題是「我們要用哪個模型？」或「要用 LangChain 還是 LlamaIndex？」這是倒過來想問題。
 
   正確的順序應該是：
+
   1. **這項工作目前是怎麼完成的？** — 把現有流程畫出來
   2. **每一步需要什麼資料？** — 確認資料來源與格式
   3. **哪一步最常出錯、最費時？** — 找出真正的瓶頸

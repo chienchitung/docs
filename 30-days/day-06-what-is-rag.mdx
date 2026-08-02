@@ -4,6 +4,23 @@ sidebarTitle: "Day 06｜什麼是 RAG"
 description: "透過開卷考試的比喻，理解 RAG 如何讓 AI 在回答前先檢索企業文件，解決私有資料不可見與答案可追溯的核心問題。"
 ---
 
+<div
+  role="img"
+  aria-label="沒有 RAG 的閉卷回答與加入 RAG 後的開卷回答對比"
+  style={{
+  width: "100%",
+  aspectRatio: "16 / 9",
+  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
+  backgroundSize: "100% 1000%",
+  backgroundPosition: "center 33.333%",
+  backgroundRepeat: "no-repeat",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.25)"
+}}
+/>
+
+_圖 1｜沒有 RAG 像閉卷考試，加入 RAG 後可以先查資料再回答_
+
 通用 AI 模型在訓練完成後，對外部世界的知識就此凍結——它不認識你的公司規章、不知道最新版本的操作手冊、也看不到昨天才更新的合約範本。然而，企業真正需要的，恰恰是這些「訓練資料之外」的私有知識。RAG（Retrieval-Augmented Generation，檢索增強生成）就是為了解決這個矛盾而生的架構：在模型開口回答之前，先幫它把相關資料找出來，再一起交給模型，讓它根據這些內容作答。
 
 ## 什麼是 RAG？
@@ -32,9 +49,11 @@ RAG 架構的設計，主要是針對企業 AI 應用中最常見的三個痛點
   <Card title="私有資料不可見" icon="lock">
     模型訓練資料不包含企業內部文件。RAG 讓模型在回答時能取用企業自有的知識庫，而無需重新訓練模型。
   </Card>
+
   <Card title="資料持續更新" icon="arrows-rotate">
     企業的規範、流程與產品資訊頻繁變動。RAG 只需更新知識庫文件，不需要每次都重新微調模型。
   </Card>
+
   <Card title="答案需要來源佐證" icon="file-magnifying-glass">
     在法務、合規與稽核場景中，「AI 說的」不夠，必須能對應到具體的文件頁碼與段落，才有說服力。
   </Card>

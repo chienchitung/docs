@@ -4,6 +4,23 @@ sidebarTitle: "Day 14｜Confluence & Trello"
 description: "企業知識從不集中在同一個地方：正式規格定義放在 Confluence，即時任務進度與卡片留言記錄在 Trello，可計算的明細數字則存放在 Google Sheets 中。認識這張分散的知識地圖，是設計有效跨系統 AI Agent 時必須先建立的重要核心思維。"
 ---
 
+<div
+  role="img"
+  aria-label="企業知識分散於文件、任務、數據與 PDF 系統的知識城市"
+  style={{
+  width: "100%",
+  aspectRatio: "16 / 9",
+  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
+  backgroundSize: "100% 1000%",
+  backgroundPosition: "center 77.778%",
+  backgroundRepeat: "no-repeat",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.25)"
+}}
+/>
+
+_圖 1｜企業知識分散在不同系統，每個系統保存不同類型的資訊_
+
 如果你曾經在一間規模稍大的公司工作，你一定有過這樣的經驗：想搞清楚一個專案的現況，結果要開三個分頁——先去 Confluence 找規格文件，再去 Trello 看最新任務狀態，最後還要打開 Google Sheets 核對數字。沒有一個地方能給你完整答案，因為企業知識從一開始就不是集中存放的。這個現實，正是設計跨來源 AI Agent 時最核心的挑戰。
 
 ## 企業知識的散落地圖
@@ -14,12 +31,15 @@ description: "企業知識從不集中在同一個地方：正式規格定義放
   <Card title="Confluence：長期知識" icon="book">
     規範、定義、流程文件、系統設計說明、指標計算邏輯。這些是**靜態的、正式的**知識，通常經過審閱與版本控制，適合回答「這是什麼」或「應該怎麼做」的問題。
   </Card>
+
   <Card title="Trello：任務狀態" icon="trello">
     任務卡片、負責人、截止日期、進度狀態、留言討論。這些是**動態的、即時的**資訊，反映當下的工作現況，適合回答「現在進行到哪裡」或「誰在負責這件事」的問題。
   </Card>
+
   <Card title="Google Sheets：可計算明細" icon="table">
     工單明細、KPI 數字、報表資料。這些是**結構化的、可計算的**資訊，適合回答「數量是多少」或「趨勢如何」的問題。
   </Card>
+
   <Card title="PDF / 附件：外部文件" icon="file-pdf">
     SLA 合約、外部規範、交接文件、手冊。這些通常是一次性的參考資料，適合用 RAG 檢索特定段落。
   </Card>
@@ -96,7 +116,7 @@ async def handle_project_status_query(project_name: str):
 
 <Accordion title="Confluence 工具的設計重點">
   Confluence 的搜尋通常是全文搜尋，回傳的是頁面段落。工具設計的重點在於：
-  
+
   - 如何從長篇文件中取得最相關的段落（類似 RAG 的向量搜尋）
   - 如何處理文件版本（確保取得的是最新版本）
   - 如何識別文件結構（標題層級、表格、定義區塊）
@@ -105,7 +125,7 @@ async def handle_project_status_query(project_name: str):
 
 <Accordion title="Trello 工具的設計重點">
   Trello 的查詢通常需要根據卡片屬性篩選，回傳的是結構化的任務資料。工具設計的重點在於：
-  
+
   - 根據卡片名稱、標籤、負責人、截止日期搜尋
   - 取得卡片的完整資訊：描述、清單（Checklist）、留言（Comments）
   - 標注卡片目前在哪個 List（例如 Backlog / In Progress / Blocked / Done）

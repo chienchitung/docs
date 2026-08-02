@@ -4,6 +4,23 @@ sidebarTitle: "Day 18｜Coordinator 分派"
 description: "理解 Router 與 Coordinator 在 Agent 架構中的分工差異。Router 只負責分類路由，Coordinator 則進一步整合對話前後文、觀察工具回傳結果、判斷是否沿用先前查詢或重新發起工具呼叫，最終整合出完整回答。語意判斷的精準度直接影響系統效率、成本與答案正確性。"
 ---
 
+<div
+  role="img"
+  aria-label="Coordinator 協調資料、文件、任務和知識來源並整合答案"
+  style={{
+  width: "100%",
+  aspectRatio: "16 / 9",
+  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
+  backgroundSize: "100% 1000%",
+  backgroundPosition: "center 88.889%",
+  backgroundRepeat: "no-repeat",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.25)"
+}}
+/>
+
+_圖 1｜Coordinator 負責理解需求、分派工作並整合結果_
+
 當一個 AI 系統接上愈來愈多工具，最大的挑戰不再是「能不能查」，而是「該查哪裡」，以及「這個問題是全新需求還是延續前文」。Coordinator 就像一位優秀的專案經理：它不親自執行所有工作，而是先理解需求的全貌，再把對的任務分派給對的人，並在整個過程中保持對上下文的掌握，確保最後整合出一個有意義的答案。
 
 ## Router 與 Coordinator：有什麼不同？

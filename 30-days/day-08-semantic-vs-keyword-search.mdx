@@ -4,6 +4,23 @@ sidebarTitle: "Day 08｜語意 vs 關鍵字"
 description: "比較關鍵字比對與語意向量搜尋的差異，透過企業案例理解各自的適用場景，學習如何結合兩者建立混合搜尋策略。"
 ---
 
+<div
+  role="img"
+  aria-label="關鍵字搜尋與語意搜尋的結果差異"
+  style={{
+  width: "100%",
+  aspectRatio: "16 / 9",
+  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
+  backgroundSize: "100% 1000%",
+  backgroundPosition: "center 44.444%",
+  backgroundRepeat: "no-repeat",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.25)"
+}}
+/>
+
+_圖 1｜關鍵字搜尋比對字面，語意搜尋理解真正意圖_
+
 你搜尋「床墊回購」，但文件裡寫的是「replacement cycle」或「再次購買睡眠商品」——這種字面不同、意思卻相近的情況，在企業文件中極為常見。傳統關鍵字搜尋遇到這個問題會沉默地漏掉相關段落；語意搜尋則試圖理解「概念上的相似性」。理解這兩種搜尋方式的差異，是設計高品質 RAG 系統的重要基礎。
 
 ## 關鍵字搜尋：字面上的精確比對
@@ -51,6 +68,7 @@ description: "比較關鍵字比對與語意向量搜尋的差異，透過企業
     - 已知在文件中確切出現的詞彙
     - 需要高度可預期性與可控性的場景
   </Card>
+
   <Card title="語意搜尋更適合" icon="brain">
     - 自然語言描述的問題（「為什麼…」「如何…」）
     - 同義詞或近義詞豐富的領域
@@ -128,6 +146,7 @@ Confluence 搜尋策略：
 </Warning>
 
 設計搜尋過濾條件時，建議：
+
 1. 先用實際的查詢樣本觀察分數分布
 2. 設定相對寬鬆的門檻，再依需求調整
 3. 記錄並監控不同查詢類型的命中率，持續優化

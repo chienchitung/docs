@@ -4,6 +4,23 @@ sidebarTitle: "Day 01｜不是聊天機器人"
 description: "從聊天介面出發，理解企業真正需要的不是問答工具，而是能可靠完成知識工作的 AI 系統，以及兩者的關鍵差距。"
 ---
 
+<div
+  role="img"
+  aria-label="聊天機器人與企業 AI 工作夥伴的對比"
+  style={{
+  width: "100%",
+  aspectRatio: "16 / 9",
+  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
+  backgroundSize: "100% 1000%",
+  backgroundPosition: "center 0%",
+  backgroundRepeat: "no-repeat",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.25)"
+}}
+/>
+
+_圖 1｜聊天機器人與企業 AI 工作夥伴的差異_
+
 企業導入生成式 AI 時，最容易從「做一個聊天機器人」開始。員工輸入問題、AI 回答，看起來就像完成了一個 AI 產品。但真正開始使用後，幾乎每個團隊都會遇到同樣的問題：公司需要的並不是一個比較會聊天的搜尋框，而是一個能可靠完成工作的系統。這篇文章會幫你釐清兩者的本質差異，以及 Data Machi 為什麼從一開始就往不同的方向走。
 
 ## 一個真實的工作情境
@@ -42,6 +59,7 @@ description: "從聊天介面出發，理解企業真正需要的不是問答工
   <Card title="聊天機器人" icon="comment">
     接受文字輸入，根據語言模型的訓練資料生成回應。擅長通用知識問答、文案撰寫與摘要，但無法存取企業的即時資料，也無法執行跨系統的操作。
   </Card>
+
   <Card title="企業 AI 工作夥伴" icon="briefcase">
     知道公司的資料放在哪裡、使用哪些工具、如何查核結果，並且在無法確認答案時誠實說明，而非自行捏造合理的回應。
   </Card>
@@ -87,12 +105,15 @@ Data Machi 的核心設計目標，是讓 AI 完整地走過以下五個步驟�
   <Card title="數據分析" icon="chart-bar">
     呼叫 Google Sheets 工具，查詢結構化資料，執行統計與彙整。
   </Card>
+
   <Card title="文件知識" icon="book">
     查詢 Confluence 文件或 PDF 知識庫，取得定義、規則與背景說明。
   </Card>
+
   <Card title="專案進度" icon="list-check">
     連結 Trello 看板，確認任務狀態、負責人與截止日期。
   </Card>
+
   <Card title="複合問題" icon="layer-group">
     由 Coordinator 判斷需要跨工具查詢，依序取得各來源資訊後整合回應。
   </Card>
