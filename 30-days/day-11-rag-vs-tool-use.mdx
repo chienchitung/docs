@@ -4,22 +4,13 @@ sidebarTitle: "Day 11｜RAG vs Tool Use"
 description: "RAG 負責從知識庫找回靜態的相關段落，Tool Use 讓模型呼叫外部系統執行即時操作。兩者看似都在幫模型取得資訊，卻解決的是截然不同的問題——搞清楚 RAG 與 Tool Use 各自的本質差異與適用場景，才能在企業 AI 工作流設計中做出正確的工具決策。"
 ---
 
-<div
-  role="img"
-  aria-label="RAG 查閱知識與工具呼叫操作外部系統的對比"
-  style={{
-  width: "100%",
-  aspectRatio: "16 / 9",
-  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
-  backgroundSize: "100% 1000%",
-  backgroundPosition: "center 66.667%",
-  backgroundRepeat: "no-repeat",
-  borderRadius: "12px",
-  border: "1px solid rgba(148, 163, 184, 0.25)"
-}}
-/>
+<Frame>
+  ![Day11](/day11.png "Day11")
+</Frame>
 
-_圖 1｜RAG 負責查閱知識，Tool Use 負責與外部系統互動_
+<p align="center">
+  *圖 1｜RAG 負責查閱知識，Tool Use 負責與外部系統互動*
+</p>
 
 在企業 AI 工作流的設計過程中，RAG 與 Tool Use 是兩個最常被放在同一個句子裡討論的技術概念，卻也是最常被混為一談的兩件事。它們都是讓模型「取得外部資訊」的手段，但一個解決的是「知識在哪裡」，另一個解決的是「能做什麼事」——弄清楚這個差異，才能在設計系統時做出正確的決策。
 

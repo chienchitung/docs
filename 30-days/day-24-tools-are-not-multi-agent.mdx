@@ -4,22 +4,13 @@ sidebarTitle: "Day 24｜不要為拆而拆"
 description: "釐清單一 Agent 多工具與真正 Multi-Agent 架構的本質差異，掌握何時拆分 Agent 真正有意義，以及過早拆分的隱藏成本。"
 ---
 
-<div
-  role="img"
-  aria-label="單一 Agent 搭配多工具與 Multi-Agent 專業分工的對比"
-  style={{
-  width: "100%",
-  aspectRatio: "16 / 9",
-  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
-  backgroundSize: "100% 1000%",
-  backgroundPosition: "center 100%",
-  backgroundRepeat: "no-repeat",
-  borderRadius: "12px",
-  border: "1px solid rgba(148, 163, 184, 0.25)"
-}}
-/>
+<Frame>
+  ![Day24 1](/day24-1.png "Day24 1")
+</Frame>
 
-_圖 1｜單一 Agent 與 Multi-Agent 的架構取捨_
+<p align="center">
+  *圖 1｜單一 Agent 與 Multi-Agent 的架構取捨*
+</p>
 
 「我們的系統裡有 Analyst 查詢、Trello 操作、Confluence 搜尋、Document 處理四種能力，這樣算不算 Multi-Agent 架構？」這是一個在企業 AI 專案中非常常見的問題，而且答案往往出人意料：不一定。工具的數量和 Agent 的數量是兩個完全不同的維度。混淆這兩者不只是名詞上的誤用，更可能讓你在不需要複雜架構的地方引入不必要的成本與複雜度，同時在真正需要拆分的地方猶豫不決。
 

@@ -4,22 +4,13 @@ sidebarTitle: "Day 09｜掃描文件處理"
 description: "理解掃描頁、圖表與截圖在企業 RAG 系統中的處理挑戰，從 OCR 到多模態視覺摘要，學習讓 AI 讀懂視覺內容的方法。"
 ---
 
-<div
-  role="img"
-  aria-label="文字頁、掃描頁、圖表頁與系統截圖四種 PDF 內容"
-  style={{
-  width: "100%",
-  aspectRatio: "16 / 9",
-  backgroundImage: "url('/images/30-days/data-machi-concept-sprite.webp')",
-  backgroundSize: "100% 1000%",
-  backgroundPosition: "center 55.556%",
-  backgroundRepeat: "no-repeat",
-  borderRadius: "12px",
-  border: "1px solid rgba(148, 163, 184, 0.25)"
-}}
-/>
+<Frame>
+  ![Day09](/day09.png "Day09")
+</Frame>
 
-_圖 1｜不同 PDF 內容需要文字擷取、OCR、圖表理解與視覺摘要_
+<p align="center">
+  *圖 1｜不同 PDF 內容需要文字擷取、OCR、圖表理解與視覺摘要*
+</p>
 
 大多數 RAG 教學都假設 PDF 有乾淨的文字層，可以直接被解析和向量化。然而在真實的企業環境裡，情況往往複雜得多：古老的合約是掃描進來的影像、操作手冊裡有大量流程圖、系統截圖嵌在技術規格書裡、表格的欄位關係只能靠版面位置來理解。這些內容對人類讀者很清楚，但對只能讀取文字的傳統 RAG 系統而言，卻可能是完全無法讀取的黑洞。
 
