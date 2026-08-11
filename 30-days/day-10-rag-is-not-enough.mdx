@@ -80,6 +80,40 @@ description: "釐清 RAG、Tool Use 與 Agent 的能力邊界，理解「找到�
   </Step>
 </Steps>
 
+## 一次搜尋不夠時：從 RAG 走向 Agentic Search
+
+傳統 RAG 常被畫成一條很乾淨的直線：問題進來、搜尋一次、找到文件、產生答案。這對「答案已經存在於某一份文件中」的問題很有效，但遇到更複雜的企業問題時，單次檢索往往不夠。
+
+Onyx 在設計企業 Agent Search 時，特別針對三種傳統 RAG 容易吃力的情境：**問題本身模糊、同時涉及多個實體、以及沒有任何單一文件能直接回答完整問題**。他們的做法不是單純增加 `top_k`，而是先進行初步搜尋取得背景，再把大問題拆成多個較窄的子問題，分別搜尋、驗證與重排，最後整合成初版答案；若初版答案仍不足，再進行第二輪 decomposition 與 refinement。
+
+```mermaid
+flowchart TD
+    Q[複雜問題] --> I[Initial Search<br/>先取得背景]
+    I --> D[Question Decomposition<br/>拆成多個子問題]
+    D --> S1[子問題 A]
+    D --> S2[子問題 B]
+    D --> S3[子問題 C]
+    S1 --> R1[Search / Validate / Rerank]
+    S2 --> R2[Search / Validate / Rerank]
+    S3 --> R3[Search / Validate / Rerank]
+    R1 --> A[整合初版答案]
+    R2 --> A
+    R3 --> A
+    A --> V{答案是否足夠？}
+    V -->|是| F[Final Answer]
+    V -->|否| D2[Refinement Decomposition<br/>針對缺口重新拆解]
+    D2 --> F2[再次搜尋與補查]
+    F2 --> F
+```
+
+這裡最重要的觀念是：**Agentic Search 並不是把 RAG 換掉，而是把「如何使用搜尋」提升成一個可反覆判斷與修正的工作流。** 搜尋仍然是底層能力，但系統多了一層拆題、驗證、補查與停止條件。
+
+<Note>
+  Data Machi 目前的 Document Tool 仍以「問題 → 向量搜尋 → 回傳相關 chunks」為主要模式，尚未完整實作 Onyx 這種多階段 Agent Search。這一節應視為 Document Agent / Agentic RAG 的進階演進方向，而不是目前開源版已完成的功能。
+</Note>
+
+> **參考來源**<br />Evan Lohn & Joachim Rahmfeld, [“Beyond RAG: Implementing Agent Search with LangGraph for Smarter Knowledge Retrieval”](https://onyx.app/blog/agent-search-with-langgraph), Onyx, 2025-02-21. 文章特別說明了 question decomposition、sub-question search、document validation、reranking、verification 與 refinement 的完整流程。
+
 ## Data Machi 實戰：兩層架構的設計哲學
 
 在 Data Machi 的架構中，這兩個層次有清晰的職責分工：

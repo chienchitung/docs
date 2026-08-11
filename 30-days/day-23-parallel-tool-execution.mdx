@@ -107,6 +107,52 @@ def assign_workers(state: AgentState):
 
 固定平行工具呼叫與動態 Graph 的差別在於：前者事先知道要執行哪些工作；後者必須根據 State 的內容，在執行期間決定工作數量與路徑。
 
+## Agent Search 的平行化：不只是同時呼叫三個 API
+
+平行化在複雜 Agent Search 裡的價值，比「同時查三個系統」更進一步。Onyx 的 Agent Search 會把一個複雜問題拆成多個子問題，每個子問題都可能包含 query expansion、搜尋、文件 relevance validation、reranking 與 sub-answer generation。若這些工作全部順序執行，延遲會快速累加。
+
+Onyx 特別強調三種需要平行化的工作：
+
+- 多個 **sub-question** 同時處理
+- 每個 sub-question 找到的多份文件，進行 **relevance validation** 時平行驗證
+- **entity / relationship / term extraction** 與子問題處理同時進行
+
+這可以用兩層 fan-out 來理解：
+
+```mermaid
+flowchart TD
+    Q[複雜問題] --> D[拆成多個子問題]
+    D --> S1[Sub-question A]
+    D --> S2[Sub-question B]
+    D --> S3[Sub-question C]
+
+    S1 --> V11[驗證文件 1]
+    S1 --> V12[驗證文件 2]
+    S1 --> V13[驗證文件 3]
+
+    S2 --> V21[驗證文件 1]
+    S2 --> V22[驗證文件 2]
+
+    S3 --> V31[驗證文件 1]
+    S3 --> V32[驗證文件 2]
+
+    V11 --> M[合併與重排]
+    V12 --> M
+    V13 --> M
+    V21 --> M
+    V22 --> M
+    V31 --> M
+    V32 --> M
+```
+
+Onyx 在 LangGraph 中使用 Map-Reduce branches 處理同型態的文件驗證，也大量使用 subgraph，把「Search → Relevance Validation → Reranking」包裝成可重複利用的 Extended Search Retrieval 流程。這種設計的重點不是讓所有東西一起跑，而是**把真正獨立的工作拆開，避免不必要的等待，同時保留必要的依賴關係**。
+
+<Note>
+  Data Machi 目前的平行化主要是同一個 Coordinator 產生多個 Tool Call，再由 Action Node 同時執行。Onyx 的案例屬於更進階的 Graph-level parallelism：不只平行工具，也平行子問題、文件驗證與 subgraph。兩者原理相同，但複雜度不同。
+</Note>
+
+> **參考來源**<br />Evan Lohn & Joachim Rahmfeld, [“Beyond RAG: Implementing Agent Search with LangGraph for Smarter Knowledge Retrieval”](https://onyx.app/blog/agent-search-with-langgraph), Onyx, 2025-02-21. 文章說明了 sub-question parallelism、document verification 的 Map-Reduce fan-out，以及以 subgraph 進行平行化與重用的實務設計。
+
 ## Data Machi 的實作方式
 
 當 LLM 在一個回應中產生多個 Tool Call 時，Data Machi 的 Action Node 會使用 Python 的非同步機制平行執行所有工具，再把所有 `ToolMessage` 一起交回 Agent Node 繼續判斷。

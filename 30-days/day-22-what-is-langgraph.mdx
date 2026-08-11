@@ -187,6 +187,44 @@ Michael Albada 將單一 Agent 描述為由一個 Agent 負責決策、規劃與
 
 > **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 2, “Architecture Design Patterns,” pp. 32–34；Chapter 8, “From One Agent to Many,” pp. 163–177.
 
+## 企業搜尋系統為什麼會需要 Graph？
+
+如果流程只有：
+
+```text
+Question → Search → Answer
+```
+
+一般函式或簡單 Chain 往往就足夠。但當搜尋流程開始包含初步搜尋、問題拆解、多個子問題、文件驗證、重排序、答案驗證、再次 refinement，以及多條平行路徑時，流程就不再是一條直線。
+
+Onyx 在設計 Agent Search 時，之所以選擇 LangGraph，核心原因不是「因為 Agent 就要用 Graph」，而是他們的邏輯流程本身已經自然包含 **Node、Edge、State、平行執行與依賴管理**。例如某些 refinement 節點必須等初版答案與 entity / relationship extraction 都完成後才能開始；另一方面，多個子問題與文件 relevance validation 又應該平行執行。
+
+```mermaid
+flowchart TD
+    Q[Question] --> I[Initial Search]
+    I --> D[Decomposition]
+    D --> S1[Sub-question A]
+    D --> S2[Sub-question B]
+    D --> E[Entity / Relationship Extraction]
+    S1 --> A[Initial Answer]
+    S2 --> A
+    A --> V{需要 refinement？}
+    E --> R[Refinement]
+    V -->|是| R
+    V -->|否| F[Final Answer]
+    R --> F
+```
+
+這個例子說明一個重要原則：**當工作流開始同時具備條件分支、平行化、依賴關係、循環與可重用子流程時，Graph 的價值才真正出現。**
+
+Onyx 也特別提到，他們在原型階段驗證的重點包括 fan-out parallelization、subgraph parallelization、State management 與 streaming；正式實作後則大量使用 subgraph 來包裝可重用的搜尋流程。這些做法和「把每個業務動作拆成 Node，再用 State 與 Edge 控制流向」的 Graph Engineering 思維高度一致。
+
+<Note>
+  Data Machi 目前的 Graph 複雜度仍低於 Onyx 的 Agent Search。這裡引用 Onyx 是用來說明「什麼時候 Graph 比線性 Chain 更自然」，而不是表示 Data Machi 已經採用相同的多層 subgraph 架構。
+</Note>
+
+> **參考來源**<br />Evan Lohn & Joachim Rahmfeld, [“Beyond RAG: Implementing Agent Search with LangGraph for Smarter Knowledge Retrieval”](https://onyx.app/blog/agent-search-with-langgraph), Onyx, 2025-02-21. Onyx 說明 LangGraph 與其 Nodes、Edges、States 的自然映射，以及對 parallelization、dependency management、streaming 與 reusable subgraphs 的實際使用。
+
 ## 白箱思維：讓決策浮出水面
 
 `AgentExecutor` 的問題是很多關鍵決策「藏在模型內部」——你只能透過觀察輸出來猜測模型在每一步做了什麼判斷。LangGraph 鼓勵的是「白箱思維」：把必須確定執行的邏輯寫成程式，讓模型專注於它真正擅長的語意理解。
