@@ -38,7 +38,32 @@ flowchart TD
 
 如果團隊的正式定義都在 Confluence，那就建立 Confluence Tool；如果專案進度都在 Trello，就接 Trello API。如果公司用的是 Notion、Jira、資料庫或其他系統，架構原則完全相同，不需要為了 Data Machi 特別搬家。
 
-串接時仍然要遵守前面建立的做法：API Token 不放 GitHub、先用測試資料與最小權限、先確認 API 可以正確讀取，再交給模型使用。
+串接時仍然要遵守前面建立的做法：API Token 不放 GitHub、先用測試資料與最小權限、先確認 API 可以正確讀取，再交給模型使用。實際申請時，Trello 與 Confluence 雖然同屬 Atlassian，憑證形式並不相同：Trello 是先在開發者頁面取得 API Key，再依授權畫面產生 User Token；Confluence 則是在 Atlassian 帳號設定中建立 API Token，並記下 Site URL 與建立 Token 的登入 Email。兩者都建議先準備匿名測試 Board 或測試 Space，再用低權限的整合帳號申請憑證，填入後端環境變數：
+
+```env
+TRELLO_BOARD_ID=
+TRELLO_API_KEY=
+TRELLO_TOKEN=
+
+CONFLUENCE_URL=
+CONFLUENCE_USERNAME=
+CONFLUENCE_API_TOKEN=
+```
+
+## 後端用誰的 Token，就繼承誰的權限
+
+這裡有一個很容易被忽略、卻很重要的觀念：**Trello Token 代表產生它的使用者，Confluence 的 Email \+ API Token 也是在證明「後端正在以哪個帳號讀取內容」。** 後端能看到的範圍，通常就是這個帳號原本能看到的範圍。
+
+如果你用一個管理者帳號建立 Token，即使一般使用者原本只能看部分頁面，只要 Data Machi 沒有另外設計權限檢查，後端仍可能查到管理者看得到的全部內容。這也是為什麼不建議直接把高權限管理者 Token 當成所有使用者共用的憑證，而應該用一個專門整合、權限受限的低權限帳號。
+
+實務上有兩種授權模式：
+
+| 模式 | 說明 | 適合情境 |
+| --- | --- | --- |
+| 固定憑證 | 後端永遠使用同一組低權限 Token，所有使用者共用同一資料範圍 | 個人專案、內部測試、系統只讀取固定 Board 或 Space |
+| 個別授權 | 每位使用者用自己的帳號授權，系統依個人權限存取資料 | 不同使用者應看到不同內容、需要撤銷單一使用者權限、產品要給多個組織或客戶使用 |
+
+個別授權通常牽涉 OAuth、使用者登入、Token 保存與撤銷，屬於產品擴充階段，而不是第一版的必要條件。**目前 Data Machi 的目標情境——所有使用者共用同一批資料——用固定、低權限、只讀的整合帳號通常就足夠**，等到出現「A 使用者不該看到 B 使用者的內容」這類需求時，再評估 OAuth 也不遲。
 
 ## 工具（Tool）的價值，是把系統差異包起來
 

@@ -16,9 +16,32 @@ description: "從 GitHub 出發，完成 FastAPI 後端、React 前端、環境�
 
 後端先上線，因為前端最後需要知道後端網址。建立 Render 網頁服務後，連接 GitHub 程式碼儲存庫，指定後端所在的根目錄，再設定建置指令（Build Command）與啟動指令（Start Command）。
 
-實際指令要依專案結構為準，但核心概念是：Render 必須知道如何安裝 Python 相依套件，以及如何啟動 FastAPI 服務。
+實際指令要依專案結構為準，但核心概念是：Render 必須知道如何安裝 Python 相依套件，以及如何啟動 FastAPI 服務。常見設定大致像這樣：
 
-接著把本機 `.env` 裡需要的機密資訊搬到 Render 的環境變數，例如 Gemini API 金鑰、Google 服務帳號與 Confluence 或 Trello 的存取權杖。這裡不要把 `.env` 檔直接上傳到 GitHub。
+```text
+Root Directory: backend
+Build Command: pip install -r requirements.txt
+Start Command: uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+Start Command 必須使用 Render 提供的 `$PORT`，不能寫死本機慣用的 Port。若專案已經有 `render.yaml`，也要先檢查其中路徑、Python 版本與啟動指令是否仍符合目前 Repository，而不是直接假設設定正確。
+
+接著把本機 `.env` 裡需要的機密資訊搬到 Render 的環境變數，例如 Gemini API 金鑰、Google 服務帳號與 Confluence 或 Trello 的存取權杖，至少會包含：
+
+```env
+GOOGLE_API_KEY=
+GEMINI_MODEL=
+GEMINI_FAST_MODEL=
+GOOGLE_SERVICE_ACCOUNT_JSON=
+GOOGLE_SHEET_KEY=
+ALLOWED_ORIGINS=
+```
+
+Trello、Confluence 等選配服務，只在實際使用時加入。修改 Environment Variables 後通常需要重新部署或重新啟動服務。這裡不要把 `.env` 檔直接上傳到 GitHub。
+
+<Warning>
+  部分免費方案在閒置後可能休眠，下一次請求需要等待服務重新啟動，第一次回答可能明顯較慢。前端應顯示清楚的連線與等待狀態，正式使用時也要評估方案限制。
+</Warning>
 
 ## 先做健康檢查，再測 AI
 
@@ -30,18 +53,46 @@ description: "從 GitHub 出發，完成 FastAPI 後端、React 前端、環境�
 
 後端網址確認後，再建立 Vercel 專案，連接同一個 GitHub 程式碼儲存庫，指定前端的根目錄與建置設定。前端需要知道 API 要連到哪裡，因此把 Render 後端網址放進 Vercel 的環境變數。
 
-開發環境可能使用 `localhost`，正式環境（Production）則必須指向 Render 的正式網址。這也是為什麼網址不應硬寫死在程式碼裡。
+開發環境可能使用 `localhost`，正式環境（Production）則必須指向 Render 的正式網址。這也是為什麼網址不應硬寫死在程式碼裡。所有 API 呼叫最好統一從同一個環境變數或共用 API Client 讀取，而不是散落在多個元件中：
 
-```text
-本機前端 → http://localhost:8000
-正式前端 → https://your-render-backend...
+```env
+VITE_API_BASE_URL=https://your-backend.onrender.com
 ```
+
+<Warning>
+  任何以 `VITE_` 開頭的變數都會被打包進瀏覽器可讀取的前端程式碼，因此只能放 Backend URL 這類可公開設定。Gemini Key、Trello Token、Confluence Token 與 Service Account JSON 都不應出現在 Vercel 前端。
+</Warning>
+
+Vercel 通常也會為每個 Branch 或 Pull Request 建立 Preview URL，主要分支則對應 Production URL。Preview 很適合檢查前端版面與基本流程，但如果後端 CORS 只允許 Production URL，Preview 可能無法呼叫 Render——這也是下一步要處理的事。
 
 ## 第三步：處理跨來源資源共享（CORS）
 
 前後端分開部署後，瀏覽器會把 Vercel 與 Render 視為不同來源。即使後端本身正常，若跨來源資源共享設定不正確，瀏覽器仍可能擋掉請求。
 
-後端應該明確設定允許的前端網域，而不是為了省事永久使用 `*`。正式環境、預覽環境（Preview）與本機開發可能有不同來源，可以透過環境變數管理允許清單。
+後端應該明確設定允許的前端網域，而不是為了省事永久使用 `*`——若後端允許所有網站跨來源呼叫，其他網站可能直接消耗你的後端配額與運算資源。正式環境、預覽環境（Preview）與本機開發可能有不同來源，可以透過環境變數管理允許清單，多個 Origin 通常以逗號分隔：
+
+```env
+# Render
+ALLOWED_ORIGINS=https://your-app.vercel.app,http://localhost:5173
+```
+
+三種環境的網址關係可以先整理成一張表，避免設定時互相搞混：
+
+| 環境 | 前端 URL | 後端 URL | 用途 |
+| --- | --- | --- | --- |
+| Local | `localhost:5173` | `localhost:8000` | 本機開發 |
+| Preview | Vercel Preview URL | Render 正式或測試服務 | PR 驗收 |
+| Production | 正式 Vercel URL | 正式 Render URL | 使用者服務 |
+
+若請求仍然失敗，可以用這張表快速定位問題層：
+
+| 現象 | 優先檢查 |
+| --- | --- |
+| 瀏覽器顯示 CORS，Render 沒收到請求 | 可能在 Preflight（`OPTIONS`）階段被擋 |
+| Render 收到 `OPTIONS` 但沒有 `POST` | 檢查 CORS 允許的 Methods／Headers |
+| Vercel 仍呼叫舊網址 | 環境變數更新後尚未重新部署 |
+| 本機正常、正式失敗 | 正式 URL 或 allowlist 未同步 |
+| Postman 正常、瀏覽器失敗 | Postman 不受瀏覽器 CORS 限制，不能當作前端測試的替代 |
 
 ```mermaid
 flowchart LR
