@@ -1,222 +1,45 @@
 ---
-title: "Day 23｜平行工具執行的價值與應用場景"
-sidebarTitle: "Day 23｜平行工具執行"
-description: "理解平行工具呼叫的運作原理，掌握哪些查詢可以平行、哪些必須保持順序，以及企業 AI 降低延遲的實用策略。"
+title: "Day 23｜代理（Agent）越自由越好嗎？為什麼最後會變得難以控制？"
+sidebarTitle: "Day 23｜代理為什麼難控制"
+description: "理解黑箱式代理循環在流程順序、人工介入、重試與除錯上的限制，說明為什麼企業場景需要更明確的工作流程。"
 ---
 
-想像一個場景：使用者問「這個季度 Q3 的客訴工單有多少件，對應的 SLA 定義是什麼，目前有哪些相關 Trello 卡片正在處理？」這個問題需要同時查詢工單系統、Confluence 文件庫與 Trello 看板三個完全獨立的資料來源。如果 Agent 按順序逐一執行——先等工單系統回應、再等 Confluence、最後等 Trello——每個工具即便只花 2 秒，三個加起來就是 6 秒以上的等待。但如果三個查詢可以同時發出，整體只需要等最慢的那一個，可能只需 2–3 秒。這就是平行工具執行的核心價值：**讓彼此獨立的查詢同時進行，把累加等待變成並行等待**。
+做到這裡，Agent 已經可以選工具、保留部分記憶，也能在資訊不足時追問或重查。能力看起來愈來愈完整，但同時也會出現另一個問題：系統的行為開始變得難以預測。
 
-## 順序執行 vs. 平行執行
+如果所有決策都藏在同一個代理循環（Agent Loop）裡，開發者通常只能看到模型這一輪選了什麼工具、下一輪又做了什麼。當流程只有兩三步時還能接受，但一旦加入多工具、答案驗證（Verification）、重試（Retry）、記憶（Memory）與人工審核，黑箱式循環很快就會變得難以除錯。
 
-在理解「何時可以平行」之前，先直觀感受兩種執行模式的時間差異：
+## 第一個問題：流程順序不能只靠模型記得
 
-```text
-【順序執行】
+有些企業操作有明確先後關係。例如必須先驗證資料，再建立任務；必須先取得使用者確認，才能寄信或寫入正式系統。這些不是「最好照順序做」，而是不能跳過的規則。
 
-時間軸 ──────────────────────────────────────────▶
-        [查工單系統 2s] → [查 Confluence 2s] → [查 Trello 2s]
-        總耗時：~6 秒
+如果只在 Prompt 寫「請先驗證再執行」，模型大多數時候可能會照做，但真正需要可靠性的流程不能建立在「大多數時候」。
 
-【平行執行】
+## 第二個問題：失敗與重試需要明確位置
 
-時間軸 ──────────────────────────────────────────▶
-        [查工單系統 2s]  ─┐
-        [查 Confluence 2s]─┼─ 同時發出 → 等最慢的完成
-        [查 Trello 2s]  ─┘
-        總耗時：~2 秒（節省 67%）
-```
+假設 Google Sheets 資料工具發生逾時（Timeout），系統應該重試幾次？如果檢索增強生成（RAG）的搜尋結果不足，是回到搜尋節點，還是重新問使用者？如果 Gemini 失敗，是否切換到備援模型（Fallback Model）？這些控制邏輯放在單一代理循環裡，會逐漸變成大量隱性規則。
 
-當查詢數量增加，順序執行的等待時間是線性累加的；平行執行的等待時間則近似於「最慢的那一個工具」的耗時。在企業 AI 系統中，這個差異會直接影響使用者體驗與系統吞吐量。
+一旦問題發生，也很難快速知道是路由錯誤、工具錯誤、模型錯誤，還是流程根本走錯分支。
 
-## 什麼情況可以平行，什麼情況不行？
+## 第三個問題：Human-in-the-loop 不適合藏在黑箱裡
 
-平行執行的前提條件只有一個，但它非常關鍵：**這些查詢彼此之間沒有資料依賴**。
+當系統開始具備寫入能力，例如建立任務、修改資料或發送通知，高風險動作通常需要人工確認。這代表 Workflow 必須能在某個明確節點暫停，保存目前狀態，等使用者批准後再繼續。
 
-<CardGroup cols={2}>
-  <Card title="可以平行的情況" icon="check">
-    **獨立資料來源的並行查詢**
+這種「暫停再恢復」的需求，本身就已經超出單純 prompt-driven loop 最舒服的範圍。
 
-    - 同時查詢工單統計、文件定義與看板狀態
-    - 同時取得多個使用者的設定資料
-    - 同時搜尋多個獨立的知識庫
-    - 同時呼叫多個不互相影響的外部 API
+## 從自主代理（Agent）走回可控工作流程（Workflow）
 
-    判斷標準：A 的結果不需要作為 B 的輸入參數
-  </Card>
+這裡不是要否定 Agent，而是重新分工：**讓模型負責需要語意判斷的地方，讓程式負責不能出錯的流程。** 哪個工具最適合可以交給模型判斷，但「驗證失敗必須回到搜尋」、「高風險操作一定要人工批准」則應該寫成明確流程。
 
-  <Card title="必須保持順序的情況" icon="xmark">
-    **存在資料依賴的串行查詢**
+這也是為什麼下一篇 LangGraph 才真正有必要出場。它不是因為我們想再加一個新框架，而是目前的問題已經需要 State、Node 與 Edge 來把執行路徑畫清楚。
 
-    - 先用非正式名稱查到正式專案代號，再用代號查 Trello
-    - 先取得使用者 ID，再用 ID 查詢該使用者的工單
-    - 先確認文件存在，再拉取文件內容
-    - 先建立資料，再更新相關關聯
+## 延伸閱讀｜AgentExecutor 什麼時候開始不夠用？
 
-    判斷標準：B 的查詢參數需要從 A 的結果中取得
-  </Card>
-</CardGroup>
+簡單任務下，ReAct 或 AgentExecutor 類型的單一 Agent loop 很有效率；問題通常出現在流程開始需要嚴格順序、人工暫停、狀態保存與可稽核的 Retry 路徑之後。幾個常見訊號包括：Prompt 裡開始出現大量「一定要先做 A 再做 B」、Agent 偶爾跳過必要步驟、流程中需要等人批准，以及除錯時只能重看整段模型輸出卻不知道真正失敗節點。
 
-### 混合情況：部分平行、部分順序
-
-實際業務中，常見的是「部分步驟可平行，部分步驟需順序」的混合拓撲：
-
-```text
-步驟 1：查詢使用者基本資料（取得 user_id 與 project_id）
-          │
-          ▼
-步驟 2 ──┬── 用 user_id 查工單歷史  ─┐
-（平行）  ├── 用 project_id 查 Trello ─┼─ 同時執行
-          └── 查通用 SLA 文件         ─┘
-                    │
-                    ▼
-步驟 3：彙整三個來源的結果，產生最終回應
-```
-
-在 LangGraph 中，這種結構可以透過 fan-out（一個節點拆成多個平行路徑）和 fan-in（多個路徑匯合到一個節點）來實現。
-
-## Data Machi 的實作方式
-
-當 LLM 在一個回應中產生多個 Tool Call 時，Data Machi 的 Action Node 會使用 Python 的非同步機制平行執行所有工具，再把所有 `ToolMessage` 一起交回 Agent Node 繼續判斷。
-
-```python
-import asyncio
-from langchain_core.messages import ToolMessage
-
-async def action_node(state: AgentState):
-    """平行執行所有 tool calls，並等待全部完成"""
-    tool_calls = state["messages"][-1].tool_calls
-
-    # 為每個 tool call 建立非同步任務
-    tasks = [
-        execute_tool_async(tool_call)
-        for tool_call in tool_calls
-    ]
-
-    # 平行等待所有工具完成
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # 把結果包裝成 ToolMessage 回傳
-    tool_messages = []
-    for tool_call, result in zip(tool_calls, results):
-        if isinstance(result, Exception):
-            content = f"工具執行失敗：{str(result)}"
-        else:
-            content = str(result)
-
-        tool_messages.append(
-            ToolMessage(
-                content=content,
-                tool_call_id=tool_call["id"],
-                name=tool_call["name"]
-            )
-        )
-
-    return {"messages": tool_messages}
-
-async def execute_tool_async(tool_call: dict):
-    """根據工具名稱執行對應的非同步工具"""
-    tool_name = tool_call["name"]
-    tool_args = tool_call["args"]
-
-    tool_map = {
-        "search_tickets": search_tickets_async,
-        "search_confluence": search_confluence_async,
-        "search_trello": search_trello_async,
-    }
-
-    if tool_name in tool_map:
-        return await tool_map[tool_name](**tool_args)
-    raise ValueError(f"未知工具：{tool_name}")
-```
-
-### 前端狀態顯示
-
-平行執行的另一個好處是可以讓前端即時呈現每個工具的查詢狀態，而不是讓使用者盯著一個無差別的 loading 圈圈。Data Machi 會在前端顯示每個工具的即時狀態：
-
-```text
-🔍 正在查詢工單系統...    ✅ 完成（找到 47 筆）
-🔍 正在查詢 Confluence... ⏳ 查詢中
-🔍 正在查詢 Trello...     ✅ 完成（找到 3 張卡片）
-```
-
-這種透明度不只是視覺上的改善，也讓使用者能即時判斷哪個系統回應較慢，以及是否有某個工具失敗需要關注。
-
-## 企業 AI 的延遲來源分析
-
-延遲問題不只來自模型的推論速度。在企業 AI 系統中，整體回應時間通常由以下幾個因素共同決定：
-
-<Accordion title="企業 AI 系統的五大延遲來源">
-  | 延遲來源 | 典型耗時 | 優化方向 |
-  | --- | --- | --- |
-  | LLM 推論（模型本身） | 1–5 秒 | 換更快模型、使用 streaming |
-  | 外部工具 API 呼叫 | 0.5–3 秒/個 | 平行執行、快取結果 |
-  | 資料量與傳輸 | 視資料大小 | 限制回傳欄位與筆數 |
-  | 重複查詢 | 累加 | 快取相同查詢的結果 |
-  | 網路延遲（跨地區） | 50–500ms | 就近部署或使用 CDN |
-
-  **關鍵洞察**：很多時候，把模型換成更快的版本帶來的提升遠不如消除不必要的順序等待。先分析你的延遲瓶頸在哪裡，再決定優化方向。
-</Accordion>
-
-### 快取策略的實際效益
-
-除了平行化，快取是另一個高性價比的優化手段。對於「相同查詢參數、短時間內重複執行」的場景，直接回傳快取結果可以把工具延遲從 2 秒降到接近 0：
-
-```python
-import hashlib
-import json
-from functools import lru_cache
-from datetime import datetime, timedelta
-
-class ToolResultCache:
-    def __init__(self, ttl_seconds: int = 300):
-        self._cache = {}
-        self._ttl = timedelta(seconds=ttl_seconds)
-
-    def _cache_key(self, tool_name: str, args: dict) -> str:
-        content = f"{tool_name}:{json.dumps(args, sort_keys=True)}"
-        return hashlib.md5(content.encode()).hexdigest()
-
-    def get(self, tool_name: str, args: dict):
-        key = self._cache_key(tool_name, args)
-        if key in self._cache:
-            result, timestamp = self._cache[key]
-            if datetime.now() - timestamp < self._ttl:
-                return result  # 快取命中
-        return None  # 快取未命中或已過期
-
-    def set(self, tool_name: str, args: dict, result):
-        key = self._cache_key(tool_name, args)
-        self._cache[key] = (result, datetime.now())
-
-# 使用快取包裝工具呼叫
-cache = ToolResultCache(ttl_seconds=300)
-
-async def cached_tool_call(tool_name: str, args: dict):
-    cached = cache.get(tool_name, args)
-    if cached is not None:
-        return cached
-    result = await execute_tool_async({"name": tool_name, "args": args})
-    cache.set(tool_name, args, result)
-    return result
-```
-
-## 踩坑筆記：哪些情況不適合平行？
-
-<Warning>
-  不是所有工具都適合無條件平行執行。以下幾種情況盲目平行反而會造成錯誤或系統不穩定：
-
-  1. **速率限制共享**：若多個工具共用同一個 API 的速率限制，同時呼叫可能觸發 429 Too Many Requests
-  2. **修改同一份資料**：若多個工具都會寫入同一個資源（如同時更新同一個 Trello 卡片），可能產生競態條件
-  3. **明確先後依賴**：B 的輸入需要 A 的輸出，這是順序依賴，強行平行會得到錯誤的查詢參數
-  4. **事務性操作**：需要原子性保證的多步驟操作（如先扣款再建立訂單）必須保持順序
-</Warning>
-
-<Tip>
-  評估一個工具組合是否可以平行，可以問自己這個問題：「如果我把這些工具呼叫的順序打亂，結果會不一樣嗎？」如果答案是「不會」，通常就可以平行。
-</Tip>
+可以把架構演進理解成：**Agent loop 讓模型決定下一步，Graph Engineering 則重新決定哪些選擇可以交給模型、哪些流程必須由程式保證。** 這不是「LangGraph 一定比 AgentExecutor 好」，而是架構應該隨著任務的風險與複雜度成長。只有 2–3 個工具、沒有複雜分支的簡單 Agent，仍然沒有必要過早引入 Graph。
 
 <Info>
-  今天只要記住一件事：平行化的前提是任務彼此獨立，而不是所有工具一起呼叫。
+  今天先記住一件事：Agent 愈自主，不代表系統就應該愈黑箱。企業需要的是「該自由的地方自由、該控制的地方明確控制」。
 </Info>
 
-下一篇，我們會釐清一個在企業 AI 討論中常見的迷思：系統裡有多個工具，是否就等於 Multi-Agent 架構？
+下一篇，我們會用 LangGraph 的 State、Node 與 Edge，把目前散在 Agent loop 裡的決策重新畫成一張可觀察的流程圖。

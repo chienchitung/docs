@@ -1,195 +1,87 @@
 ---
-title: "Day 22｜LangGraph 的 State、Node 與 Edge 核心概念"
-sidebarTitle: "Day 22｜認識 LangGraph"
-description: "用接力棒與流程圖的比喻，深入理解 LangGraph 的三大核心概念，以及如何把 Agent 決策從黑箱變成可管理的白箱流程。"
+title: "Day 22｜不知道答案時，代理（Agent）應該追問、重查，還是拒答？"
+sidebarTitle: "Day 22｜追問、重查與拒答"
+description: "理解問題釐清（Clarification）、答案驗證（Verification）與重新查詢的觸發時機，讓企業代理在資訊不足時不再用猜的。"
 ---
 
-如果說 `AgentExecutor` 是把工作丟給模型、讓它自己決定怎麼做，那 LangGraph 就是在保留模型語意能力的同時，讓開發者重新拿回流程的主導權。LangGraph 的核心思想是把 Agent 的工作流表達成一張「有狀態的圖」——每個節點代表一個工作單元，每條邊代表一個流向決策，整張圖的當前進度則保存在一個結構化的 State 物件中。這不是為了把流程畫得好看，而是讓每一個步驟、每一個條件判斷、以及任務的當前狀態，都能被明確定義、追蹤與測試。
+多輪對話加入記憶（Memory）之後，另一個更棘手的問題會浮現：當代理（Agent）手上的資訊不夠時，它應該自己再查一次，還是停下來向使用者確認？這個判斷如果處理不好，系統就會出現兩種極端：不是什麼都問，讓使用者覺得很煩；就是什麼都猜，最後產生錯誤答案。
 
-## 三個核心概念
+## 問題釐清（Clarification）：問題本身不夠清楚時才問
 
-LangGraph 的設計圍繞三個基本積木展開，理解它們就理解了整個框架的運作邏輯。
+假設使用者說：「幫我看一下最近的表現。」這句話缺少至少幾個資訊：什麼指標、什麼時間範圍、哪個市場？如果系統無法從前文可靠推斷，就應該提出 clarification request，而不是隨便選一個資料來源開始查。
 
-<CardGroup cols={3}>
-  <Card title="State：接力棒" icon="database">
-    State 是整個工作流共享的資料結構，記錄任務目前的所有關鍵資訊。每個節點從 State 中讀取它需要的資料，執行完畢後把結果寫回 State，交給下一個節點繼續使用。就像田徑接力賽中的接力棒——棒子裡承載著目前的進度與上下文，每一棒交接都是一次明確的狀態傳遞。
-  </Card>
-  <Card title="Node：工作站" icon="circle-nodes">
-    Node 是實際執行工作的單元。它可以是一個 LLM 呼叫（讓模型做判斷）、一個工具執行（呼叫外部 API）、或任何一段普通的 Python 函式。每個 Node 接收當前 State，執行工作，然後回傳更新後的 State 片段。Node 之間互相獨立，可以單獨測試與替換。
-  </Card>
-  <Card title="Edge：路由決策" icon="arrow-right">
-    Edge 定義節點之間的流向。最簡單的 Edge 是固定的「A 做完後一定去 B」；條件 Edge 則可以根據 State 的值選擇不同路徑，例如「若工具結果為空則走備用查詢路徑，否則繼續彙整」。Edge 把流程控制從模型的隱性決策變成程式的顯性路由。
-  </Card>
-</CardGroup>
+好的 Clarification 應該只問真正影響下一步的資訊。例如已經知道使用者在談台灣市場，就沒有必要再重問市場；如果只缺時間範圍，就只確認時間範圍。
 
-### 用程式碼看三者的關係
+對非工程背景讀者來說，可以先記住三個簡單的追問原則：**一次只問最關鍵的一題、盡量提供具體選項、說明為什麼需要確認。** 例如與其問「你指哪個期間？」，不如問「你是指本月，還是最近 90 天？」；與其只問「ATL 是什麼？」，不如說「我找到兩個名稱相近的 ATL 專案，需要你確認是哪一個」。這樣的追問比較像可靠的同事，而不是把所有責任丟回給使用者。
 
-```python
-from langgraph.graph import StateGraph, END
-from typing import TypedDict, Annotated
-import operator
+## Verification：有答案不代表答案可以交付
 
-# 定義 State 結構
-class AgentState(TypedDict):
-    messages: Annotated[list, operator.add]  # 對話歷史，每次追加
-    tool_results: dict                        # 工具執行結果
-    final_answer: str                         # 最終輸出
+另一種情況是工具已經回傳結果，但系統還需要確認是否能支撐最終結論。比如使用者問「為什麼指標下降」，Google Sheets 資料工具只能證明指標確實下降，卻不一定能證明原因。這時不應該直接把相關性寫成因果，而是需要補查文件、專案紀錄或其他資料來源。
 
-# 定義 Node（節點函式）
-def agent_node(state: AgentState):
-    # 呼叫 LLM，決定下一步
-    response = llm.invoke(state["messages"])
-    return {"messages": [response]}
+Verification 的核心問題是：**目前證據足以回答使用者真正問的問題嗎？** 如果只是部分回答，就應該繼續查；如果來源彼此衝突，則應該把差異說清楚。
 
-def action_node(state: AgentState):
-    # 執行工具，取得結果
-    tool_call = state["messages"][-1].tool_calls[0]
-    result = execute_tool(tool_call)
-    return {"tool_results": {tool_call["name"]: result}}
+## 重新查詢：最新狀態不能只靠 Memory
 
-def should_continue(state: AgentState):
-    # 條件 Edge：判斷是否需要繼續呼叫工具
-    last_message = state["messages"][-1]
-    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        return "action"
-    return END
+前一天提到 Tool Result Memory 可以沿用，但有些資訊天生會變，例如專案狀態、庫存、今天銷售、最新任務留言。只要使用者明確要求「現在」、「最新」、「今天」，就應該優先重新呼叫工具。
 
-# 建立 Graph
-graph = StateGraph(AgentState)
-graph.add_node("agent", agent_node)
-graph.add_node("action", action_node)
+因此可以把判斷簡化成三條路：問題不清楚 → Clarification；問題清楚但證據不足 → Verification / 補查；問題清楚且需要最新資料 → 重新查詢。
 
-# 定義 Edge
-graph.set_entry_point("agent")
-graph.add_conditional_edges("agent", should_continue)
-graph.add_edge("action", "agent")  # 工具執行完後，回到 agent 再判斷
-
-app = graph.compile()
+```mermaid
+flowchart TD
+    Q[新問題] --> C{問題清楚嗎？}
+    C -->|否| CL[Clarification]
+    C -->|是| F{需要最新資料嗎？}
+    F -->|是| R[重新呼叫 Tool]
+    F -->|否| E{現有證據足夠嗎？}
+    E -->|否| V[Verification / 補查]
+    E -->|是| A[回答]
 ```
 
-## Data Machi 的基本 Graph 結構
+## 錯誤訊息也應該是產品的一部分
 
-Data Machi 目前的核心工作流，可以用下面這個簡潔的拓撲圖表示：
+如果工具失敗，不要讓模型自行補完。系統應該區分「查不到資料」、「沒有權限」、「服務暫時不可用」與「使用者條件不完整」。這些情況對下一步的處理完全不同，也會直接影響使用者是否信任系統。
 
-```text
-START
-  │
-  ▼
-┌─────────────────────────────────────────┐
-│  Agent Node                             │
-│  • 接收使用者問題與對話歷史              │
-│  • LLM 判斷：呼叫工具 or 直接輸出答案  │
-└─────────────────────────────────────────┘
-  │                           │
-  │ 需要呼叫工具               │ 不需要工具
-  ▼                           ▼
-┌──────────────┐            END（輸出答案）
-│ Action Node  │
-│ • 執行工具   │
-│ • 取得結果   │
-└──────────────┘
-  │
-  │ 結果回傳
-  ▼
-Agent Node（重新判斷）
-```
+做到這裡，Data Machi 已經開始具備一個可靠 Agent 應有的基本行為：知道什麼時候可以回答，也知道什麼時候不該回答。
 
-這個結構看起來簡單，但它的優勢在於每一個環節都是明確的：你知道 Agent Node 負責什麼、Action Node 負責什麼、以及什麼條件會觸發哪條路徑。
+## 進階理解｜企業 Agent 最危險的幻覺，是把推論寫成事實
 
-<Steps>
-  <Step title="START → Agent Node">
-    使用者輸入進入 Agent Node。LLM 分析問題，決定是否需要呼叫工具。
-  </Step>
-  <Step title="Agent Node → Action Node（條件分支）">
-    若 LLM 的回應包含 Tool Call，條件 Edge 將流程導向 Action Node 執行工具。
-  </Step>
-  <Step title="Action Node → Agent Node">
-    工具執行完畢，結果附加到 State 的 messages 中，流程回到 Agent Node 再次判斷。
-  </Step>
-  <Step title="Agent Node → END">
-    若 LLM 判斷已有足夠資訊，直接輸出最終答案，流程結束。
-  </Step>
-</Steps>
+幻覺不只代表「完全憑空亂講」。在企業情境裡，更常見的是幾種看起來很合理、卻特別危險的錯誤：
 
-## 白箱思維：讓決策浮出水面
+| 類型 | 例子 |
+| --- | --- |
+| **數字捏造** | 沒查資料卻回答「轉換率是 23.7%」 |
+| **日期錯誤** | 把專案上線月份記成另一個版本的日期 |
+| **名稱混淆** | 把兩個相似專案的負責人混在一起 |
+| **邏輯填補** | 紀錄只寫「延遲」，AI 卻補成「因跨部門溝通造成」 |
 
-`AgentExecutor` 的問題是很多關鍵決策「藏在模型內部」——你只能透過觀察輸出來猜測模型在每一步做了什麼判斷。LangGraph 鼓勵的是「白箱思維」：把必須確定執行的邏輯寫成程式，讓模型專注於它真正擅長的語意理解。
+例如「可能是跨部門溝通造成延遲」本身可以是一個分析假設，但如果工具結果或文件沒有相關證據，就不能寫成「延遲是由跨部門溝通造成」。
 
-<Accordion title="哪些邏輯應該寫成程式，而非交給 Prompt？">
+因此最終回答最好區分兩層：**Verified Fact** 必須能追溯到 Tool、RAG 或資料庫；**Analytical Hypothesis** 可以由模型提出，但要明確標示為推論或待驗證假設。這個區分比單純要求模型「不要 hallucinate」更可操作。
 
-**適合寫成程式的邏輯：**
-- 工具結果為空時，自動改查備用來源
-- 重試次數超過上限時，強制結束並回傳錯誤
-- 高風險操作（如發送郵件、修改資料）前，暫停並等待人工批准
-- 根據使用者角色或權限，決定哪些工具可以被呼叫
+## 實務驗收｜故意用資訊不足的問題測系統行為
 
-**適合交給 LLM 的邏輯：**
-- 判斷使用者問題的意圖
-- 從非結構化資料中提取關鍵資訊
-- 選擇最相關的工具與參數
-- 整合多個來源的資訊，產生自然語言回應
+這一天最適合測的不是「答案對不對」，而是**系統在資訊不足時有沒有做出正確行為**。可以先用下面幾種情境測試：
 
-程式與模型的分工越清晰，系統就越可預期、越容易除錯。
+| 測試情境 | 預期行為 |
+| --- | --- |
+| 「幫我看一下最近的表現。」 | 資訊不足時，只追問最關鍵的條件，例如期間或指標 |
+| 前文已明確提到台灣市場，下一句只問「那最近呢？」 | 不應重複詢問已知市場，只補缺少的時間條件 |
+| 「請告訴我最新的專案進度。」 | 不沿用舊記憶，重新查專案工具 |
+| 「為什麼轉換率下降？」但目前只有下降數字 | 不直接把相關性寫成原因；應補查或標示為待驗證假設 |
+| 兩個來源對同一規則給出不同版本 | 明確指出來源衝突與版本差異，不自行選一個當真相 |
+| 使用者問一個所有資料來源都沒有答案的問題 | 明確說明缺少證據，不猜測答案 |
+| 「你確定嗎？我剛剛更新資料。」 | 強制重新查詢原始來源，再比較新舊結果 |
 
-</Accordion>
+這組測試不適合只用「答對／答錯」判斷，可以拆成四個欄位：**是否需要追問、是否需要重新查詢、目前證據是否足夠、最終是否誠實表達不確定性。**
 
-以下是幾個「從 Prompt 約束轉移到程式控制」的實際範例：
+| ID | 測試情境 | 應追問 | 應重查 | 證據足夠 | 通過 |
+| --- | --- | --- | --- | --- | --- |
+| VERIFY-01 | 為什麼轉換率下降？目前只有下降數字 | 否 | 視情況 | 否 |  |
 
-```python
-# ❌ 用 Prompt 約束：脆弱且不可靠
-system_prompt = """
-你是一個助理。當工具查詢結果為空時，請嘗試其他關鍵字再查一次。
-若重試超過 3 次，請停止並告知使用者查無結果。
-"""
-
-# ✅ 用程式控制：明確且可測試
-def should_retry(state: AgentState) -> str:
-    if state["retry_count"] >= 3:
-        return "give_up"
-    if state["tool_results"].get("search") == []:
-        return "retry_with_fallback"
-    return "continue"
-
-graph.add_conditional_edges("action", should_retry, {
-    "give_up": "end_with_error",
-    "retry_with_fallback": "fallback_search",
-    "continue": "agent"
-})
-```
-
-## State 設計：不只是對話歷史
-
-在 `AgentExecutor` 中，State 基本上等於對話歷史（一個 messages list）。LangGraph 讓你自由定義 State 的結構，根據業務需求加入任何欄位：
-
-```python
-class EnterpriseAgentState(TypedDict):
-    # 標準欄位
-    messages: Annotated[list, operator.add]
-
-    # 業務欄位
-    user_id: str                    # 觸發此工作流的使用者
-    permission_level: str           # 使用者的操作權限
-    query_intent: str               # LLM 解析出的查詢意圖
-    tool_results: dict              # 各工具的執行結果
-    retry_count: int                # 重試次數計數器
-    requires_approval: bool         # 是否需要人工批准
-    audit_log: list                 # 稽核紀錄
-```
-
-這種結構化的 State 設計，讓每個節點能精確存取它需要的資訊，也讓整個工作流的「進度快照」在任何時間點都是可讀的。
-
-<Tip>
-  設計 State 時，建議把「流程控制用的欄位」（如 retry_count、requires_approval）和「業務資料欄位」（如 query_intent、tool_results）分開思考。前者服務於工作流邏輯，後者服務於最終的業務輸出。
-</Tip>
-
-## 踩坑筆記：LangGraph 不是用來取代 Prompt
-
-<Note>
-  LangGraph 讓你把部分控制權從模型移回程式，但這不代表你應該把所有邏輯都寫成 Node 和 Edge。LLM 仍然是語意理解的核心，你不可能、也不應該用程式碼描述每一個語意判斷。好的設計是：模型負責「理解與選擇」，程式負責「執行與守門」。兩者分工明確，各司其職。
-</Note>
+當使用者說「你確定嗎？」「再查一次」「我剛更新資料」時，不應直接沿用上一輪工具結果。比較可靠的做法是把舊結果視為可能過期，強制重新查詢原始來源，再比較新舊差異。記得資料，不代表資料仍然有效。
 
 <Info>
-  今天只要記住一件事：LangGraph 的價值，是把 Agent 的狀態與路徑從黑箱變成可管理的流程。
+  今天只要記住一件事：企業代理的可信度不是來自『永遠都有答案』，而是來自它知道何時應該追問、補查或明確說資料不足。
 </Info>
 
-下一篇，我們會探討當一個問題需要查詢多個獨立系統時，如何透過平行工具執行來大幅降低等待時間。
+下一篇我們會面對架構上的限制：當這些判斷、重試與分支都塞進同一個 Agent loop，為什麼最後會變得很難控制？

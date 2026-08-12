@@ -1,188 +1,55 @@
 ---
-title: "Day 17｜ReAct 框架解析：AI 如何透過 Thought、Action、Observation 三步驟持續循環"
-sidebarTitle: "Day 17｜ReAct 循環"
-description: "透過 Thought、Action、Observation 三個核心步驟，理解 ReAct 框架如何讓 Agent 在推理與行動之間持續交替。模型不只在第一步選擇工具，更在每次取得工具結果後重新評估，動態調整後續行動策略。觀察能力讓 Agent 能處理資料缺失、欄位不一致等真實世界的複雜查詢場景。"
+title: "Day 17｜推理與行動（ReAct）：代理如何看結果，再決定下一步？"
+sidebarTitle: "Day 17｜ReAct 決策循環"
+description: "透過思考（Thought）、行動（Action）、觀察（Observation）三個步驟，理解 ReAct 如何讓代理在每次取得工具結果後重新評估並調整下一步。"
 ---
 
-如果說 Day 16 讓我們理解了「工具」與「Agent」的差異，那麼 ReAct 就是讓 Agent 真正有智慧的那個引擎。ReAct 是 **Reasoning and Acting** 的縮寫，核心概念是讓模型在推理與行動之間交替運作——先思考要做什麼，再執行，然後觀察結果，再次思考。對使用者來說，它看起來像 AI「會自己處理事情」；實際上是模型與工具在一個受控循環中，一步一步地接近正確答案。
+昨天我們說，代理（Agent）和固定的工具使用（Tool Use）最大差別，是代理會根據中間結果重新判斷下一步。推理與行動（ReAct）可以把這件事拆成一個很直覺的循環：先「推理（Reason）」決定目前需要什麼；接著「行動（Act）」呼叫工具；最後「觀察（Observe）」檢查工具回傳的結果，再決定要不要繼續。
 
-## ReAct 的三個基本步驟
+這個概念看起來很簡單，但它其實解釋了代理（Agent）為什麼能處理比固定流程更模糊的任務。
 
-ReAct 框架將 Agent 的每一輪行動拆解成三個明確的階段：
+## Reason：先決定現在最需要知道什麼
 
-<Steps>
-  <Step title="Thought（思考）">
-    模型分析目前的問題與對話脈絡，推理出下一步應該做什麼。這個步驟通常不直接對使用者可見，但它決定了接下來的行動方向。
+假設使用者問：「哪個市場的需求問題最嚴重，而且相關改善專案有沒有在進行？」Agent 不需要一開始就把所有工具全部叫一遍。它可以先判斷第一步應該查數據，找出問題最大的市場。
 
-    例如：「使用者問的是哪個市場需求最高，我需要查詢銷售資料，並確認資料中有市場分類欄位。」
-  </Step>
-  <Step title="Action（行動）">
-    根據思考結果，選擇並呼叫適合的工具。這可能是查詢資料庫、搜尋文件、呼叫 API，或向使用者提出釐清問題。
-  </Step>
-  <Step title="Observation（觀察）">
-    取得工具的執行結果，仔細評估：資料是否完整？結果是否符合預期？是否足以回答使用者的問題？還是需要進一步行動？
-  </Step>
-</Steps>
+這裡的 Reason 不是要模型寫出長篇思考，而是讓系統能形成下一步可執行的決策：需要哪個工具、使用什麼條件，以及目前是否已經有足夠資料。
 
-這三個步驟不是線性的一次性流程，而是一個**可以反覆執行的循環**，直到產生足夠的答案或觸發停止條件為止。
+## Act：真的去執行，而不是想像結果
 
-## 一個完整的 ReAct 範例
+接著系統呼叫 Sheets Tool，取得各市場的需求數量。這個步驟非常重要，因為 Agent 的事實應該來自工具，而不是模型自己補出來。
 
-讓我們用一個實際情境，逐步拆解 ReAct 的運作過程：
+工具回傳最好是清楚而結構化的結果，例如市場、件數、期間與資料來源，而不是一大段已經被加工過的自然語言。這樣後面的判斷比較容易維持一致。
 
-**使用者問：「今年哪個市場的需求工單最多？」**
+## Observe：結果會改變下一步
 
-```text
-[Thought 1]
-使用者要求今年各市場的需求工單數量比較。
-我需要查詢需求工單資料，並確認有「市場」和「年份」欄位。
+假設結果顯示 TW 是最高市場，Agent 才需要進一步查與 TW 相關的改善專案。如果工具回傳空資料，它也應該先判斷是不是查詢條件錯了，而不是直接告訴使用者「沒有專案」。
 
-[Action 1]
-呼叫 Google Sheets 工具，查詢需求工單工作表
-
-[Observation 1]
-回傳資料包含：日期、工單 ID、負責人、地區代碼
-⚠️ 找不到「市場」欄位，只有「地區代碼」
-
-[Thought 2]
-資料中沒有「市場」欄位，只有「地區代碼」。
-可能需要一份對照表，把地區代碼轉換成市場名稱。
-我應該查詢 Confluence 是否有市場定義文件。
-
-[Action 2]
-搜尋 Confluence，關鍵字：「地區代碼 市場定義」
-
-[Observation 2]
-找到一份文件：APAC 地區代碼對照表
-地區代碼 TW, HK, SG → 亞太市場
-地區代碼 US, CA → 北美市場
-
-[Thought 3]
-現在我有工單資料和地區代碼對照表。
-可以計算各市場今年的工單數量，回答使用者的問題。
-
-[Final Answer]
-根據查詢結果，今年需求工單最多的是亞太市場（共 342 張），
-其次是北美市場（共 218 張）。資料來源：需求工單工作表（截至今日）。
+```mermaid
+flowchart TD
+    R[Reason：需要什麼？] --> A[Act：呼叫工具]
+    A --> O[Observe：結果是否足夠？]
+    O -->|不足| R
+    O -->|足夠| F[Final Answer]
 ```
 
-這個過程中，Agent 在中途發現資料不完整，主動補查對照表，最後整合兩份資料產生答案。這正是 ReAct 的力量所在。
+真正有價值的是 Observation。沒有這一步，系統只是在第一輪做工具選擇；有了它，Agent 才能在資料不足、格式不同或工具失敗時調整策略。
 
-## 為什麼 Observation 是關鍵？
+## ReAct 不是讓模型無限循環
 
-在 ReAct 的三個步驟中，Observation（觀察）是最容易被忽視卻最重要的一環。
+企業系統不能因為模型一直覺得「還可以再查」就無限執行。因此即使採用 ReAct，仍要設定最大步數、允許的工具範圍與停止條件。這些限制不應只寫在 Prompt，而要由程式層控制。
 
-<CardGroup cols={2}>
-  <Card title="沒有觀察的系統" icon="eye-slash">
-    模型只在執行前規劃一次，無論工具回傳什麼結果，都照著原本計劃執行。遇到「查無資料」「欄位不存在」「回傳格式不符」，只能報錯或回傳錯誤答案。
-  </Card>
-  <Card title="有觀察的 Agent" icon="eye">
-    每次工具執行後，模型重新評估結果，動態調整後續行動。能處理「查無資料」「找到多筆同名項目」「欄位名稱不一致」等真實世界中常見的資料問題。
-  </Card>
-</CardGroup>
+這也是後面 LangGraph 的重要價值：把原本隱藏在 Agent loop 裡的執行路徑，變成更明確的 State、Node 與 Edge。
+
+## 實務補充｜Observation 不只是「看結果」，還可能改變下一個問題
+
+這裡有一個重要觀念：如果第一次搜尋只找到部分資訊，Agent 不一定只是把同一句 query 再跑一次，而可能根據新資訊重新拆題。例如第一次知道正式專案名稱後，第二輪查詢就可以改用正式名稱；發現少一個市場對照表後，也可以先補查定義再回來計算。這才是「觀察 → 重新判斷」真正有價值的地方。
+
+## 實務踩坑｜Agentic 不代表可以無限嘗試
+
+循環一定要有停止條件。除了最大步數，也可以限制總執行時間、Tool call 次數或成本預算。對非工程背景讀者，可以把它想成：交給同事一個模糊任務時，也會說「最多查三個來源，如果還找不到就回來說明」，而不是讓他無限找下去。
 
 <Info>
-  **觀察讓 Agent 能處理「現實的不完美」**：真實的企業資料從來不是結構完美的教科書範例。資料缺失、命名不一致、系統之間的欄位對應差異，都需要 Agent 在觀察後動態調整策略。
+  今天先記住一件事：ReAct 的重點不是「模型會思考」，而是每次行動後都會觀察真實結果，再決定是否需要下一步。
 </Info>
 
-## Data Machi 的 ReAct 實作
-
-在 Data Machi 的架構中，Coordinator 的 Graph 會在 Agent 節點與 Action 節點之間持續循環，直到模型決定輸出最終答案：
-
-```python
-from langgraph.graph import StateGraph, END
-
-def build_react_graph():
-    graph = StateGraph(AgentState)
-    
-    # Agent 節點：模型思考並決定下一步
-    graph.add_node("agent", agent_node)
-    
-    # Action 節點：執行工具呼叫
-    graph.add_node("action", action_node)
-    
-    # 條件路由：有 tool_calls 就繼續，否則結束
-    graph.add_conditional_edges(
-        "agent",
-        should_continue,           # 判斷函式
-        {
-            "continue": "action",  # 有工具呼叫 → 執行工具
-            "end": END             # 無工具呼叫 → 輸出答案
-        }
-    )
-    
-    # 工具執行完畢後，回到 Agent 節點重新判斷
-    graph.add_edge("action", "agent")
-    
-    graph.set_entry_point("agent")
-    return graph.compile()
-
-def should_continue(state: AgentState) -> str:
-    last_message = state["messages"][-1]
-    # 若最後一條訊息包含 tool_calls，繼續執行工具
-    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        return "continue"
-    return "end"
-```
-
-模型發出工具呼叫後，Action 節點執行工具並把 `ToolMessage` 送回 Agent 節點，完成一個完整的觀察-判斷循環。
-
-## 循環必須有上限
-
-ReAct 的強大之處在於反覆嘗試，但這也是它的風險所在。
-
-<Warning>
-  **循環必須設定上限**。若工具一直回傳失敗、模型反覆搜尋相同條件、或不停改寫查詢卻沒有進展，就可能造成高延遲與不必要的 API 成本。Agentic 不等於無限制嘗試。
-</Warning>
-
-良好的 ReAct 系統應該包含：
-
-```python
-MAX_ITERATIONS = 10  # 最大循環次數
-
-def agent_node(state: AgentState) -> AgentState:
-    # 計算目前的迭代次數
-    iteration_count = sum(
-        1 for m in state["messages"] 
-        if hasattr(m, "tool_calls") and m.tool_calls
-    )
-    
-    if iteration_count >= MAX_ITERATIONS:
-        # 達到上限，強制產生當前最佳答案
-        return {"messages": [force_final_answer(state)]}
-    
-    response = llm_with_tools.invoke(state["messages"])
-    return {"messages": [response]}
-```
-
-除了迭代次數，也可以設定時間上限或總 Token 消耗上限，避免失控的循環。
-
-## ReAct 的適用場景
-
-<Accordion title="多步驟資料查詢">
-  需要先查詢 A 系統取得 ID，再用 ID 查詢 B 系統取得詳細資訊，最後整合成報告。每一步的結果都影響下一步的查詢條件。
-</Accordion>
-
-<Accordion title="動態資料補全">
-  第一次查詢結果不完整時，能根據缺失的欄位自動補查相關文件或其他資料來源。
-</Accordion>
-
-<Accordion title="條件式分支處理">
-  根據工具回傳的狀態（找到資料、查無資料、部分符合），選擇不同的後續處理路徑。
-</Accordion>
-
-<Accordion title="跨系統整合">
-  整合來自多個不同系統（如 Trello、Confluence、Google Sheets）的資料，需要在觀察每個系統的回傳結果後，決定如何組合成有意義的答案。
-</Accordion>
-
-<Tip>
-  ReAct 不是只能用於外部工具呼叫。在某些設計中，「思考」本身也可以是一個步驟——讓模型先輸出推理過程，再根據推理結果決定行動，能顯著提升複雜任務的準確率。
-</Tip>
-
-<Info>
-  今天只要記住一件事：Agent 的智慧不只在第一次選擇，而在於看完結果後能否做出下一個正確決定。
-</Info>
-
----
-
-下一篇，我們會介紹 Coordinator 為什麼像一位 AI 專案經理，以及它如何在多個工具與多種任務類型之間，做出聰明的分派決策。
+下一篇，我們會比較兩個容易混在一起的角色：Router 與 Coordinator。一個只負責把問題分流，另一個則需要把整段任務做完。

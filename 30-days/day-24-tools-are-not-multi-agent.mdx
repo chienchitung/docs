@@ -1,177 +1,63 @@
 ---
-title: "Day 24｜多工具架構 vs Multi-Agent 的本質差異"
-sidebarTitle: "Day 24｜不要為拆而拆"
-description: "釐清單一 Agent 多工具與真正 Multi-Agent 架構的本質差異，掌握何時拆分 Agent 真正有意義，以及過早拆分的隱藏成本。"
+title: "Day 24｜LangGraph 是什麼？用狀態（State）、節點（Node）、連線（Edge）把代理變成工作流程"
+sidebarTitle: "Day 24｜LangGraph 工作流程"
+description: "理解 LangGraph 的狀態（State）、節點（Node）、連線（Edge）與條件連線（Conditional Edge），將多工具代理從黑箱循環轉成可觀察、可測試的工作流程。"
 ---
 
-「我們的系統裡有 Analyst 查詢、Trello 操作、Confluence 搜尋、Document 處理四種能力，這樣算不算 Multi-Agent 架構？」這是一個在企業 AI 專案中非常常見的問題，而且答案往往出人意料：不一定。工具的數量和 Agent 的數量是兩個完全不同的維度。混淆這兩者不只是名詞上的誤用，更可能讓你在不需要複雜架構的地方引入不必要的成本與複雜度，同時在真正需要拆分的地方猶豫不決。
+昨天我們碰到一個很實際的問題：Agent 能力愈多，執行路徑就愈難看清楚。這時候 LangGraph 才真正有價值。它不是為了讓 AI 更聰明，而是把一段多步驟任務拆成明確的狀態與節點，讓我們知道資料現在在哪裡、下一步要去哪裡，以及什麼條件會走不同分支。
 
-## 工具 vs. Agent：本質差異在哪裡？
+如果把代理循環（Agent Loop）想成一位很自由的同事，LangGraph 比較像把工作流程畫成一張可以執行的流程圖。
 
-要釐清這個問題，先從定義出發。
+## State：整段任務共同攜帶的資料
 
-<CardGroup cols={2}>
-  <Card title="工具（Tool）" icon="wrench">
-    工具是 Agent 可以呼叫的能力單元。一個工具有固定的輸入格式、固定的執行邏輯與固定的輸出格式。它本身不具備判斷能力——是 Agent 決定「什麼時候呼叫哪個工具、帶什麼參數」。工具像是螺絲起子：功能明確，由持有者決定何時使用。
-  </Card>
-  <Card title="Agent" icon="robot">
-    Agent 是具備判斷能力的工作主體。它有自己的 Prompt（定義角色與目標）、自己的上下文（決定它能看到什麼資訊）、自己的工具集（決定它能做什麼）、以及可能獨立的模型選擇與權限設定。不同 Agent 之間存在明確的交接點。
-  </Card>
-</CardGroup>
+State 可以理解成工作流程裡的「接力棒」。使用者問題、最近對話、已使用的工具、Sheets 結果、RAG 來源、驗證狀態，都可以放在 State 裡。每個 Node 讀取需要的欄位，執行完再把新的結果寫回去。
 
-### 用結構來判斷
+這樣做的好處是，不同節點不需要靠一大段 Prompt 猜「前面發生了什麼」，而是可以明確看到目前有哪些資料。
 
-```text
-【單一 Agent + 多個工具】
-使用者輸入
-    │
-    ▼
-┌─────────────────────────────────┐
-│  Coordinator Agent              │
-│  （一個 LLM，一個 Prompt）       │
-│                                 │
-│  工具清單：                      │
-│  • analyst_query()              │
-│  • trello_search()              │
-│  • confluence_search()          │
-│  • document_generate()          │
-└─────────────────────────────────┘
-    │
-    ▼
-  最終答案
+## Node：把一個責任做成一個步驟
 
-【真正的 Multi-Agent 架構】
-使用者輸入
-    │
-    ▼
-┌─────────────────┐
-│  Coordinator    │  → 決定分配任務
-└─────────────────┘
-    │           │
-    ▼           ▼
-┌──────────┐ ┌──────────┐
-│ Analyst  │ │ Reviewer │  ← 各自有獨立 Prompt、上下文與工具
-│  Agent   │ │  Agent   │
-└──────────┘ └──────────┘
-    │           │
-    └─────┬─────┘
-          ▼
-    ┌──────────┐
-    │  Writer  │  ← 接收前兩個 Agent 的輸出，整理最終報告
-    │  Agent   │
-    └──────────┘
-          │
-          ▼
-      最終報告
+Node 就是一個明確工作單元。例如 `route_request` 負責判斷任務類型，`query_sheets` 負責結構化查詢，`search_documents` 負責 RAG，`verify_results` 檢查資料是否足夠，`generate_answer` 才負責最後輸出。
+
+這種拆法最大的價值是可測試。當結果有問題時，可以單獨確認是哪個 Node 出錯，而不是只能重新看整段 Agent 對話。
+
+## Edge：定義流程怎麼往下走
+
+一般 Edge 表示固定下一步，Conditional Edge 則根據 State 決定分支。例如 Verification 成功就進入回答節點，失敗則回到重新搜尋；高風險操作可以先進入 Approval Node，等人工確認後再繼續。
+
+```mermaid
+flowchart TD
+    Q[Input] --> R[Router]
+    R --> S[Sheets Tool]
+    R --> D[Document Tool]
+    S --> V[Verification]
+    D --> V
+    V -->|足夠| A[Answer]
+    V -->|不足| C[Clarification / Retry]
+    C --> R
 ```
 
-精確的描述方式是：如果這四種能力只是四組 Tool，由同一個 Coordinator 的 LLM 選擇與呼叫，這是「**單一 Agent 加多個領域工具**」，而不是 Multi-Agent。
+## 平行執行、人工介入與多代理都是延伸模式
 
-## 什麼時候值得真正拆分 Agent？
+LangGraph 也能處理平行節點、人工暫停與多 Agent，但這些不需要各自變成主線的一篇文章。真正先要掌握的是：當流程有依賴、分支、重試或人工確認時，可以用 graph 把規則明確寫出來。
 
-Multi-Agent 不是越多越好，它應該由真實的業務需求驅動。以下是幾個「拆分真的有意義」的情境：
+Multi-Agent 也不應該為拆而拆。如果單一 Coordinator 搭配多個 Tools 就能處理工作，就沒有必要額外增加 Agent 交接成本。只有當不同任務真的需要不同角色、上下文或權限時，拆分才有意義。
 
-<Steps>
-  <Step title="工具太多，模型選錯的頻率升高">
-    當一個 Agent 擁有超過 15–20 個工具時，LLM 在選擇工具時的準確度開始下滑——它可能呼叫功能相近但語意不同的工具，或混淆不同領域的工具。此時把工具依領域分組，交給各自的 Sub-Agent 管理，可以讓每個 Agent 的工具集保持簡潔，提升選擇準確性。
+## 延伸閱讀｜工作流程圖（Graph）裡有很多節點（Node），不代表就是多代理（Multi-Agent）
 
-    ```text
-    # 拆分前：Coordinator 要選 20 個工具中的正確一個
-    # 拆分後：Coordinator 只需選「派給哪個 Agent」，每個 Agent 只有 4-5 個工具
-    ```
-  </Step>
-  <Step title="不同領域需要隔離大量上下文">
-    某些任務需要大量的領域特定背景知識。若把所有背景知識都塞進同一個 Agent 的 System Prompt，Prompt 會變得極長，而且不同領域的知識可能互相干擾。給每個領域獨立的 Agent，讓它只載入自己需要的上下文，是更乾淨的設計。
-  </Step>
-  <Step title="任務存在明確的角色交接">
-    若業務流程本身就有「研究→審核→修正→輸出」這樣的角色區分，且不同角色之間需要正式的交接點（例如 Reviewer 可以退回 Analyst 重做），這種結構天然適合拆成不同 Agent 節點，在 LangGraph 中用明確的 Edge 表示交接邏輯。
-  </Step>
-  <Step title="不同角色需要不同權限或模型">
-    Reviewer Agent 可能需要更強的推理模型（如 GPT-4o），而負責格式化輸出的 Writer Agent 用較便宜的模型就夠了。或者，某個 Agent 需要讀取敏感資料，而其他 Agent 不應該有這個權限。這種「差異化配置」的需求，是拆分 Agent 的合理理由。
-  </Step>
-</Steps>
+這是非常容易混淆的地方。Graph 中可以同時存在 **Tool Node、LLM Node 與 Agent Node**：Tool Node 只執行明確操作，LLM Node 可能只做一次分類或摘要，只有 Agent Node 才通常具備自己的目標、上下文、工具集與反覆決策循環。因此「Node 很多」和「Agent 很多」是兩件不同的事。
 
-## Data Machi 的現況：刻意保持簡單
-
-Data Machi 目前的核心架構是一個 Coordinator 在 Agent 節點與 Action 節點之間循環，四個領域能力（Analyst、Trello、Confluence、Document）主要以工具形式存在。
+真正值得拆成多代理（Multi-Agent），通常是因為不同角色需要不同的目標、上下文、工具組合、權限或模型，或者任務本身存在正式的角色交接，例如分析角色先產生分析、審核角色可以退回重做，再由整理角色產生最終輸出。如果只是想把 6 個工具拆成 6 個代理，往往只會增加模型呼叫、狀態傳遞與除錯成本。
 
 <Note>
-  這個選擇是刻意的，而不是暫時的妥協。對於目前的業務場景，單一 Coordinator + 多工具的架構已經能完整覆蓋需求，而且帶來了幾個重要優勢：架構更簡單、每次對話的模型呼叫次數更少（延遲更低）、除錯更直觀、新工具的加入更快速。
+  一個實用原則：先用「單一 Coordinator \+ 多個 Tools」解決問題；只有當工具選擇混亂、上下文必須隔離、權限差異明顯或角色交接本身就是業務流程時，再考慮 Multi-Agent。
 </Note>
 
-```python
-# Data Machi 目前的工具組織方式
-tools = [
-    # Analyst 領域
-    search_tickets_tool,
-    get_ticket_stats_tool,
-    analyze_trends_tool,
-
-    # Trello 領域
-    search_trello_cards_tool,
-    get_board_status_tool,
-
-    # Confluence 領域
-    search_confluence_tool,
-    get_document_content_tool,
-
-    # Document 領域
-    generate_report_tool,
-    format_output_tool,
-]
-
-# 單一 Coordinator Agent 管理所有工具
-coordinator = create_react_agent(llm, tools=tools)
-```
-
-這種架構並不削弱系統價值，反而讓整個系統更容易理解與維護。
-
-## 未來可能的拆分時機
-
-若 Data Machi 未來遇到以下需求，才會考慮真正的 Multi-Agent 拆分：
-
-<Accordion title="可能觸發 Multi-Agent 拆分的未來場景">
-
-**場景一：分析師 + 審核師工作流**
-
-若需要讓 Analyst Agent 先產出分析草稿，交給 Reviewer Agent 獨立查核資料正確性，再由 Writer Agent 整理最終報告，這個「草稿→查核→報告」的流程有明確的角色交接，適合拆成三個獨立節點。
-
-```text
-Analyst Agent → （草稿）→ Reviewer Agent → （批准/退回）→ Writer Agent
-                              ↑                    │
-                              └────────────────────┘
-                                  （退回修正）
-```
-
-**場景二：工具數量爆炸**
-
-若工具清單從目前的 9 個增長到 30 個以上，Coordinator 的工具選擇準確度開始下滑，就是考慮按領域拆分 Sub-Agent 的時機。
-
-**場景三：不同權限要求**
-
-若系統需要支援不同角色（普通用戶 vs. 管理員），而管理員可以執行刪除或批量更新操作，用不同 Agent 隔離權限邊界會比在工具內部做條件判斷更清晰。
-
+<Accordion title="延伸閱讀：不是所有流程都需要 LangGraph">
+  如果任務是固定輸入、固定輸出，一般程式流程就足夠；如果只有少量工具，而且沒有複雜的分支、重試或人工審核，簡單 Agent loop 也可能更快。只有當流程開始出現「要回頭重查」「等待批准」「平行分支」「不同失敗路徑」時，Graph 才真正比線性流程自然。**架構不是越進階越好，而是剛好能承受問題的複雜度最好。**
 </Accordion>
 
-## Multi-Agent 的隱藏成本
-
-在決定拆分之前，必須誠實評估 Multi-Agent 架構帶來的額外成本：
-
-<Warning>
-  Multi-Agent 架構的複雜度是真實的：
-
-  - **更多模型呼叫**：每個 Agent 都需要至少一次 LLM 呼叫，多個 Agent 意味著更高的 API 費用與累積延遲
-  - **上下文傳遞設計**：Agent 之間如何傳遞狀態？傳遞多少資訊？遺漏什麼？這些都需要仔細設計
-  - **除錯難度提升**：問題出在哪個 Agent？是交接格式錯了還是中間 Agent 的輸出有問題？排查鏈路更長
-  - **責任邊界模糊**：多個 Agent 協作時，若最終輸出有誤，要追溯到哪個 Agent 的哪個決策是重要但困難的問題
-</Warning>
-
-<Tip>
-  一個實用的評估框架：在考慮拆分 Agent 之前，先問「我有沒有辦法用更簡單的方式解決同樣的問題？」例如，工具選錯可以先嘗試改善工具的 description 或 Prompt；上下文太長可以先嘗試壓縮或摘要，而不是立刻引入新的 Agent。
-</Tip>
-
 <Info>
-  今天只要記住一件事：Agent 架構的好壞不看角色數量，而看分工是否真的降低複雜度與風險。
+  今天先記住一件事：LangGraph 的核心價值不是 Agent 更多，而是讓 State 與流程變得看得見、控得住、測得到。
 </Info>
 
-下一篇，我們會聚焦企業 AI 中最關鍵的一環：當 Agent 準備執行高風險操作時，如何設計 Human-in-the-loop 機制確保人類保有最終控制權。
+下一篇，我們會把前面做好的 Coordinator 放進 LangGraph，實際建立一條 Router → Tool → Verification → Answer 的可控工作流。

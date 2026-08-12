@@ -1,129 +1,69 @@
 ---
-title: "Day 14｜Confluence 存定義，Trello 存進度：設計跨系統 AI Agent 需要的知識地圖"
-sidebarTitle: "Day 14｜Confluence & Trello"
-description: "企業知識從不集中在同一個地方：正式規格定義放在 Confluence，即時任務進度與卡片留言記錄在 Trello，可計算的明細數字則存放在 Google Sheets 中。認識這張分散的知識地圖，是設計有效跨系統 AI Agent 時必須先建立的重要核心思維。"
+title: "Day 14｜企業知識散落各處：先畫出你的企業知識地圖（Knowledge Map）"
+sidebarTitle: "Day 14｜企業知識地圖"
+description: "用 Google Sheets、PDF、Confluence 與 Trello 理解不同資料來源的角色，並決定哪些系統值得接成工具。"
 ---
 
-如果你曾經在一間規模稍大的公司工作，你一定有過這樣的經驗：想搞清楚一個專案的現況，結果要開三個分頁——先去 Confluence 找規格文件，再去 Trello 看最新任務狀態，最後還要打開 Google Sheets 核對數字。沒有一個地方能給你完整答案，因為企業知識從一開始就不是集中存放的。這個現實，正是設計跨來源 AI Agent 時最核心的挑戰。
+做到 Day 13，我們已經有兩種完全不同的資料取得方式：PDF 檢索增強生成（RAG）負責找文件知識，Google Sheets 資料工具負責取得與計算結構化數字。這時很容易冒出下一個想法：「那是不是把公司所有系統都接進來就好了？」
 
-## 企業知識的散落地圖
+技術上當然可以，但真正該先做的不是列 API 清單，而是先畫出企業知識到底分散在哪裡，以及每個來源保存的是什麼。
 
-在多數企業環境中，資訊根據其性質被儲存在不同的系統：
+## 同一個問題，答案常常分散在不同地方
 
-<CardGroup cols={2}>
-  <Card title="Confluence：長期知識" icon="book">
-    規範、定義、流程文件、系統設計說明、指標計算邏輯。這些是**靜態的、正式的**知識，通常經過審閱與版本控制，適合回答「這是什麼」或「應該怎麼做」的問題。
-  </Card>
-  <Card title="Trello：任務狀態" icon="trello">
-    任務卡片、負責人、截止日期、進度狀態、留言討論。這些是**動態的、即時的**資訊，反映當下的工作現況，適合回答「現在進行到哪裡」或「誰在負責這件事」的問題。
-  </Card>
-  <Card title="Google Sheets：可計算明細" icon="table">
-    工單明細、KPI 數字、報表資料。這些是**結構化的、可計算的**資訊，適合回答「數量是多少」或「趨勢如何」的問題。
-  </Card>
-  <Card title="PDF / 附件：外部文件" icon="file-pdf">
-    SLA 合約、外部規範、交接文件、手冊。這些通常是一次性的參考資料，適合用 RAG 檢索特定段落。
-  </Card>
-</CardGroup>
+假設主管問：「最近客服工單上升最多的是哪一類？這個類別的正式定義是什麼？改善專案現在做到哪裡？」這不是一個單一資料來源能完整回答的問題。
 
-這個分類並非絕對，但它反映了一個關鍵事實：**不同類型的問題需要到不同地方找答案**，而且很多時候，一個問題的完整答案需要橫跨多個系統。
+Google Sheets 可能保存工單明細，因此適合算出哪一類成長最多；Confluence 可能保存正式分類定義與 SOP；Trello 或 Jira 則記錄改善專案的進度、負責人與截止時間。PDF 可能還保存歷史報告或正式規範。
 
-## 一個具體的例子
-
-假設主管問：「CDP Dashboard 改版目前為什麼延遲？」
-
-這看起來是一個問題，但拆解開來，它其實包含好幾個子問題：
-
-- CDP Dashboard 改版的原始目標與預期時程是什麼？（→ Confluence）
-- 目前實際的任務狀態是什麼？誰在負責？（→ Trello）
-- 卡片的留言或描述有沒有提到延遲原因？（→ Trello 卡片詳情）
-- 有沒有相關的 KPI 數字可以佐證進度落後？（→ Google Sheets）
-
-<Steps>
-  <Step title="先查 Confluence 取得背景知識">
-    到 Confluence 搜尋「CDP Dashboard 改版」，取得專案目標、原定時程與負責部門。這一步確立了討論的基準線：「原本應該是什麼樣子」。
-  </Step>
-  <Step title="再查 Trello 取得即時進度">
-    到 Trello 搜尋相關看板或卡片，查看任務目前的 List 狀態（例如 In Progress / Blocked）、截止日期、負責人，以及卡片上的留言記錄。
-  </Step>
-  <Step title="整合兩個來源的資訊">
-    把 Confluence 提供的「預期」與 Trello 提供的「實際」對照，組成一個完整的回答：原本計畫什麼時候完成、現在進行到哪個任務、留言中有沒有說明卡關原因。
-  </Step>
-  <Step title="標注資料來源">
-    在最終回答中清楚標注哪些資訊來自哪個系統，讓使用者能夠自行驗證，也便於追蹤後續更新。
-  </Step>
-</Steps>
-
-## Workflow Policy：查詢路徑的設計邏輯
-
-Data Machi 的系統中有一個 Workflow Policy 層，用來指導 Coordinator 在什麼情況下應該轉查哪個來源。這個設計的核心邏輯是：**第一個來源找不到時，根據問題性質決定下一步，而不是放棄或亂猜**。
-
-一個常見的跨系統查詢場景是縮寫問題。使用者可能說「CDP 改版」，但 Trello 上的卡片標題是「Customer Data Platform Dashboard Revamp」。Coordinator 需要：
-
-1. 先到 Confluence 找「CDP」的全名（因為規格文件通常會定義縮寫）
-2. 用正式名稱回到 Trello 搜尋
-
-```python
-# 跨系統查詢的偽程式碼示意
-
-async def handle_project_status_query(project_name: str):
-    # 第一步：從 Confluence 取得正式名稱與背景
-    confluence_result = await search_confluence(query=project_name)
-
-    if confluence_result.found:
-        full_name = confluence_result.official_name
-        context = confluence_result.content
-    else:
-        # 找不到時，提示使用者確認，而不是猜測
-        return "在 Confluence 中找不到此專案的相關記錄，請確認專案名稱是否正確。"
-
-    # 第二步：用正式名稱查 Trello
-    trello_result = await search_trello(query=full_name)
-
-    if not trello_result.found:
-        return f"Confluence 有 {full_name} 的規格文件，但 Trello 中找不到對應的任務卡片。"
-
-    # 第三步：整合兩個來源
-    return synthesize_answer(context=context, tasks=trello_result.cards)
+```mermaid
+flowchart TD
+    Q[一個商業問題] --> S[Google Sheets\n數字與明細]
+    Q --> C[Confluence\n規範與定義]
+    Q --> T[Trello / Jira\n任務與進度]
+    Q --> P[PDF RAG\n報告與文件]
 ```
 
-<Note>
-  Workflow Policy 的設計不需要窮舉所有情況，而是要建立清楚的優先順序與回退規則：「什麼問題先查哪裡」「找不到時怎麼辦」「什麼情況應該釐清而不是繼續查」。
-</Note>
+這張圖就是 Knowledge Map。它的價值不在畫得漂亮，而是逼我們先回答：**哪一種問題，應該去找哪一個 source of truth？**
 
-## Confluence 與 Trello 工具的設計差異
+## 為什麼不能把所有資料都塞進向量資料庫？
 
-雖然兩者都是「查詢工具」，但它們的查詢邏輯與回傳結構差異很大：
+把所有內容都轉成文字再做 embedding，看起來最省事，但會失去資料本身的特性。結構化數字適合精確篩選與 aggregation；專案狀態需要即時 API；正式規範適合文件搜尋；權限敏感資料則需要保留原系統的存取控制。
 
-<Accordion title="Confluence 工具的設計重點">
-  Confluence 的搜尋通常是全文搜尋，回傳的是頁面段落。工具設計的重點在於：
-  
-  - 如何從長篇文件中取得最相關的段落（類似 RAG 的向量搜尋）
-  - 如何處理文件版本（確保取得的是最新版本）
-  - 如何識別文件結構（標題層級、表格、定義區塊）
-  - 回傳時附上頁面連結，讓使用者可以查閱完整原文
+如果硬把這些都塞進同一個 RAG，最後會出現幾個問題：數字不精確、資料更新不同步、權限難管理，而且回答時不知道哪一個來源才是真正 authoritative。
+
+因此 Data Machi 的方向不是「建立一個萬能知識庫」，而是把各來源保留在最適合自己的系統裡，再透過 Tool 層統一存取。
+
+## Confluence 與 Trello 要不要接？先看使用情境
+
+是否要串接新的外部系統，不應該只看「技術上能不能接」。更重要的判斷是：**只有當某個來源真的回答了工作流程裡不可缺的一步，才值得接。**
+
+如果團隊的正式定義都在 Confluence，那就建立 Confluence Tool；如果專案進度都在 Trello，就接 Trello API。如果公司用的是 Notion、Jira、資料庫或其他系統，架構原則完全相同，不需要為了 Data Machi 特別搬家。
+
+串接時仍然要遵守前面建立的做法：API Token 不放 GitHub、先用測試資料與最小權限、先確認 API 可以正確讀取，再交給模型使用。
+
+## 工具（Tool）的價值，是把系統差異包起來
+
+對 Coordinator 來說，它不應該知道每個 API 的細節。它只需要知道：「這個 Tool 能回答什麼、需要什麼輸入、會回傳什麼結果。」例如 `query_google_sheets` 負責數字、`search_documents` 負責文件、`get_project_status` 負責專案狀態。
+
+這也是 Tool abstraction 的價值。後面即使把 Trello 換成 Jira，上層工作流不一定需要整個重寫，只要 Tool 的介面與輸出仍然清楚。
+
+## 先畫地圖，再決定自動化範圍
+
+如果你要把 Data Machi 套到自己的工作場景，可以先列出三件事：這個任務會去哪裡找資料、哪些來源是最終事實來源、哪些資料需要即時取得。這三個問題通常比「要不要用 Multi-Agent」更值得先處理。
+
+## 進階理解｜企業知識地圖還需要一層工作流規則（Workflow Policy）
+
+知道資料在哪裡只是第一步，實際使用時還要回答：「**先查哪裡？找不到時下一步是什麼？**」這可以整理成一套工作流規則（Workflow Policy）。它不需要寫成複雜規則，而是替常見問題建立合理的查詢順序與回退方式。
+
+例如使用者只說「CDP 改版進度」，但 Trello 上使用的是完整名稱 `Customer Data Platform Dashboard Revamp`。比較可靠的做法可能是先到正式文件確認縮寫與專案全名，再用正式名稱查任務系統；如果文件裡也找不到，就向使用者確認，而不是一路猜下去。
+
+可以把它想成 Knowledge Map 告訴你「公司有哪些圖書館」，Workflow Policy 則告訴你「這類問題應先去哪一間、找不到再去哪裡」。
+
+<Accordion title="實務踩坑：跨來源整合最怕把合理推測當成紀錄">
+  如果專案卡片沒有寫延遲原因，回答應該是「目前紀錄中沒有說明原因」，而不是補成「可能因跨部門溝通或資源不足」。後者可以作為待驗證假設，但不能偽裝成來源中已經存在的事實。
 </Accordion>
-
-<Accordion title="Trello 工具的設計重點">
-  Trello 的查詢通常需要根據卡片屬性篩選，回傳的是結構化的任務資料。工具設計的重點在於：
-  
-  - 根據卡片名稱、標籤、負責人、截止日期搜尋
-  - 取得卡片的完整資訊：描述、清單（Checklist）、留言（Comments）
-  - 標注卡片目前在哪個 List（例如 Backlog / In Progress / Blocked / Done）
-  - 留言有時比卡片描述包含更多即時資訊，應該一起取回
-</Accordion>
-
-## 踩坑筆記
-
-跨來源整合最容易出現的問題，是**把「合理推測」當成事實**。
-
-<Warning>
-  若 Trello 卡片的留言中沒有明確說明延遲原因，就不應該讓模型自行補充「可能是跨部門溝通問題」或「資源不足導致延誤」。AI 生成的推測聽起來很有說服力，但如果被誤認為真實紀錄，可能造成嚴重的誤解或決策錯誤。
-</Warning>
-
-正確的做法是：**記錄不足就如實說「目前的記錄中沒有說明延遲原因」**，並告知使用者可以到哪個系統查看原始卡片。這樣的回答雖然「不夠漂亮」，但比一個聽起來合理卻可能有誤的推測更有價值。
 
 <Info>
-  今天只要記住一件事：企業知識不是一座資料庫，而是一張分散在不同系統的知識地圖。
+  今天只要記住一件事：企業知識不是一個資料庫，而是一張分散式地圖。AI 架構的工作不是把所有資料搬到一起，而是知道何時去正確的地方取正確的資訊。
 </Info>
 
-下一篇，我們會把這些分散的來源串成一條完整的跨系統工作流，看看一個需要查三個系統的問題，實際上是怎麼被設計與執行的。
+下一篇，我們會第一次把這些來源放進同一個問題中，看看跨來源查詢到底要怎麼拆。

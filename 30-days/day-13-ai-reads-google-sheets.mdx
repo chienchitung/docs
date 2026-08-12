@@ -1,171 +1,67 @@
 ---
-title: "Day 13｜AI 精準讀取 Google Sheets 的方法：欄位別名、Pandas 計算與快取設計"
-sidebarTitle: "Day 13｜Google Sheets"
-description: "直接把企業試算表塞進 Prompt 成本高且計算容易出錯。Data Machi 透過欄位別名對應、Pandas 精確篩選統計與短時快取設計，讓程式負責所有數字的計算工作，讓語言模型只需要理解使用者意圖、整合各項資料，並清楚組織出可信賴且準確的最終回答給使用者。"
+title: "Day 13｜實作：讓 AI 查 Google Sheets，而不是自己猜數字"
+sidebarTitle: "Day 13｜Google Sheets 資料工具"
+description: "從 Google 服務帳號（Service Account）、試算表權限、欄位對應到 Pandas 計算，建立 Data Machi 的第一個結構化資料工具。"
 ---
 
-讓 AI 讀取 Google Sheets，聽起來像是把資料表丟給模型就能搞定的事，但任何真正在企業環境處理過資料的人都知道，現實遠比 Demo 複雜得多。企業的試算表往往混雜著欄位別名、空白列、不一致的日期格式、合併儲存格，以及幾千行的明細資料。如果直接把整張表塞進 Prompt，不但 Token 成本會爆炸，模型在面對大量數字時的計算準確率也難以保證。Data Machi 的 Analyst Tool 設計，核心原則只有一句話：**讓程式負責精確計算，讓 LLM 負責理解與溝通。**
+前兩天我們已經把檢索增強生成（RAG）與工具使用（Tool Use）的邊界講清楚：文件適合找「已經存在的知識」，但精確數字、最新狀態與計算結果，應該直接從結構化資料來源取得。今天就把這個觀念落地，讓 Data Machi 第一次真正查詢 Google Sheets。
 
-## 為什麼不能直接把整張表送給模型？
+這一篇的重點不是教你把整張試算表貼進提示詞（Prompt）。剛好相反，我們希望把「資料存取與計算」交給程式，把「理解使用者意圖與整理答案」留給模型。這樣數字才有機會維持一致與可驗證。
 
-這個問題值得花一點時間認真回答，因為它關係到整個工具設計的出發點。
+## 為什麼需要服務帳號（Service Account）？
 
-假設你有一張記錄 2,000 筆工單的 Google Sheets，每筆工單有 15 個欄位。把它完整送進 Prompt 大概需要 30,000 個 Token。以 Gemini 的定價來算，一次查詢的成本就會相當可觀。而且更糟糕的是，**語言模型並不擅長精確的數學計算**——它可以理解「計算每個類別的工單數量」這個意圖，但若要它直接數出 Excel 裡的列數，出錯的機率遠高於你的預期。
+如果後端要自動讀取 Google Sheets，不適合依賴個人手動登入。比較穩定的方式，是建立 Google 服務帳號，讓後端以一個機器身分存取指定試算表。
 
-<Warning>
-  不要讓模型直接「心算」資料表。超過幾十列的數值計算，都應該交給可驗證的程式（例如 Pandas）來執行，模型只負責解讀使用者意圖和呈現結果。
-</Warning>
+建立服務帳號後，你會取得一組憑證。接著需要啟用對應的 Google API，並把測試試算表分享給服務帳號的電子郵件地址。這一步很容易漏掉：即使憑證本身有效，如果試算表沒有授權給這個帳號，後端仍然讀不到資料。
 
-## 先用程式處理，再讓模型解釋
+憑證和 Gemini API 金鑰一樣，不應直接提交到 GitHub。本機可以透過環境變數或受忽略的憑證檔載入；部署到 Render 時則改放在平台的環境變數設定中。
 
-Data Machi 的 Analyst Tool 採用以下流程：
+## 先用匿名資料驗證，不要直接碰正式資料
 
-<Steps>
-  <Step title="讀取並清理工作表">
-    透過 Google Sheets API 讀取指定工作表，移除空白列、補齊不完整欄位、統一日期格式。這個步驟確保後續計算的資料是乾淨可信的。
-  </Step>
-  <Step title="欄位別名對應">
-    把使用者可能用的中文自然語言欄位名稱（「負責人」「承辦人」「處理人員」）統一對應到資料表的正式英文欄位（`assigned_to`）。這個別名表是工具設計的重要組成部分。
-  </Step>
-  <Step title="用 Pandas 執行篩選與統計">
-    根據模型解析出的查詢條件，用 Pandas 對清理好的資料框執行篩選、分組、計算。結果是精確的數字，不是模型的「估計」。
-  </Step>
-  <Step title="將結果回傳給模型">
-    把計算結果（通常是 JSON 格式的統計摘要）回傳給 Coordinator，讓它根據數字組織成使用者能理解的自然語言回答。
-  </Step>
-</Steps>
+最適合的第一個測試，是建立一張結構清楚、內容可公開的匿名試算表。例如需求工單資料可以有日期、市場、類別、狀態與處理天數等欄位。你應該先確認程式能正確讀到欄位名稱與列數，再開始加入自然語言查詢。
 
-```python
-# 簡化的 Analyst Tool 執行流程示意
+這裡同樣延續前面的原則：**一次只驗證一層。** 先驗證 Google 權限，再驗證資料讀取，接著才驗證篩選與統計。不要一開始就把大型語言模型（LLM）、工具分流與資料權限全部混在一起除錯。
 
-@tool
-def query_ticket_sheet(
-    category: str = None,
-    start_date: str = None,
-    end_date: str = None,
-    group_by: str = None
-) -> dict:
-    """
-    查詢工單試算表中的數量與統計資訊。
-    適用於：詢問特定類別工單數量、某時間範圍內的工單趨勢、各負責人工單分佈等問題。
-    日期格式為 YYYY-MM-DD。
-    """
-    # Step 1: 讀取並清理（附帶快取）
-    df = get_cached_sheet("ticket_sheet")
-    df = clean_dataframe(df)
+## 不要讓大型語言模型自己做精確計算
 
-    # Step 2: 欄位別名對應
-    if group_by:
-        group_by = COLUMN_ALIAS_MAP.get(group_by, group_by)
+假設使用者問：「今年哪一個市場的工單最多？」比較可靠的流程不是把所有資料列丟給模型請它自己算，而是先把自然語言需求轉成程式可以理解的條件，再由 Pandas 或其他資料處理程式執行篩選、分組與彙總。
 
-    # Step 3: 條件篩選
-    if category:
-        df = df[df["category"] == category]
-    if start_date:
-        df = df[df["date"] >= pd.to_datetime(start_date)]
-    if end_date:
-        df = df[df["date"] <= pd.to_datetime(end_date)]
-
-    # Step 4: 統計計算
-    if group_by and group_by in df.columns:
-        result = df.groupby(group_by).size().to_dict()
-    else:
-        result = {"total_count": len(df)}
-
-    return {"status": "success", "data": result, "row_count": len(df)}
+```mermaid
+flowchart LR
+    Q[自然語言問題] --> P[解析篩選條件]
+    P --> D[Pandas / 程式計算]
+    D --> R[精確結果]
+    R --> L[模型整理成回答]
 ```
 
-## 為什麼需要欄位別名？
+模型可以理解「今年」、「市場」、「最多」代表什麼，但真正的計數、加總、平均、排序與比例，應該由可驗證的程式邏輯完成。這個分工是企業分析型代理（Agent）很重要的設計原則。
 
-這是很多技術導向的開發者容易忽略的設計細節，卻是讓工具真正「好用」的關鍵。
+## 欄位別名：讓使用者不需要知道資料結構
 
-一般使用者不會記得也不應該需要知道資料表的正式 schema。他說的可能是「承辦人」，資料表裡寫的是 `assigned_to`；他說「截止日期」，欄位名稱是 `due_date`；他說「這個月」，你需要把它轉成對應的日期範圍。
+真實資料欄位常常不是人類會使用的語言。例如資料庫裡可能叫 `request_market`、`created_at`、`ticket_category`，使用者卻只會問「市場」、「今年」、「需求類別」。因此工具層通常需要一張欄位別名對照（Alias Mapping），將業務語言映射到真實資料結構（Schema）。
 
-別名對應表的作用就是在自然語言與結構化資料之間搭一座橋：
+這一層做得好，模型不需要猜欄位；資料欄位未來改名時，也不必重寫整個提示詞。對使用者來說，他仍然可以用平常工作的語言發問。
 
-```python
-COLUMN_ALIAS_MAP = {
-    # 中文自然語言 -> 資料表欄位
-    "負責人": "assigned_to",
-    "承辦人": "assigned_to",
-    "處理人": "assigned_to",
-    "Assigned To": "assigned_to",
-    "截止日期": "due_date",
-    "到期日": "due_date",
-    "建立日期": "created_at",
-    "類別": "category",
-    "分類": "category",
-    "狀態": "status",
-    "部門": "department",
-}
-```
+## 快取不是為了偷懶，而是控制成本與延遲
 
-<Note>
-  別名表不需要窮舉所有可能，但應該涵蓋使用者在實際對話中最常用的說法。可以在系統上線後持續觀察使用者的輸入，補充新的別名。
-</Note>
+Google Sheets 不需要每一次對話都完整重新讀取。對更新頻率沒有那麼高的資料，可以設計短時間快取（Cache），降低 API 呼叫與等待時間。不過快取也代表資料可能不是即時，因此快取時間應該根據業務需求決定，而不是一律愈長愈好。
 
-## 效能：快取的重要性
+如果使用者問的是「目前最新狀態」，系統也應該有能力選擇重新抓取，而不是盲目沿用舊結果。這個問題之後會在代理記憶與協調者設計中再處理一次。
 
-這個細節在漂亮的 Demo 影片中幾乎不會出現，但在實際產品中卻直接影響使用者體驗。
+## 今天要怎麼驗證資料工具真的成功？
 
-同一輪對話中，使用者可能連續問幾個相關的問題：
+至少要測三種問題。第一種是簡單查詢，例如「共有多少筆資料」；第二種是篩選與彙總，例如「今年台灣有多少工單」；第三種是組合條件，例如「今年台灣哪一類工單最多」。
 
-> 「上個月工單總量是多少？」
-> 「其中軟體類別有多少？」
-> 「和上上個月比較呢？」
+每一次都應該把資料工具的計算結果和試算表人工核對，而不是只看模型最後講得通不通順。當這三層都正確，Data Machi 才真正擁有第一個可驗證的結構化資料工具。
 
-如果每一個問題都完整呼叫一次 Google Sheets API，不但速度慢（每次 API 呼叫需要 0.5–2 秒），也會不必要地消耗 API 配額。Data Machi 的解法是加入**短時間快取（Short-term Cache）**：
+## 實務踩坑｜最新資料、日期與不存在的欄位
 
-```python
-import time
-from functools import lru_cache
+實務上有三個很重要的提醒。第一，快取雖然能加快速度，但回答最好保留資料取得時間，讓使用者知道數字是不是最新；如果使用者明確說「我剛更新資料」或「請重新確認」，就應跳過快取重新查詢。第二，「上個月」「最近三個月」「Q1」這些時間語言最好由程式轉成明確日期範圍，而不是讓模型每次自由解讀。第三，如果資料表根本沒有某個欄位，資料工具就應直接回報不存在，而不是自行找一個「看起來很像」的欄位替代。
 
-_cache = {}
-CACHE_TTL_SECONDS = 120  # 快取有效期：2 分鐘
-
-def get_cached_sheet(sheet_name: str) -> pd.DataFrame:
-    now = time.time()
-    if sheet_name in _cache:
-        df, timestamp = _cache[sheet_name]
-        if now - timestamp < CACHE_TTL_SECONDS:
-            return df  # 快取命中，直接回傳
-
-    # 快取未命中，重新呼叫 API
-    df = fetch_sheet_from_api(sheet_name)
-    _cache[sheet_name] = (df, now)
-    return df
-```
-
-快取的有效期設定需要根據資料的即時性需求來決定。工單系統可能 2 分鐘內不會有大幅變動，但若是即時交易資料，就需要更短的快取期或完全不快取。
-
-<Accordion title="快取可能帶來什麼問題？">
-  若使用者在快取有效期內更新了資料表，然後立刻詢問最新數字，系統可能回傳舊資料。設計上應讓使用者能夠主動「重新整理」，或在回答中標注資料的取得時間，讓使用者自行判斷是否需要更新。
-</Accordion>
-
-## 踩坑筆記
-
-<Warning>
-  **不要讓模型自行編造不存在的欄位或資料。** 這是最容易發生、也最危險的錯誤之一。當使用者詢問的條件在資料表中找不到對應欄位時，工具應該明確回傳「此欄位不存在」，而不是讓模型猜測或用近似欄位代替。查詢前先驗證欄位是否存在，是防止幻覺（Hallucination）滲入資料查詢結果的第一道防線。
-</Warning>
-
-另一個常見問題是**日期解析**。使用者說「上個月」、「最近三個月」或「Q1」，這些都需要程式層明確地轉換成日期範圍，不能依賴模型在 Prompt 中「理解」。
-
-```python
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-
-def resolve_date_range(expression: str) -> tuple[str, str]:
-    """把自然語言日期轉換成 (start_date, end_date) 字串"""
-    today = datetime.today()
-    if expression == "上個月":
-        first_day = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
-        last_day = today.replace(day=1) - timedelta(days=1)
-        return first_day.strftime("%Y-%m-%d"), last_day.strftime("%Y-%m-%d")
-    # ... 其他情況
-```
+這三件事都指向同一個原則：**模型可以幫忙理解使用者在問什麼，但事實條件最好被轉成可以驗證的程式規則。**
 
 <Info>
-  今天只要記住一件事：讓程式負責精確計算，讓 LLM 負責理解與溝通。
+  今天的里程碑是：模型不再負責「猜數字」，而是知道什麼時候把數據問題交給程式計算。
 </Info>
 
-下一篇，我們會看另一個更複雜的挑戰：同一個企業問題的答案，往往分散在 Confluence 和 Trello 兩個不同的系統裡。
+下一篇，我們會把視角拉大：企業知識從來不只存在於 Google Sheets 或 PDF。先畫出資料來源的企業知識地圖（Knowledge Map），才能決定下一個工具應該接什麼。

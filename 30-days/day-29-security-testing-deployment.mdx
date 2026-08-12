@@ -1,265 +1,119 @@
 ---
-title: "Day 29｜企業 Agent 正式上線前必備：安全、測試與部署指南"
-sidebarTitle: "Day 29｜安全與部署"
-description: "系統整理企業 AI Agent 正式上線前的四大工程面向：API 憑證零硬編碼與雲端 Secret Manager 管理、從 Smoke Test 到 GitHub Actions CI 的多層次測試策略、每輪執行的 Debug 可觀測性設計，以及持久化儲存架構規劃。"
+title: "Day 29｜實作：把 Data Machi 部署到 Render 與 Vercel"
+sidebarTitle: "Day 29｜部署 Data Machi"
+description: "從 GitHub 出發，完成 FastAPI 後端、React 前端、環境變數、後端網址與跨來源資源共享（CORS）設定，讓 Data Machi 真正上線。"
 ---
 
-一個 Agent 在本機能正確回答，不代表它已經適合企業使用。本機環境缺乏真實的多使用者負載、沒有資料隔離的壓力、憑證可以隨意放在設定檔，出錯了重啟一下就好。但正式上線代表的是：真實使用者的資料、真實的安全攻擊面、真實的服務可用性要求。這篇整理企業 Agent 上線前，每個團隊都應該系統性處理的四大面向。
+前面所有實作都還可以在本機完成，但如果 Data Machi 要真正讓其他人使用，就必須把前端與後端部署到可公開存取的環境。今天會把 Render、Vercel 與跨來源資源共享（CORS）串成一條完整部署流程。
 
-## 一、憑證安全：第一道防線
+## 先確認 GitHub 是正式版本來源
 
-<Warning>
-  API Key 一旦進入 Git 歷史，即使後來刪除了那一行程式碼，只要有人能存取 git log，就能還原出那把金鑰。必須視為已暴露，並立即旋轉（Rotate）所有相關憑證。
-</Warning>
+部署前，先確認目前要上線的程式碼已經提交（Commit）並推送（Push）到 GitHub。Render 與 Vercel 都會從程式碼儲存庫取得程式，因此不要再以本機某個未提交版本作為「真正最新版」。
 
-### 憑證管理的基本守則
+如果專案同時有前端與後端資料夾，也要先確認各自的根目錄（Root Directory）、啟動指令與相依套件檔案是否清楚。這一步如果混亂，後面平台設定再正確也無法成功建置（Build）。
 
-<Steps>
-  <Step title="永不硬編碼（No Hardcoding）">
-    所有 API Key、Service Account 憑證、資料庫密碼都必須透過環境變數或 Secret Manager 提供，絕不寫入程式碼。
+## 第一步：部署 FastAPI 後端到 Render
 
-    ```python
-    # ❌ 錯誤：憑證硬寫在程式碼中
-    OPENAI_API_KEY = "sk-proj-abc123..."
+後端先上線，因為前端最後需要知道後端網址。建立 Render 網頁服務後，連接 GitHub 程式碼儲存庫，指定後端所在的根目錄，再設定建置指令（Build Command）與啟動指令（Start Command）。
 
-    # ✅ 正確：從環境變數讀取
-    import os
-    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-    if not OPENAI_API_KEY:
-        raise EnvironmentError("OPENAI_API_KEY 未設定，請確認環境變數配置。")
-    ```
-  </Step>
+實際指令要依專案結構為準，但核心概念是：Render 必須知道如何安裝 Python 相依套件，以及如何啟動 FastAPI 服務。
 
-  <Step title="加入 .gitignore 防護">
-    確保所有含有憑證的設定檔都在 `.gitignore` 中列出：
+接著把本機 `.env` 裡需要的機密資訊搬到 Render 的環境變數，例如 Gemini API 金鑰、Google 服務帳號與 Confluence 或 Trello 的存取權杖。這裡不要把 `.env` 檔直接上傳到 GitHub。
 
-    ```gitignore
-    # 環境變數檔
-    .env
-    .env.local
-    .env.production
+## 先做健康檢查，再測 AI
 
-    # 服務憑證
-    **/service-account.json
-    **/credentials.json
-    **/*.pem
-    **/*.key
-    ```
-  </Step>
+後端部署成功後，第一個測試應該是最基本的健康檢查（Health Check），而不是直接問一個複雜的代理問題。先確認服務活著、網址可以存取，再逐步測 Gemini、Google Sheets 與檢索增強生成（RAG）。
 
-  <Step title="使用 Secret Manager 管理生產環境憑證">
-    正式環境建議採用雲端 Secret Manager（AWS Secrets Manager、GCP Secret Manager、Azure Key Vault），並設定：
+這和本機除錯邏輯一樣：一次驗證一層。否則如果最終回答失敗，你不會知道是部署、模型、資料憑證還是工作流程出問題。
 
-    - **最小權限原則**：每個服務只能存取自己需要的 Secret
-    - **定期輪換**：設定自動旋轉排程
-    - **存取稽核**：記錄每一次 Secret 讀取操作
+## 第二步：部署 React 前端到 Vercel
 
-    ```yaml
-    # Render 部署範例：透過環境變數注入憑證
-    services:
-      - type: web
-        name: my-agent-backend
-        env: python
-        envVars:
-          - key: OPENAI_API_KEY
-            sync: false   # 在 Dashboard 手動設定，不存入 repo
-          - key: GROQ_API_KEY
-            sync: false
-          - key: DATABASE_URL
-            fromDatabase:
-              name: my-agent-db
-              property: connectionString
-    ```
-  </Step>
-</Steps>
+後端網址確認後，再建立 Vercel 專案，連接同一個 GitHub 程式碼儲存庫，指定前端的根目錄與建置設定。前端需要知道 API 要連到哪裡，因此把 Render 後端網址放進 Vercel 的環境變數。
 
-### 其他安全攻擊面
-
-<CardGroup cols={2}>
-  <Card title="跨網域設定（CORS）" icon="globe">
-    CORS 不應設定為 `*`（允許所有來源）。正式環境必須明確列出允許的 Origin，並驗證所有跨域請求的 Token。
-  </Card>
-  <Card title="輸入驗證" icon="shield">
-    LLM 的 Prompt Injection 是真實威脅。使用者輸入在送入 LLM 前，應進行長度限制、特殊字元過濾，避免惡意指令覆蓋系統 Prompt。
-  </Card>
-  <Card title="錯誤訊息不暴露內部資訊" icon="eye-slash">
-    錯誤回應不應包含 stack trace、資料庫結構、API 路由或內部 IP 位址。對外錯誤訊息應是人類可讀的摘要。
-  </Card>
-  <Card title="資料傳輸加密" icon="lock">
-    所有 API 通訊必須使用 HTTPS。若有自架服務，需確認 TLS 憑證有效期並設定自動更新。
-  </Card>
-</CardGroup>
-
-## 二、測試策略：超越人工聊天測試
-
-人工手動聊天不能作為唯一的測試手段。Agent 系統需要系統化的測試覆蓋，涵蓋多個層次：
-
-<Accordion title="Smoke Tests：確認基本功能不壞掉">
-  每次部署後自動執行的最基本健康檢查，驗證系統核心路徑是否正常：
-
-  ```python
-  import pytest
-  import httpx
-
-  BASE_URL = "http://localhost:8000"
-
-  @pytest.mark.asyncio
-  async def test_health_check():
-      async with httpx.AsyncClient() as client:
-          response = await client.get(f"{BASE_URL}/health")
-      assert response.status_code == 200
-
-  @pytest.mark.asyncio
-  async def test_chat_endpoint_responds():
-      async with httpx.AsyncClient(timeout=30) as client:
-          response = await client.post(
-              f"{BASE_URL}/api/chat",
-              json={"message": "你好", "session_id": "smoke-test-001"}
-          )
-      assert response.status_code == 200
-      data = response.json()
-      assert "content" in data
-      assert len(data["content"]) > 0
-  ```
-</Accordion>
-
-<Accordion title="路由與工具呼叫測試">
-  驗證 Agent 的上下文路由是否正確判斷，以及工具是否在預期情境下被呼叫：
-
-  ```python
-  @pytest.mark.asyncio
-  async def test_pdf_query_triggers_rag_tool():
-      """提問知識庫相關問題時，應呼叫 PDF 搜尋工具"""
-      result = await agent.process("請問我們的差旅費報銷規定是什麼？")
-      assert result.tools_called is not None
-      assert "search_pdf" in result.tools_called
-      assert result.context_type == "RAG"
-
-  @pytest.mark.asyncio
-  async def test_general_question_no_tool_call():
-      """一般問候不應觸發任何工具呼叫"""
-      result = await agent.process("今天天氣如何？")
-      assert len(result.tools_called) == 0
-      assert result.context_type == "GENERAL"
-  ```
-</Accordion>
-
-<Accordion title="Schema 穩定性測試">
-  驗證結構化輸出（會議記錄 JSON、行動項目等）的格式是否符合預期：
-
-  ```python
-  def test_meeting_notes_schema_stability():
-      """驗證會議記錄輸出符合固定 schema"""
-      sample_transcript = load_fixture("sample_meeting_transcript.txt")
-      result = generate_meeting_notes(sample_transcript)
-
-      # 必填欄位存在
-      assert "executive_summary" in result
-      assert "action_items" in result
-      assert isinstance(result["action_items"], list)
-
-      # action_items 結構正確
-      for item in result["action_items"]:
-          assert "task" in item
-          assert "assignee" in item  # 可以是 null，但欄位必須存在
-          assert item.get("priority") in ["high", "medium", "low", None]
-  ```
-</Accordion>
-
-<Accordion title="前端 CI 流程">
-  前端應加入自動化 lint、型別檢查與 production build，確保每次改動不破壞介面：
-
-  ```yaml
-  # GitHub Actions 範例
-  name: Frontend CI
-
-  on: [push, pull_request]
-
-  jobs:
-    lint-and-build:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-node@v4
-          with:
-            node-version: '20'
-        - run: npm ci
-        - run: npm run lint
-        - run: npm run type-check
-        - run: npm run build
-  ```
-</Accordion>
-
-## 三、Debug 面板與可觀測性
-
-<Note>
-  **可觀測性（Observability）** 是指系統能夠讓開發者在不修改程式碼的情況下，理解任意時刻的內部狀態。對 Agent 系統而言，這比一般應用程式更加重要，因為 LLM 的行為本身就是不確定性的。
-</Note>
-
-Data Machi 實作了一個僅在開發環境顯示的 Debug 面板，記錄每一輪對話的完整執行細節：
-
-```typescript
-interface DebugTrace {
-  sessionId: string;
-  turn: number;
-  timestamp: string;
-  contextDecision: {
-    type: "RAG" | "TOOL" | "GENERAL" | "CLARIFY";
-    reasoning: string;
-    confidence: number;
-  };
-  toolsCalled: Array<{
-    name: string;
-    input: Record<string, unknown>;
-    output: string;
-    latencyMs: number;
-  }>;
-  llmCalls: Array<{
-    model: string;
-    promptTokens: number;
-    completionTokens: number;
-    latencyMs: number;
-    cost: number;
-  }>;
-  totalLatencyMs: number;
-  totalCost: number;
-}
-```
-
-在正式環境，這些資訊應寫入結構化日誌（Structured Logs）供後台查詢，但不顯示給使用者。
-
-## 四、部署架構與資料持久化
-
-### 前後端分離部署
+開發環境可能使用 `localhost`，正式環境（Production）則必須指向 Render 的正式網址。這也是為什麼網址不應硬寫死在程式碼裡。
 
 ```text
-前端（Next.js）→ Vercel
-後端（FastAPI）→ Render / Railway / Fly.io
-資料庫（PostgreSQL）→ Supabase / Railway / 雲端 RDS
-向量資料庫（FAISS / Chroma / pgvector）→ 持久化掛載磁碟
+本機前端 → http://localhost:8000
+正式前端 → https://your-render-backend...
 ```
 
-<Warning>
-  **暫存磁碟不等於持久儲存。** Render、Railway 等服務在每次部署或重啟後，暫存磁碟上的資料都會消失。對話歷史、PDF 索引、會議記錄若只存在暫存磁碟，重啟後使用者的所有資料都會不見。正式環境必須明確設計持久化策略。
-</Warning>
+## 第三步：處理跨來源資源共享（CORS）
 
-### 資料持久化策略
+前後端分開部署後，瀏覽器會把 Vercel 與 Render 視為不同來源。即使後端本身正常，若跨來源資源共享設定不正確，瀏覽器仍可能擋掉請求。
 
-| 資料類型 | 建議儲存方式 |
+後端應該明確設定允許的前端網域，而不是為了省事永久使用 `*`。正式環境、預覽環境（Preview）與本機開發可能有不同來源，可以透過環境變數管理允許清單。
+
+```mermaid
+flowchart LR
+    U[瀏覽器] --> V[Vercel 前端]
+    V -->|HTTPS API| R[Render 後端]
+    R --> G[Gemini]
+    R --> S[Google Sheets]
+    R --> D[文件 RAG]
+```
+
+## 第四步：做一輪基本驗收測試（Smoke Test）
+
+正式上線後不要只測「首頁打得開」，而要沿著真正的使用路徑跑一輪。這一組測試的目的，是確認本機能工作的能力到了正式環境後仍然正常。
+
+| 測試項目 | 通過條件 |
 | --- | --- |
-| 對話歷史 | PostgreSQL（關聯式資料庫） |
-| PDF 原始檔案 | Object Storage（S3 / GCS / R2） |
-| 向量索引 | pgvector 或持久化磁碟掛載 |
-| 會議記錄 | PostgreSQL |
-| Session Token | Redis 或資料庫 |
-| 使用者設定 | PostgreSQL |
+| 後端健康檢查 | 服務回傳正常狀態，而不是逾時或 5xx 錯誤 |
+| 一般聊天 | 前端可以成功連到後端並取得回答 |
+| PDF RAG | 可以找到文件、回答並顯示來源 |
+| Google Sheets | 能成功讀取測試試算表並算出預期結果 |
+| 跨來源問題 | 協調者能依序使用兩個以上來源並整合回答 |
+| 錯誤憑證 | 系統顯示可理解的權限錯誤，而不是整個頁面崩潰 |
+| 模型或工具逾時 | 能重試、使用備援，或明確告知使用者失敗原因 |
+| 跨來源資源共享（CORS） | 正式 Vercel 網址可存取後端，未授權來源則不應任意開放 |
+| 重新部署 | 必要的資料、索引或設定不應因重新部署而意外消失 |
 
-企業 Agent 的可信度，來自模型之外的大量工程紀律。一個在 Demo 中令人驚豔的 Agent，和一個在企業正式環境中值得信任的產品，中間的距離就是這篇所整理的這些看似枯燥但不可或缺的工作。
+另外再人工檢查三件事：機密資訊是否沒有出現在 GitHub、前端瀏覽器或錯誤訊息中；預覽環境是否和正式環境使用不同的資料權限；主要錯誤是否能從執行紀錄追查。
 
-## 今日重點回顧
+可以用這種格式留下每次部署的結果：
+
+| ID | 測試項目 | 預期結果 | 實際結果 | 通過 |
+| --- | --- | --- | --- | --- |
+| PROD-01 | 後端健康檢查 | 回傳正常狀態 | 回傳正常狀態 | ✅ |
+
+這樣每次部署後都能用同一份清單快速確認，而不是等使用者回報問題才知道某個環節失效。
+
+## 部署不是結束，而是把問題搬到真實環境
+
+本機可以成功，不代表正式環境一定成功。部署後常見差異包括環境變數漏設、檔案路徑大小寫、CORS、服務帳號權限、相依套件版本與持久化儲存。遇到問題時，回到我們一路使用的方式：先確認哪一層失敗，再看對應紀錄（Log），而不是一次修改很多設定。
+
+## 延伸閱讀｜部署成功之後，才進入正式產品準備
+
+Render 與 Vercel 上線只是第一步。企業產品還需要回答四個問題：**怎麼測、怎麼看、怎麼存、怎麼安全地更新。** 這四件事分別對應測試（Testing）、可觀測性（Observability）、持久化（Persistence）與持續整合／部署（CI/CD）。
+
+### 測試：不要只靠人工聊天
+
+至少要保留幾種固定測試：基本驗收測試確認服務活著；路由測試（Routing Test）確認不同問題會走到正確工具；結構測試（Schema Test）確認結構化輸出欄位沒有因模型或提示詞更新而漂移。更進一步，可以把 Day 19 的路由評估與 Day 10 的 RAG 評估納入每次發布前的回歸測試（Regression Check）。
+
+### 可觀測性：知道系統「怎麼完成」答案
+
+對代理系統而言，執行紀錄不應只記最終回答。開發端最好能查到工作階段、分流結果、呼叫過哪些工具、延遲時間、錯誤、模型、Token 使用量與總耗時。這些資訊不是要暴露給一般使用者，而是讓維護者在結果變差時知道問題出在哪一層。
+
+```text
+工作階段
+  ├─ 分流與上下文判斷
+  ├─ 呼叫過的工具
+  ├─ 資料來源與延遲
+  ├─ 模型與 Token 使用量
+  ├─ 驗證結果
+  └─ 最終狀態
+```
+
+### 持久化：重新部署後，資料不能全部消失
+
+雲端服務的暫存磁碟不等於永久儲存。對話歷史可以放 PostgreSQL，PDF 原檔放物件儲存（Object Storage），向量索引使用 pgvector 或其他持久化儲存，短期工作階段狀態才考慮 Redis。這一層如果沒設計，系統重啟後「記憶消失」其實不是代理問題，而是基礎架構問題。
+
+### 持續整合與部署：讓每次修改都有最低安全網
+
+GitHub 推送後可以自動跑程式碼檢查、型別檢查、單元測試與基本驗收測試，再進入建置與部署。AI 程式開發助手可以讓修改速度變快，但修改愈快，越需要自動測試來防止功能退步。
 
 <Info>
-  今天只要記住一件事：企業 Agent 的可信度，來自模型之外的大量工程紀律。
+  今天的里程碑是：Data Machi 第一次不再只存在於你的電腦上，而是成為一個可以從瀏覽器真正使用的產品。
 </Info>
 
-下一篇是這個系列的最後一天。我們將用一張成熟度地圖和設計 Canvas，幫你把 30 天學到的一切，應用到自己的企業知識工作流設計上。
+明天是最後一天。我們會做正式驗收、資產交接與維護規劃，並回頭看這 30 天是怎麼從聊天一路走到產品。
