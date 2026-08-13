@@ -6,6 +6,20 @@ description: "整理 API 金鑰（API Key）、服務帳號（Service Account）
 
 做到這裡，Data Machi 已經開始接觸不少外部資源：Gemini API、Google 服務帳號（Service Account）、Confluence、Trello、Render 與 Vercel 等。如果只是個人展示原型，帳號都放自己名下似乎沒什麼問題；但只要進入團隊或企業環境，這會很快變成治理風險。
 
+
+```mermaid
+flowchart TB
+    G["GitHub<br/>只保存程式碼與 .env.example"] -. "部署程式碼" .-> R
+    B["Browser／Vercel 前端<br/>只放公開設定與後端網址"] --> R["Render 後端<br/>保存 Secret 並代理請求"]
+    R --> M["Gemini API"]
+    R --> S["Google Service Account"]
+    R --> A["Trello／Confluence API"]
+```
+
+<p align="center">
+  *圖 1｜Secret 留在後端信任邊界，前端與 GitHub 都不應取得秘密值*
+</p>
+
 ## 機密資訊不是一般設定值，而是權限
 
 API 金鑰（API Key）、存取權杖（Token）、服務帳號憑證看起來只是幾段字串，但它們其實代表系統可以做什麼。因此不能把它們視為一般設定檔，更不能直接提交到 GitHub。
