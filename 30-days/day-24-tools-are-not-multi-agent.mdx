@@ -4,6 +4,15 @@ sidebarTitle: "Day 24｜LangGraph 工作流程"
 description: "理解 LangGraph 的狀態（State）、節點（Node）、連線（Edge）與條件連線（Conditional Edge），將多工具代理從黑箱循環轉成可觀察、可測試的工作流程。"
 ---
 
+
+<Frame>
+  ![Day24 1](/day24-1.png "Day24 1")
+</Frame>
+
+<p align="center">
+  *圖 1｜單一 Agent 與 Multi-Agent 的架構取捨*
+</p>
+
 昨天我們碰到一個很實際的問題：Agent 能力愈多，執行路徑就愈難看清楚。這時候 LangGraph 才真正有價值。它不是為了讓 AI 更聰明，而是把一段多步驟任務拆成明確的狀態與節點，讓我們知道資料現在在哪裡、下一步要去哪裡，以及什麼條件會走不同分支。
 
 如果把代理循環（Agent Loop）想成一位很自由的同事，LangGraph 比較像把工作流程畫成一張可以執行的流程圖。
