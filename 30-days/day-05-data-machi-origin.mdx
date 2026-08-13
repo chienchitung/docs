@@ -12,16 +12,13 @@ Data Machi 一開始並不是為了展示多少 AI 名詞，而是想解決一�
 
 整個系統可以先簡化成五層：使用者透過前端提出問題；後端接收請求並管理工作流程；語言模型理解問題與整理答案；不同工具負責取得企業資料；協調者（Coordinator）則負責決定何時呼叫哪一個工具，以及結果不足時下一步怎麼做。
 
-```mermaid
-flowchart TD
-    U[使用者] --> F[React 前端]
-    F --> B[FastAPI 後端]
-    B --> C[Coordinator / LangGraph]
-    C --> L[Gemini]
-    C --> S[Google Sheets Tool]
-    C --> R[PDF RAG]
-    C --> A[Confluence / Trello 等選配工具]
-```
+<Frame>
+  ![Data Machi 開發流程與正式產品架構](/assets/diagrams/day05-data-machi-architecture.svg "Data Machi 開發流程與正式產品架構")
+</Frame>
+
+<p align="center">
+  *圖 1｜Data Machi 的開發流程與正式產品架構*
+</p>
 
 這裡有一個很重要的區分：**Claude Code、Codex 或其他 AI 程式開發助手（AI Coding Agent）是幫你「開發 Data Machi」的工具，不是 Data Machi 正式運作時的一部分。** 真正上線後持續服務使用者的，是前端、後端、模型與各資料來源。
 
@@ -75,13 +72,7 @@ flowchart TD
 
 如果後面要把專案部署到 Vercel 與 Render，就不能把本機電腦視為唯一正式版本。實務上更合理的方式，是把 GitHub 程式碼儲存庫視為單一正式來源（Source of Truth）：本機或雲端的 AI 程式開發助手都從同一個儲存庫修改程式，完成後提交（Commit）、推送（Push），再由部署平台從 GitHub 取得最新版。
 
-```mermaid
-flowchart LR
-    L[VS Code + Coding Agent] --> G[GitHub]
-    C[Cloud Coding Agent] --> G
-    G --> V[Vercel 前端]
-    G --> R[Render 後端]
-```
+
 
 因此 Repository、Commit、Branch 與 Pull Request 並不是額外的工程知識負擔，而是確保這個專案不會因為換一台電腦、換一個開發者或部署失敗就失去控制。可以先弄清楚這四個名詞各自的責任：
 

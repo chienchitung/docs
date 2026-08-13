@@ -9,15 +9,9 @@ description: "探討工具（Tool）與代理（Agent）在架構設計上的本
 這時候就會遇到一個重要分界：**工具使用（Tool Use）不等於代理（Agent）。** 一個系統可以有很多工具，卻仍然只是固定流程；真正讓它開始具有代理特性的，是系統能根據任務與中間結果，自己決定下一步。
 
 
-```mermaid
-flowchart TB
-    Q["收到任務"] --> C{"需要多少決策自由？"}
-    C -->|"單一步驟已知"| T["Tool<br/>執行一項明確能力"]
-    C -->|"步驟與條件固定"| W["Workflow<br/>依預定規則執行"]
-    C -->|"下一步取決於結果"| A["Agent<br/>判斷下一步"]
-    A --> O["觀察工具結果"]
-    O --> A
-```
+<Frame>
+  ![Tool、Workflow 與 Agent 的差異](/assets/diagrams/day16-tool-workflow-agent.svg "Tool、Workflow 與 Agent 的差異")
+</Frame>
 
 <p align="center">
   *圖 1｜Tool、Workflow 與 Agent 的差異，在於系統需要多少動態決策*

@@ -14,14 +14,13 @@ description: "把 Google Sheets 資料工具、PDF 檢索增強生成（RAG）�
 
 如果第二步要查「最多的那個類別」的正式定義，那就必須先知道第一步的結果。這是一個有資料依賴的 sequential workflow。相反地，如果使用者只是同時問「今年總工單數」和「報銷規範」，兩者沒有依賴關係，就可以平行查詢。
 
-```mermaid
-flowchart LR
-    Q[使用者問題] --> S[Sheets：找出 Top 類別]
-    S --> D[文件：查該類別定義]
-    S --> T[專案系統：查改善進度]
-    D --> A[整合答案]
-    T --> A
-```
+<Frame>
+  ![跨來源問題的拆解、查詢與整合流程](/assets/diagrams/day15-cross-source-workflow.svg "跨來源問題的拆解、查詢與整合流程")
+</Frame>
+
+<p align="center">
+  *圖 1｜跨來源問題先拆解，再依資料依賴查詢並保留來源整合*
+</p>
 
 ## 第一版先不要追求全自動代理（Agent）
 
