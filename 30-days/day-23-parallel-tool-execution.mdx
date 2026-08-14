@@ -10,20 +10,21 @@ description: "理解平行工具呼叫的運作原理，掌握哪些查詢可以
 
 在理解「何時可以平行」之前，先直觀感受兩種執行模式的時間差異：
 
-```text
-【順序執行】
+```mermaid
+flowchart TB
+    subgraph S[順序執行：約 6 秒]
+        S1[查工單系統<br/>2 秒] --> S2[查 Confluence<br/>2 秒] --> S3[查 Trello<br/>2 秒]
+    end
 
-時間軸 ──────────────────────────────────────────▶
-        [查工單系統 2s] → [查 Confluence 2s] → [查 Trello 2s]
-        總耗時：~6 秒
-
-【平行執行】
-
-時間軸 ──────────────────────────────────────────▶
-        [查工單系統 2s]  ─┐
-        [查 Confluence 2s]─┼─ 同時發出 → 等最慢的完成
-        [查 Trello 2s]  ─┘
-        總耗時：~2 秒（節省 67%）
+    subgraph P[平行執行：約 2 秒]
+        P0[同時發出查詢]
+        P0 --> P1[查工單系統<br/>2 秒]
+        P0 --> P2[查 Confluence<br/>2 秒]
+        P0 --> P3[查 Trello<br/>2 秒]
+        P1 --> P4[等待最慢工具完成]
+        P2 --> P4
+        P3 --> P4
+    end
 ```
 
 當查詢數量增加，順序執行的等待時間是線性累加的；平行執行的等待時間則近似於「最慢的那一個工具」的耗時。在企業 AI 系統中，這個差異會直接影響使用者體驗與系統吞吐量。
@@ -60,19 +61,97 @@ description: "理解平行工具呼叫的運作原理，掌握哪些查詢可以
 
 實際業務中，常見的是「部分步驟可平行，部分步驟需順序」的混合拓撲：
 
-```text
-步驟 1：查詢使用者基本資料（取得 user_id 與 project_id）
-          │
-          ▼
-步驟 2 ──┬── 用 user_id 查工單歷史  ─┐
-（平行）  ├── 用 project_id 查 Trello ─┼─ 同時執行
-          └── 查通用 SLA 文件         ─┘
-                    │
-                    ▼
-步驟 3：彙整三個來源的結果，產生最終回應
+```mermaid
+flowchart TD
+    A[查詢使用者基本資料<br/>取得 user_id 與 project_id] --> B1[用 user_id 查工單歷史]
+    A --> B2[用 project_id 查 Trello]
+    A --> B3[查詢通用 SLA 文件]
+    B1 --> C[彙整三個來源]
+    B2 --> C
+    B3 --> C
+    C --> D[產生最終回應]
 ```
 
 在 LangGraph 中，這種結構可以透過 fan-out（一個節點拆成多個平行路徑）和 fan-in（多個路徑匯合到一個節點）來實現。
+
+## 從固定平行到動態 Graph
+
+前面的案例假設系統事先知道要查三個來源，因此可以預先定義三條平行路徑。但有些任務要到執行時，才知道需要建立多少個下游工作。
+
+例如，一份文件可能被拆成 3 個章節，也可能是 20 個章節；一個研究問題可能產生 5 個子題，也可能產生 12 個子題。這時不能在開發階段固定寫死 Worker 數量，而要由前一個節點根據執行結果動態分派：
+
+```mermaid
+flowchart TD
+    A[輸入文件] --> B[拆分章節]
+    B --> W1[Worker 1]
+    B --> W2[Worker 2]
+    B --> W3[Worker 3]
+    B --> WN[Worker N]
+    W1 --> C[合併結果]
+    W2 --> C
+    W3 --> C
+    WN --> C
+```
+
+LangGraph 可以透過 `Send` 在執行期間建立下游任務，形成動態的 fan-out 與 fan-in。這種模式常用於 Map-Reduce、批次文件分析與多來源研究。
+
+```python
+from langgraph.types import Send
+
+def assign_workers(state: AgentState):
+    return [
+        Send("analyze_section", {"section": section})
+        for section in state["sections"]
+    ]
+```
+
+固定平行工具呼叫與動態 Graph 的差別在於：前者事先知道要執行哪些工作；後者必須根據 State 的內容，在執行期間決定工作數量與路徑。
+
+## Agent Search 的平行化：不只是同時呼叫三個 API
+
+平行化在複雜 Agent Search 裡的價值，比「同時查三個系統」更進一步。Onyx 的 Agent Search 會把一個複雜問題拆成多個子問題，每個子問題都可能包含 query expansion、搜尋、文件 relevance validation、reranking 與 sub-answer generation。若這些工作全部順序執行，延遲會快速累加。
+
+Onyx 特別強調三種需要平行化的工作：
+
+- 多個 **sub-question** 同時處理
+- 每個 sub-question 找到的多份文件，進行 **relevance validation** 時平行驗證
+- **entity / relationship / term extraction** 與子問題處理同時進行
+
+這可以用兩層 fan-out 來理解：
+
+```mermaid
+flowchart TD
+    Q[複雜問題] --> D[拆成多個子問題]
+    D --> S1[Sub-question A]
+    D --> S2[Sub-question B]
+    D --> S3[Sub-question C]
+
+    S1 --> V11[驗證文件 1]
+    S1 --> V12[驗證文件 2]
+    S1 --> V13[驗證文件 3]
+
+    S2 --> V21[驗證文件 1]
+    S2 --> V22[驗證文件 2]
+
+    S3 --> V31[驗證文件 1]
+    S3 --> V32[驗證文件 2]
+
+    V11 --> M[合併與重排]
+    V12 --> M
+    V13 --> M
+    V21 --> M
+    V22 --> M
+    V31 --> M
+    V32 --> M
+```
+
+Onyx 在 LangGraph 中使用 Map-Reduce branches 處理同型態的文件驗證，也大量使用 subgraph，把「Search → Relevance Validation → Reranking」包裝成可重複利用的 Extended Search Retrieval 流程。這種設計的重點不是讓所有東西一起跑，而是**把真正獨立的工作拆開，避免不必要的等待，同時保留必要的依賴關係**。
+
+<Note>
+  Data Machi 目前的平行化主要是同一個 Coordinator 產生多個 Tool Call，再由 Action Node 同時執行。Onyx 的案例屬於更進階的 Graph-level parallelism：不只平行工具，也平行子問題、文件驗證與 subgraph。兩者原理相同，但複雜度不同。
+</Note>
+
+> **參考來源**<br />Evan Lohn & Joachim Rahmfeld, [“Beyond RAG: Implementing Agent Search with LangGraph for Smarter Knowledge Retrieval”](https://onyx.app/blog/agent-search-with-langgraph), Onyx, 2025-02-21. 文章說明了 sub-question parallelism、document verification 的 Map-Reduce fan-out，以及以 subgraph 進行平行化與重用的實務設計。
 
 ## Data Machi 的實作方式
 
@@ -140,6 +219,38 @@ async def execute_tool_async(tool_call: dict):
 ```
 
 這種透明度不只是視覺上的改善，也讓使用者能即時判斷哪個系統回應較慢，以及是否有某個工具失敗需要關注。
+
+## 平行工具執行，不等於平行 Agent
+
+當 Coordinator 同時查詢 Google Sheets、Confluence 與 Trello 時，這代表的是 **Parallel Tool Execution**，不代表系統裡已經有三個 Agent。
+
+```mermaid
+flowchart LR
+    C[Coordinator Agent] --> S[Sheets Tool]
+    C --> R[Confluence Tool]
+    C --> T[Trello Tool]
+    S --> M[合併工具結果]
+    R --> M
+    T --> M
+```
+
+這些 Tool 通常沒有自己的模型、目標、記憶、規劃循環或溝通協議。它們只是由同一個 Coordinator 同時呼叫的能力單元。只有當各個執行者能獨立理解子任務、選擇自己的工具、管理自己的上下文，並將結果交回其他 Agent 時，才比較接近平行 Agent。
+
+```mermaid
+flowchart LR
+    M[Manager Agent] --> A[Analyst Agent]
+    M --> D[Document Agent]
+    A --> X[整合結果]
+    D --> X
+```
+
+Michael Albada 將平行處理列為 Multi-Agent 的可能優勢之一，但書中也另外討論了單一 Agent 內的 Parallel Tool Execution。換句話說，「同時執行」描述的是拓撲與效能策略；「是不是 Multi-Agent」則取決於執行單元是否為獨立的決策主體。
+
+<Note>
+  Data Machi 目前實作的是單一 Coordinator 產生多個 Tool Call，再由 Action Node 平行執行。這可以降低跨來源查詢的延遲，但仍屬於單一 Agent 加多工具的架構。
+</Note>
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 2, “Multiagent Architectures: Collaboration, Parallelism, and Coordination,” pp. 32–34；Chapter 5, “Tool Execution,” pp. 105–109.
 
 ## 企業 AI 的延遲來源分析
 

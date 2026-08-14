@@ -37,12 +37,15 @@ LangChain 比較像是企業 IT 架構中的**中介層（Middleware）或轉接
   <Card title="統一的訊息格式" icon="envelope">
     不管底層用的是哪家模型，LangChain 提供一致的 `HumanMessage`、`AIMessage`、`ToolMessage` 等訊息物件，讓對話流程的程式碼不需要因為換模型而改寫。
   </Card>
+
   <Card title="Tool 裝飾器" icon="tag">
     用 `@tool` 裝飾器把一個 Python 函式轉成模型可識別的工具，自動生成 JSON Schema 描述，省去手動定義參數格式的工作。
   </Card>
+
   <Card title="模型互換性" icon="arrows-rotate">
     切換 OpenAI 到 Gemini 或 Anthropic，通常只需要更換幾行初始化程式碼，其餘的 Agent 邏輯保持不變，方便比較不同模型的表現。
   </Card>
+
   <Card title="記憶與上下文管理" icon="brain">
     提供多種對話記憶策略，例如保留完整歷史、摘要壓縮、或依視窗大小截斷，避免每次都要自己實作記憶機制。
   </Card>
@@ -73,7 +76,7 @@ def get_monthly_customer_count(year: int, month: int) -> dict:
 # 3. 模型整合：統一呼叫介面
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash")
 llm_with_tools = llm.bind_tools([get_monthly_customer_count])
 ```
 
@@ -90,6 +93,7 @@ llm_with_tools = llm.bind_tools([get_monthly_customer_count])
 這是更重要的認知：**框架只解決技術整合問題，不解決業務設計問題。**
 
 LangChain 不會：
+
 - 自動替你定義正確的工作流程與邏輯順序
 - 保證模型在每次推理時都選到正確的工具
 - 處理資料品質問題（髒資料、欄位不一致、缺漏值）

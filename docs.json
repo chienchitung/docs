@@ -21,7 +21,7 @@
         "pages": ["index"]
       },
       {
-        "group": "第一篇｜AI 與工作",
+        "group": "觀念篇 01｜AI 與工作",
         "pages": [
           "30-days/day-01-enterprise-ai-is-not-chatbot",
           "30-days/day-02-what-is-knowledge-work",
@@ -31,7 +31,7 @@
         ]
       },
       {
-        "group": "第二篇｜企業知識檢索",
+        "group": "觀念篇 02｜企業知識檢索",
         "pages": [
           "30-days/day-06-what-is-rag",
           "30-days/day-07-pdf-to-searchable-knowledge",
@@ -41,7 +41,7 @@
         ]
       },
       {
-        "group": "第三篇｜工具整合",
+        "group": "觀念篇 03｜工具與跨來源",
         "pages": [
           "30-days/day-11-rag-vs-tool-use",
           "30-days/day-12-what-langchain-solves",
@@ -51,7 +51,7 @@
         ]
       },
       {
-        "group": "第四篇｜Agent 決策",
+        "group": "進階延伸 01｜Agent 決策",
         "pages": [
           "30-days/day-16-when-tools-become-agent",
           "30-days/day-17-react-loop",
@@ -61,7 +61,7 @@
         ]
       },
       {
-        "group": "第五篇｜可控工作流",
+        "group": "進階延伸 02｜LangGraph 與可控工作流",
         "pages": [
           "30-days/day-21-why-agentexecutor-is-not-enough",
           "30-days/day-22-what-is-langgraph",
@@ -71,13 +71,41 @@
         ]
       },
       {
-        "group": "第六篇｜企業級產品",
+        "group": "進階延伸 03｜產品化與可靠性",
         "pages": [
           "30-days/day-26-timeout-retry-fallback",
           "30-days/day-27-agent-ux",
           "30-days/day-28-meeting-to-action-items",
           "30-days/day-29-security-testing-deployment",
           "30-days/day-30-design-your-enterprise-agent"
+        ]
+      },
+      {
+        "group": "實作篇｜Day 16–30",
+        "icon": "code",
+        "pages": [
+          "data-machi-practice/index",
+          "data-machi-practice/01-project-architecture",
+          "data-machi-practice/02-google-sheets-tool",
+          "data-machi-practice/03-langgraph-state-router",
+          "data-machi-practice/04-cross-source-coordinator",
+          "data-machi-practice/05-document-rag",
+          "data-machi-practice/06-langgraph-coordinator",
+          "data-machi-practice/07-memory-clarification",
+          "data-machi-practice/08-reliability-verification",
+          "data-machi-practice/09-agent-ux",
+          "data-machi-practice/10-meeting-deployment",
+          "data-machi-practice/11-minimum-chat",
+          "data-machi-practice/12-sheets-tool",
+          "data-machi-practice/13-document-rag",
+          "data-machi-practice/14-coordinator",
+          "data-machi-practice/15-memory-clarification",
+          "data-machi-practice/16-reliability",
+          "data-machi-practice/17-security-governance",
+          "data-machi-practice/17-render-backend",
+          "data-machi-practice/18-vercel-frontend",
+          "data-machi-practice/19-cors-env",
+          "data-machi-practice/20-operations"
         ]
       }
     ]

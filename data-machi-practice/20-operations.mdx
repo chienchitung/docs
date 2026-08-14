@@ -1,0 +1,205 @@
+---
+title: "實作 21｜正式驗收、交接與遠端維護：完成你的 Data Machi"
+sidebarTitle: "實作 21｜驗收與維護"
+description: "完成安全、功能、部署、跨裝置與離職交接驗收，並建立雲端 Vibe Coding 與版本回復流程。"
+---
+
+完成部署不等於產品已經完成。最後一篇要確認 Data Machi 在正式環境中真的可用，並建立日後透過本機或雲端 Coding Agent 持續維護的流程。
+
+```mermaid
+flowchart LR
+    C[修改需求] --> B[建立 Branch]
+    B --> A[AI Coding Agent 協助修改]
+    A --> T[測試與檢查 Diff]
+    T --> P[Pull Request]
+    P --> M[合併 Main]
+    M --> D[Vercel / Render 部署]
+    D --> V[正式環境驗收]
+    V -->|失敗| R[回復 Commit 或修正]
+```
+
+## 五個層次的驗收
+
+### 功能驗收
+
+- 最小 Gemini 對話正常。
+- Sheets 問題與人工核對結果一致。
+- PDF RAG 能顯示來源並拒答無資料問題。
+- Trello、Confluence、Groq 等選配功能可獨立開關。
+- 多輪追問、釐清與要求最新資料的流程正確。
+
+### 失敗驗收
+
+刻意製造以下情況：
+
+- 移除或填錯 Gemini Key。
+- 將 Sheet 取消分享。
+- 上傳無法解析的 PDF。
+- 使用失效 Token。
+- 關閉 Render 或改錯 Backend URL。
+- 讓模型呼叫超過 Timeout。
+
+每種失敗都應結束 Loading、顯示明確原因，並提供下一步建議。
+
+### 安全驗收
+
+```mermaid
+flowchart TD
+    S[安全檢查] --> G[GitHub 無 Secret]
+    S --> F[前端無私密 Key]
+    S --> C[CORS 僅允許指定來源]
+    S --> L[Log 不顯示完整憑證]
+    S --> D[測試資料已匿名化]
+```
+
+另外檢查：
+
+- `.env`、Service Account JSON 與索引暫存均在 `.gitignore`。
+- Vercel 只保存可公開的前端設定。
+- Render Secret 依最小權限原則配置。
+- 教學截圖、README 與錯誤訊息沒有企業識別資訊。
+
+### 使用體驗驗收
+
+- 桌機與手機都能正常操作。
+- Render 冷啟動時有清楚等待狀態。
+- 工具執行時顯示真實進度。
+- 回答完成、失敗、查核中等狀態不混淆。
+- 長回答、文件來源與錯誤訊息在小螢幕仍可閱讀。
+
+### 所有權與交接驗收
+
+這一層確認 Data Machi 不會因為單一開發者離開而停止運作。
+
+```mermaid
+flowchart TD
+    H[交接測試] --> O[Repository 與部署平台屬於公司 Team]
+    H --> A[至少兩位管理者]
+    H --> K[可重新建立與輪替 Token]
+    H --> D[另一位管理者可獨立部署]
+    H --> R[移除原開發者後系統仍正常]
+```
+
+請安排另一位管理者實際操作，而不是只閱讀文件：
+
+- 找到公司 GitHub Organization、Render Workspace、Vercel Team 與 Google Cloud Project。
+- 依照文件重新部署前端與後端。
+- 找到 Secret 名稱與存放位置，但文件中沒有完整明文憑證。
+- 建立一組測試 Token、切換環境變數並撤銷舊 Token。
+- 確認 Trello、Confluence 與 Sheets 整合帳號只具必要權限。
+- 模擬移除主要開發者帳號後，服務仍可維護與運作。
+
+若以上任一步驟只能由原開發者完成，代表交接仍未完成，應回到〈實作 17｜權限與資訊安全〉補齊資產清冊、備援管理者與輪替流程。
+
+## 遠端 Vibe Coding 維護流程
+
+當你不在主要電腦旁，可以透過 Claude Code 桌面或手機端啟動雲端開發：
+
+```mermaid
+sequenceDiagram
+    participant U as 使用者
+    participant C as Claude Code 雲端
+    participant G as GitHub
+    participant D as 部署平台
+    U->>C: 描述小型修改
+    C->>G: 讀取 Repository
+    C->>G: 建立 Branch / Commit / PR
+    U->>G: 查看 Diff 並合併
+    G->>D: 觸發自動部署
+    D-->>U: 檢查 Preview / Production
+```
+
+適合遠端處理的項目包括 Prompt 文案、錯誤訊息、README、環境變數範例與小型 UI 修正。大型架構、PDF／音訊處理、跨服務除錯則較適合回到本機完整測試。
+
+## 如何安全回復版本？
+
+- 小型錯誤：建立修正 Commit。
+- 尚未合併的 PR：關閉 PR 或修正 Branch。
+- 已合併且部署失敗：Revert 對應 Commit。
+- 部署平台問題：先查看 Log，避免在不確定原因時連續亂改。
+
+不要只依賴平台的重新部署按鈕；GitHub 中的程式版本才應該是正式來源。
+
+## 最終完成清單
+
+- [ ] 有自己的去識別化 Repository
+- [ ] Gemini、Sheets 與 PDF RAG 正常
+- [ ] Render 後端與 Vercel 前端已串接
+- [ ] CORS、Environment Variables 與 Secret 正確
+- [ ] 多輪記憶與可靠性測試完成
+- [ ] GitHub PR、部署與版本回復流程可操作
+- [ ] Repository、Render、Vercel 與 Cloud Project 不綁定單一個人帳號
+- [ ] 至少有一位備援管理者可重新部署與輪替 Token
+- [ ] 資產與憑證清冊已建立，且不包含完整明文 Secret
+- [ ] 移除主要開發者權限後，系統仍可正常運作
+- [ ] 可從桌機與手機完成正式環境驗收
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請根據目前 Repository、Render 與 Vercel 設定，建立正式上線驗收計畫。
+必須包含：核心功能、外部服務失敗、安全、CORS、跨裝置、冷啟動、部署回復與 Secret 掃描。
+不要直接修改程式，先列出測試步驟、預期結果與失敗判斷方式。
+```
+
+## 完成上線驗收與維護演練
+
+### 步驟 1：建立正式驗收紀錄
+
+不要只在腦中確認功能是否正常。使用 GitHub Issue、試算表或專案管理工具，建立測試項目、預期結果、實際結果、負責人與測試日期欄位。依序執行功能、失敗、安全、使用體驗與交接驗收，並為失敗項目附上錯誤畫面、Log 或 Network 證據。
+
+**圖 1｜正式驗收紀錄表**
+
+> \[圖片預留位置：GitHub Issue 或試算表，顯示測試項目、預期結果、實際結果、負責人與日期\]
+
+_圖說：正式驗收應留下可追蹤紀錄。範例中至少保留一個通過案例與一個失敗案例，讓讀者理解如何判斷結果，而不是只勾選完成。_
+
+### 步驟 2：執行跨裝置驗收
+
+使用桌機與手機分別開啟正式 Vercel 網址並完成一次完整對話。檢查輸入框、進度狀態、來源引用、錯誤訊息、長回答與 Render 冷啟動畫面是否都能正常閱讀與操作。
+
+**圖 2｜桌機與手機的跨裝置驗收**
+
+> \[圖片預留位置：並排顯示桌機與手機操作 Data Machi 的畫面\]
+
+_圖說：正式環境不應只在開發者電腦上可用。桌機與手機都要能完成輸入、等待、查看來源與理解錯誤訊息。_
+
+### 步驟 3：驗證 Pull Request 到自動部署
+
+建立一個小型測試 Branch，修改一段可安全驗證的文案並建立 Pull Request。檢查 Diff 與自動測試後合併 PR，確認 GitHub、Render 與 Vercel 都收到新的部署事件，最後到正式網址確認修改已上線。
+
+**圖 3｜Pull Request 合併與 Deployment Check**
+
+> \[圖片預留位置：PR 合併畫面與 GitHub deployment check\]
+
+_圖說：合併前先檢查 Diff 與測試結果。PR 合併後，GitHub 應顯示與 Render／Vercel 相關的部署狀態。_
+
+**圖 4｜Render 與 Vercel 部署完成**
+
+> \[圖片預留位置：Render 與 Vercel 的部署成功畫面\]
+
+_圖說：前端與後端部署可能分別完成。兩邊都成功後，還要回到正式網站執行實際功能驗收。_
+
+### 步驟 4：練習回復已部署版本
+
+找到一個已合併且可安全回復的測試 Commit，在 GitHub 建立 Revert Commit 或 Revert Pull Request。檢查回復 Diff，確認只撤銷目標修改；合併後等待 Render／Vercel 重新部署，再回到正式環境確認功能已恢復。
+
+**圖 5｜建立 Revert Pull Request**
+
+> \[圖片預留位置：GitHub Revert 操作與回復 PR 的 Diff\]
+
+_圖說：版本回復應透過 GitHub 留下正式紀錄，不要只在部署平台反覆點選舊版本。建立 Revert PR 後，先確認 Diff 再合併。_
+
+### 步驟 5：執行備援管理者交接測試
+
+請第二位管理者以自己的帳號登入相關平台，在沒有原開發者口頭提示的情況下找到 Repository、Render、Vercel 與 Google Cloud Project。確認對方能找到環境變數名稱、部署入口與操作文件，但看不到文件中的完整 Secret，並完成一次測試部署或 Token 輪替演練。
+
+**圖 6｜備援管理者完成交接驗收**
+
+> \[圖片預留位置：匿名備援帳號可看到 Repository、部署平台與 Secret 名稱的畫面\]
+
+_圖說：交接完成的標準不是「文件已經寫好」，而是第二位管理者能實際找到資產、重新部署並處理憑證。所有帳號、Email、公司名稱與 Secret 值都必須匿名化。_
+
+<Info>
+  完成這 21 篇後，你不只是複製一個聊天介面，而是理解如何用 GitHub、Vibe Coding、外部 API、LangGraph、權限治理、Render 與 Vercel，建立、交接並持續維護一套屬於自己的 Data Machi。
+</Info>

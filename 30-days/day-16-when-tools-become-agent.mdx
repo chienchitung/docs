@@ -122,6 +122,29 @@ Agent 架構不是萬靈丹，也帶來額外的複雜度與成本。在決定�
   不要把「呼叫一次 API」包裝成 Agent。Agent 的重點不是名稱，而是是否存在「觀察結果、重新判斷、選擇下一步」的能力。徒具 Agent 名稱卻沒有決策循環的系統，只是讓程式碼更複雜的自動化腳本。
 </Warning>
 
+## 新增一項能力時，應該做成 Tool、Workflow，還是 Agent？
+
+在設計系統時，真正困難的問題通常不是「能不能做」，而是「應該把這項能力放在哪一層」。一個實用的判斷方式，是先從最簡單、最可驗證的形式開始：
+
+```mermaid
+flowchart TD
+    A[新增一項能力] --> B{只需執行明確函式或 API？}
+    B -->|是| T[建立 Tool]
+    B -->|否| C{流程分支是否可以事先列舉？}
+    C -->|是| W[建立確定性 Workflow]
+    C -->|否| D{是否需要理解語意、觀察結果並動態規劃？}
+    D -->|否| P[保留一般程式邏輯]
+    D -->|是| E{是否需要獨立 Prompt、State、工具集或權限？}
+    E -->|否| S[保留在現有 Agent]
+    E -->|是| G[評估拆成獨立 Agent]
+```
+
+例如，查詢 Google Sheet 是 Tool；將查詢、驗證與錯誤處理固定串起來，可以是 Workflow；判斷問題應查哪一個來源、取得結果後是否需要補查，才是 Agent 的責任。若只是把一個 API 包裝成函式，並不會因為名稱中出現 Agent 就具備自主決策能力。
+
+Michael Albada 建議，在新增 Agent 前應先確認現有 Agent、工具分組或既有流程是否已能承擔這項責任。每多一個 Agent，都會增加溝通、協調、運算與維護成本，因此應只加入能帶來明確價值的最小數量。這種「節制原則」也能避免把原本簡單的能力過度工程化。
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 8, “Principles for Adding Agents,” pp. 178–180.
+
 ## Agent 的邊界與安全
 
 <Note>

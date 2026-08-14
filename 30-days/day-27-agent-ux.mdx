@@ -6,11 +6,20 @@ description: "學習如何在 AI Agent 執行長時間多步驟任務時提供�
 
 Agent 完成一個任務，背後可能需要理解問題意圖、呼叫多個工具、驗證答案、保存紀錄，甚至多輪反覆嘗試。即使最終答案完全正確，若使用者在整個過程中只能看著畫面空轉，很快就會認為系統壞掉了。Agent UX 的核心挑戰，是讓使用者在等待期間持續感知到「工作正在可靠地推進」。
 
+<Frame>
+  ![Day27](/day27.png "Day27")
+</Frame>
+
+<p align="center">
+  *圖 1｜Agent UX 不應只顯示轉圈圈，而要讓使用者看見任務正在理解、搜尋、執行、整合與驗證*
+</p>
+
 ## 為什麼 Agent UX 和一般 UX 不同？
 
 傳統軟體的回應通常是即時的（點擊按鈕、資料出現），即使需要等待，進度也容易量化（上傳 40%、第 2 步共 5 步）。
 
 Agent 的本質卻是非確定性的：
+
 - 不知道需要呼叫幾個工具
 - 不知道哪一輪 LLM 呼叫會耗時最長
 - 任何一個中間步驟都可能失敗或需要重試
@@ -44,7 +53,6 @@ Agent 的本質卻是非確定性的：
     };
     ```
   </Step>
-
   <Step title="串流要與任務完成同步">
     串流輸出（Streaming）能讓使用者更早看到文字，改善感知速度，但若處理不慎反而會造成困惑。
 
@@ -71,7 +79,7 @@ Agent 的本質卻是非確定性的：
       const { stage, message } = JSON.parse(e.data);
       updateProgressIndicator(stage, message);
     });
-
+    
     eventSource.addEventListener('final', (e) => {
       const { content } = JSON.parse(e.data);
       // 用動畫播放最終回答，而非即時串流
@@ -80,7 +88,6 @@ Agent 的本質卻是非確定性的：
     });
     ```
   </Step>
-
   <Step title="錯誤訊息要可行動">
     「Something went wrong」是最無用的錯誤訊息。使用者需要知道：**發生了什麼事**，以及**可以做什麼**。
 
@@ -88,18 +95,20 @@ Agent 的本質卻是非確定性的：
       <Card title="PDF 尚未建立索引" icon="file-pdf">
         「這份 PDF 尚未完成索引建立，請至知識庫頁面重新上傳後再試。」
       </Card>
+
       <Card title="模型過載" icon="server">
         「AI 模型目前負載較高，建議 30 秒後重新提問，或縮小問題範圍。」
       </Card>
+
       <Card title="找不到支持資料" icon="magnifying-glass">
         「未能在知識庫中找到足夠的相關資訊，建議確認資料是否已上傳。」
       </Card>
+
       <Card title="工具執行失敗" icon="wrench">
         「查詢工作表時發生錯誤，請確認試算表連線是否仍然有效。」
       </Card>
     </CardGroup>
   </Step>
-
   <Step title="完成狀態要明確">
     使用者需要知道任務**真的結束了**，而不是猜測。完成後應清楚顯示：
 

@@ -1,0 +1,287 @@
+---
+title: "實作 07｜申請 Trello 與 Confluence API：加入專案與知識來源"
+sidebarTitle: "實作 07｜Atlassian API"
+description: "認識 Trello 與 Confluence 的用途、必要憑證、權限與選配方式。"
+---
+
+Trello 與 Confluence 都屬於選配資料來源。沒有使用 Atlassian 服務的讀者，可以先完成 Gemini、Google Sheets 與 PDF RAG，再回來擴充。
+
+```mermaid
+flowchart LR
+    Q[使用者問題] --> C[Coordinator]
+    C -->|專案進度| T[Trello API]
+    C -->|規範與文件| F[Confluence API]
+```
+
+## 兩種服務解決不同問題
+
+| 服務 | 適合回答 |
+| --- | --- |
+| Trello | 卡片狀態、負責人、截止日、看板進度 |
+| Confluence | 規範、流程、定義、團隊文件與知識文章 |
+
+這兩個服務雖然都屬於 Atlassian，但憑證形式與授權方式不完全相同，因此不能用同一句話概括。
+
+## Trello 需要準備
+
+### 步驟 1：準備匿名測試 Board
+
+先建立一個不含真實專案名稱、人員資訊或機密卡片的測試 Board。後續取得的 Board ID、API Key 與 Token，都應先用這個測試 Board 驗證。
+
+### 步驟 2：取得 Trello API Key
+
+進入 Trello 的開發者 API 頁面，確認目前登入的是準備用於整合的低權限帳號，再找到 API Key 區塊。
+
+**圖 1｜Trello API Key 管理入口**
+
+> \[圖片預留位置：Trello 開發者頁面，標示 API Key 所在區塊\]
+
+_圖說：進入 Trello API 管理頁後，先找到 API Key。圖片中不可顯示完整 Key、Workspace 名稱或真實 Board 資訊。_
+
+### 步驟 3：產生 Trello User Token
+
+依頁面指示產生 User Token，閱讀授權範圍後再確認授權。
+
+**圖 2｜產生 Trello User Token**
+
+> \[圖片預留位置：User Token 授權畫面，標示授權按鈕與權限說明\]
+
+_圖說：User Token 會繼承目前登入帳號可存取的 Trello 範圍。確認使用的是低權限整合帳號後，再完成授權；圖片中必須完全遮蔽 Token。_
+
+### 步驟 4：取得 Board ID
+
+從匿名測試 Board 的網址或 API 回應取得 Board ID，並確認它對應的是教學用 Board，而不是真實工作看板。
+
+### 步驟 5：設定後端環境變數
+
+將 Board ID、API Key 與 User Token 保存到密碼管理工具，再填入 `backend/.env` 或 Render Environment。
+
+```env
+TRELLO_BOARD_ID=
+TRELLO_API_KEY=
+TRELLO_TOKEN=
+```
+
+Trello Token 代表產生它的使用者。該使用者能看到哪些 Board、Card 與 Workspace，後端通常就能透過這組 Token 存取相同範圍。
+
+```mermaid
+flowchart LR
+    A[Trello 使用者帳號] --> B[產生 User Token]
+    B --> C[Data Machi 後端]
+    C --> D[以該使用者權限讀取 Board]
+```
+
+<Warning>
+  請使用匿名測試 Board，不要把真實專案名稱、人員姓名或機密卡片放進公開教學。Token 應只存在 `backend/.env` 或 Render Environment，不能放在前端與 GitHub。
+</Warning>
+
+## Confluence 需要準備
+
+### 步驟 1：準備測試 Space 與頁面
+
+先建立一個只含匿名內容的 Confluence 測試 Space 或頁面，並確認整合帳號具備讀取權限。
+
+### 步驟 2：進入 API Token 管理頁
+
+登入準備用於整合的低權限 Atlassian 帳號，進入 API Token 管理頁。
+
+**圖 3｜進入 Atlassian API Token 管理頁**
+
+> \[圖片預留位置：Atlassian 帳號設定中的 API Token 管理頁與 Create API token 按鈕\]
+
+_圖說：從 Atlassian 帳號設定進入 API Token 管理頁，建立 Data Machi 專用 Token。請確認目前登入的是低權限整合帳號，而不是全站管理者。_
+
+### 步驟 3：建立並保存 API Token
+
+建立新的 API Token，使用容易辨識的名稱，例如 `data-machi-readonly`。建立完成後立即複製並保存到密碼管理工具。
+
+**圖 4｜命名並建立 Confluence API Token**
+
+> \[圖片預留位置：Token 命名欄位與建立完成提示\]
+
+_圖說：為 Token 填入可辨識的用途名稱。Token 建立完成後通常只會顯示一次，請立即複製；截圖時必須完全遮蔽，不要保留可辨識輪廓。_
+
+### 步驟 4：確認 Site URL 與登入 Email
+
+記錄 Confluence Site URL，以及建立 Token 的 Atlassian 登入 Email。兩者必須與後端設定一致。
+
+### 步驟 5：設定後端環境變數
+
+將 Site URL、登入 Email 與 API Token 填入 `backend/.env` 或 Render Environment。
+
+```env
+CONFLUENCE_URL=
+CONFLUENCE_USERNAME=
+CONFLUENCE_API_TOKEN=
+```
+
+Confluence 的 Email 與 API Token 是用來證明「後端正在以哪一個 Atlassian 帳號讀取內容」。API 能看到的範圍，通常仍受該帳號原本的頁面與 Space 權限限制。
+
+```mermaid
+flowchart LR
+    A[Atlassian 帳號] --> B[Email + API Token]
+    B --> C[Data Machi 後端]
+    C --> D{該帳號是否有頁面權限？}
+    D -->|有| E[讀取頁面內容]
+    D -->|沒有| F[回傳權限錯誤]
+```
+
+## 最重要的觀念：後端使用誰的 Token，就繼承誰的權限
+
+假設你用一個管理者帳號建立 Token，而這個帳號可以看到整個 Confluence Site。即使一般使用者原本只能看部分頁面，只要 Data Machi 沒有另外設計權限檢查，後端仍可能查到管理者看得到的內容。
+
+```mermaid
+flowchart TD
+    U1[一般使用者 A] --> App[Data Machi]
+    U2[一般使用者 B] --> App
+    App --> Token[共用管理者 Token]
+    Token --> All[管理者可存取的全部內容]
+```
+
+這就是為什麼不建議直接把高權限管理者 Token 當成所有使用者共用的憑證。
+
+<Note>
+  這不代表第一版一定要實作 OAuth。更實際的做法，是先建立一個專門供整合使用、權限較低的帳號，只讓它存取教學或指定資料範圍。
+</Note>
+
+## 固定憑證與個別授權有什麼差別？
+
+### 固定憑證
+
+後端永遠使用同一組 Trello 或 Confluence Token。
+
+適合：
+
+- 個人專案
+- 內部測試
+- 所有使用者共用相同資料範圍
+- 系統只讀取固定 Board 或固定 Space
+
+```mermaid
+flowchart LR
+    Users[所有使用者] --> App[Data Machi]
+    App --> Shared[固定低權限 Token]
+    Shared --> Scope[指定 Board 或 Space]
+```
+
+### 個別授權
+
+每位使用者用自己的 Atlassian 身分授權，系統依照個人權限存取資料。
+
+適合：
+
+- 不同使用者應看到不同內容
+- 產品會提供給多個組織或客戶
+- 需要撤銷單一使用者權限
+- 需要記錄誰讀取了哪些資料
+
+```mermaid
+flowchart LR
+    A[使用者 A] --> OA[A 的授權]
+    B[使用者 B] --> OB[B 的授權]
+    OA --> App[Data Machi]
+    OB --> App
+    App --> DA[A 可存取的資料]
+    App --> DB[B 可存取的資料]
+```
+
+個別授權通常會牽涉 OAuth、使用者登入、Token 保存、權限範圍、撤銷與更新，因此屬於產品擴充階段，而不是第一版的必要條件。
+
+## 目前 Data Machi 最適合哪一種？
+
+目前的實作目標是讓後端讀取指定的 Trello Board 與 Confluence 內容，因此建議先採用：
+
+- 固定憑證
+- 專門的整合帳號
+- 最小必要權限
+- 只讀取匿名測試資料
+- 不提供寫入、刪除或批次更新功能
+
+```mermaid
+flowchart TD
+    A{所有使用者是否共用同一資料範圍？}
+    A -->|是| B[使用固定低權限 Token]
+    A -->|否| C{是否需依個人權限存取？}
+    C -->|是| D[評估 OAuth 與個別授權]
+    C -->|否| E[在應用層加入資料範圍限制]
+```
+
+## 什麼時候才需要考慮 OAuth？
+
+出現以下情況時，再進一步評估 OAuth 或個別授權：
+
+- A 使用者與 B 使用者應看到不同頁面
+- 使用者必須登入自己的 Atlassian 帳號
+- 需要讓使用者自行撤銷授權
+- 需要記錄哪一位使用者查了什麼資料
+- 系統會提供給不同公司或外部客戶使用
+
+若以上情況都不存在，第一版先使用固定、低權限且資料範圍受控的 Token，通常更容易完成與測試。
+
+## Token 輪替與稽核是什麼？
+
+### Token 輪替
+
+Token 不應被視為永久不變。若發生人員異動、Token 外洩或權限調整，應該能建立新 Token、更新 Render Environment，並撤銷舊 Token。
+
+### 稽核紀錄
+
+正式產品可能需要記錄：
+
+- 哪位使用者提出問題
+- 系統呼叫了哪個工具
+- 查詢了哪個 Board 或 Space
+- 是否發生權限錯誤
+- 是否執行了寫入操作
+
+第一版可以先不建立完整稽核系統，但至少要保留後端 Log，方便辨識錯誤發生在哪一個服務。
+
+## 本篇驗收
+
+- Trello 能列出匿名測試 Board 的卡片。
+- Confluence 能讀取指定測試頁面。
+- 換成沒有權限的帳號或 Token 時，系統能清楚回報權限不足。
+- 後端只使用低權限測試帳號，不使用管理者憑證。
+- Token 不存在 GitHub、Vercel 前端或教學截圖。
+- 讀者能說明目前採用固定憑證，而不是個別使用者授權。
+
+## 常見問題
+
+<AccordionGroup>
+  <Accordion title="為什麼我登入 Confluence 看得到，API 卻讀不到？">
+    請確認 API Token 是否由同一個帳號建立、Site URL 是否正確，以及該帳號是否真的具有目標 Space 與頁面權限。
+  </Accordion>
+
+  <Accordion title="為什麼不直接使用管理者 Token？">
+    因為後端會繼承管理者能看到的完整資料範圍。一旦應用層權限判斷出錯，普通使用者可能間接取得不該看到的內容。
+  </Accordion>
+
+  <Accordion title="多人使用就一定要 OAuth 嗎？">
+    不一定。若所有人本來就共用同一份資料，而且系統使用的是低權限整合帳號，可以先維持固定 Token。只有需要依使用者身分區分資料時，才需要個別授權。
+  </Accordion>
+</AccordionGroup>
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請檢查目前 Trello 與 Confluence 工具的憑證與權限設計。
+
+目標：
+1. 第一版使用固定、低權限、只讀取指定測試資料的整合帳號
+2. Trello 與 Confluence 的憑證要分開說明
+3. 缺少 Token、權限不足、資源不存在與網路錯誤要回傳不同訊息
+4. 不要加入寫入、刪除或更新功能
+5. 不要把任何 Token 或真實資源 ID 寫進程式碼
+
+請先說明目前的風險與預計修改的檔案，再開始修改。
+```
+
+<Note>
+  本篇只處理 Trello 與 Confluence 的局部授權。GitHub、Render、Vercel、Google Cloud、Groq 的資產所有權，以及人員離職時如何交接與輪替憑證，會在〈實作 17｜權限與資訊安全〉統一盤點。
+</Note>
+
+<Info>
+  今天只要記住一件事：固定 Token 並不是錯誤做法，關鍵在於使用低權限帳號、限制資料範圍，並清楚知道後端會繼承該帳號的權限。
+</Info>
+
+下一篇會加入 Groq Whisper，讓會議錄音可以轉成文字。

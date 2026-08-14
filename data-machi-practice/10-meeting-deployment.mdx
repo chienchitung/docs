@@ -1,0 +1,128 @@
+---
+title: "實作 10｜在本機啟動 Data Machi：先確認前後端骨架"
+sidebarTitle: "實作 10｜本機啟動"
+description: "啟動 React 前端與 FastAPI 後端，理解兩個服務如何透過 API 溝通。"
+---
+
+在部署前，先確認專案能在本機運作。Data Machi 需要同時啟動前端與後端，兩者分別使用不同的 Port。
+
+```mermaid
+flowchart LR
+    B[瀏覽器 localhost:5173] --> F[React / Vite 前端]
+    F --> A[FastAPI localhost:8000]
+    A --> G[Gemini 與資料工具]
+```
+
+## 本機啟動流程
+
+### 步驟 1：確認專案資料夾結構
+
+用 VS Code 開啟 Repository 根目錄，確認 `frontend`、`backend`、`.env.example` 與主要啟動檔案都在預期位置。
+
+**圖 1｜Data Machi 的本機資料夾結構**
+
+> \[圖片預留位置：VS Code Explorer，標示 `frontend`、`backend`、`.env.example` 與主要啟動檔案\]
+
+_圖說：先確認前端與後端資料夾位置。Terminal 指令必須在正確資料夾執行，否則容易出現找不到套件或啟動檔案的錯誤。_
+
+### 步驟 2：建立後端虛擬環境並安裝套件
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Windows 啟用虛擬環境時通常使用：
+
+```powershell
+.\.venv\Scripts\activate
+```
+
+### 步驟 3：確認後端環境變數
+
+依 `.env.example` 建立 `backend/.env`，至少確認 Gemini API Key 與目前測試需要的設定已填入。不要把 `.env` 提交到 GitHub。
+
+### 步驟 4：啟動 FastAPI 後端
+
+```bash
+python main.py
+```
+
+**圖 2｜啟動 FastAPI 後端並開啟 `/docs`**
+
+> \[圖片預留位置：Terminal 的後端啟動指令、成功監聽網址，以及瀏覽器中的 `/docs`\]
+
+_圖說：Terminal 顯示服務監聽網址後，開啟 `http://localhost:8000/docs` 或健康檢查，確認 FastAPI 已正常啟動。_
+
+### 步驟 5：安裝前端套件
+
+另開一個 Terminal：
+
+```bash
+cd frontend
+npm install
+```
+
+### 步驟 6：啟動 React／Vite 前端
+
+```bash
+npm run dev
+```
+
+**圖 3｜啟動 React／Vite 前端**
+
+> \[圖片預留位置：第二個 Terminal 的前端啟動指令、Vite Local URL 與瀏覽器首頁\]
+
+_圖說：Terminal 顯示 Local URL 後，用瀏覽器開啟首頁，通常是 `http://localhost:5173`。_
+
+### 步驟 7：確認前後端同時運作
+
+保留 FastAPI Terminal、Vite Terminal 與瀏覽器，確認前端能載入且 API 請求能送到後端。
+
+**圖 4｜前端、後端與瀏覽器同時運作**
+
+> \[圖片預留位置：兩個 Terminal 與瀏覽器的整體畫面\]
+
+_圖說：Data Machi 的前端與後端是兩個獨立服務。關閉其中任一服務，都可能讓聊天功能失效。_
+
+## 一則訊息如何流動？
+
+```mermaid
+sequenceDiagram
+    participant U as 使用者
+    participant F as Vite 前端
+    participant B as FastAPI 後端
+    participant M as Gemini
+    U->>F: 輸入問題
+    F->>B: POST /chat
+    B->>M: 傳送訊息
+    M-->>B: 回傳回答
+    B-->>F: JSON Response
+    F-->>U: 顯示文字
+```
+
+## 常見錯誤
+
+- `localhost:5173` 打得開但不能聊天：通常是後端未啟動、API URL 錯誤或 CORS。
+- `localhost:8000/docs` 打不開：先看後端 Terminal 的套件或環境變數錯誤。
+- 前端白畫面：查看瀏覽器 Console 與 Vite Terminal。
+- 安裝失敗：確認 Node.js、Python 版本與目前所在資料夾。
+
+## 本篇驗收
+
+- 前端與後端可同時啟動。
+- `/docs` 可以開啟。
+- 瀏覽器 Console 沒有持續的連線錯誤。
+- 關閉後端後，前端能顯示清楚的連線失敗訊息。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請檢查目前專案的本機啟動流程。
+請確認 README 中的 Python、Node.js、前端與後端指令與實際檔案一致，
+並補上如何測試 /docs、如何停止服務，以及常見的 CORS 與 Port 問題。
+```
+
+下一篇會先只串接 Gemini，完成最小 AI 對話主幹。

@@ -4,7 +4,17 @@ sidebarTitle: "Day 24｜不要為拆而拆"
 description: "釐清單一 Agent 多工具與真正 Multi-Agent 架構的本質差異，掌握何時拆分 Agent 真正有意義，以及過早拆分的隱藏成本。"
 ---
 
+<Frame>
+  ![Day24 1](/day24-1.png "Day24 1")
+</Frame>
+
+<p align="center">
+  *圖 1｜單一 Agent 與 Multi-Agent 的架構取捨*
+</p>
+
 「我們的系統裡有 Analyst 查詢、Trello 操作、Confluence 搜尋、Document 處理四種能力，這樣算不算 Multi-Agent 架構？」這是一個在企業 AI 專案中非常常見的問題，而且答案往往出人意料：不一定。工具的數量和 Agent 的數量是兩個完全不同的維度。混淆這兩者不只是名詞上的誤用，更可能讓你在不需要複雜架構的地方引入不必要的成本與複雜度，同時在真正需要拆分的地方猶豫不決。
+
+$$\rightarrow$$
 
 ## 工具 vs. Agent：本質差異在哪裡？
 
@@ -14,6 +24,7 @@ description: "釐清單一 Agent 多工具與真正 Multi-Agent 架構的本質�
   <Card title="工具（Tool）" icon="wrench">
     工具是 Agent 可以呼叫的能力單元。一個工具有固定的輸入格式、固定的執行邏輯與固定的輸出格式。它本身不具備判斷能力——是 Agent 決定「什麼時候呼叫哪個工具、帶什麼參數」。工具像是螺絲起子：功能明確，由持有者決定何時使用。
   </Card>
+
   <Card title="Agent" icon="robot">
     Agent 是具備判斷能力的工作主體。它有自己的 Prompt（定義角色與目標）、自己的上下文（決定它能看到什麼資訊）、自己的工具集（決定它能做什麼）、以及可能獨立的模型選擇與權限設定。不同 Agent 之間存在明確的交接點。
   </Card>
@@ -21,48 +32,28 @@ description: "釐清單一 Agent 多工具與真正 Multi-Agent 架構的本質�
 
 ### 用結構來判斷
 
-```text
-【單一 Agent + 多個工具】
-使用者輸入
-    │
-    ▼
-┌─────────────────────────────────┐
-│  Coordinator Agent              │
-│  （一個 LLM，一個 Prompt）       │
-│                                 │
-│  工具清單：                      │
-│  • analyst_query()              │
-│  • trello_search()              │
-│  • confluence_search()          │
-│  • document_generate()          │
-└─────────────────────────────────┘
-    │
-    ▼
-  最終答案
+```mermaid
+flowchart TB
+    subgraph S[單一 Agent + 多個工具]
+        U1[使用者輸入] --> C1[Coordinator Agent<br/>一個 LLM、一個 Prompt]
+        C1 --> T1[Analyst Tool]
+        C1 --> T2[Trello Tool]
+        C1 --> T3[Confluence Tool]
+        C1 --> T4[Document Tool]
+        T1 --> A1[最終答案]
+        T2 --> A1
+        T3 --> A1
+        T4 --> A1
+    end
 
-【真正的 Multi-Agent 架構】
-使用者輸入
-    │
-    ▼
-┌─────────────────┐
-│  Coordinator    │  → 決定分配任務
-└─────────────────┘
-    │           │
-    ▼           ▼
-┌──────────┐ ┌──────────┐
-│ Analyst  │ │ Reviewer │  ← 各自有獨立 Prompt、上下文與工具
-│  Agent   │ │  Agent   │
-└──────────┘ └──────────┘
-    │           │
-    └─────┬─────┘
-          ▼
-    ┌──────────┐
-    │  Writer  │  ← 接收前兩個 Agent 的輸出，整理最終報告
-    │  Agent   │
-    └──────────┘
-          │
-          ▼
-      最終報告
+    subgraph M[真正的 Multi-Agent 架構]
+        U2[使用者輸入] --> C2[Coordinator<br/>分配任務]
+        C2 --> AN[Analyst Agent<br/>獨立 Prompt、上下文與工具]
+        C2 --> RV[Reviewer Agent<br/>獨立 Prompt、上下文與工具]
+        AN --> W[Writer Agent<br/>整合輸出]
+        RV --> W
+        W --> R[最終報告]
+    end
 ```
 
 精確的描述方式是：如果這四種能力只是四組 Tool，由同一個 Coordinator 的 LLM 選擇與呼叫，這是「**單一 Agent 加多個領域工具**」，而不是 Multi-Agent。
@@ -96,7 +87,7 @@ Multi-Agent 不是越多越好，它應該由真實的業務需求驅動。以�
 Data Machi 目前的核心架構是一個 Coordinator 在 Agent 節點與 Action 節點之間循環，四個領域能力（Analyst、Trello、Confluence、Document）主要以工具形式存在。
 
 <Note>
-  這個選擇是刻意的，而不是暫時的妥協。對於目前的業務場景，單一 Coordinator + 多工具的架構已經能完整覆蓋需求，而且帶來了幾個重要優勢：架構更簡單、每次對話的模型呼叫次數更少（延遲更低）、除錯更直觀、新工具的加入更快速。
+  這個選擇是刻意的，而不是暫時的妥協。對於目前的業務場景，單一 Coordinator \+ 多工具的架構已經能完整覆蓋需求，而且帶來了幾個重要優勢：架構更簡單、每次對話的模型呼叫次數更少（延遲更低）、除錯更直觀、新工具的加入更快速。
 </Note>
 
 ```python
@@ -126,32 +117,105 @@ coordinator = create_react_agent(llm, tools=tools)
 
 這種架構並不削弱系統價值，反而讓整個系統更容易理解與維護。
 
+## 應該從單一 Agent 開始，還是直接設計 Multi-Agent？
+
+Michael Albada 在《Building Applications with AI Agents》中提出一個很實用的原則：**先從最簡單的架構開始，只有當複雜度真的超出單一 Agent 的負荷時，再增加 Agent。**
+
+單一 Agent 通常具有以下優勢：
+
+- 實作與維護較簡單
+- 模型呼叫與 Token 成本較低
+- 沒有 Agent 之間的通訊與同步負擔
+- 回應延遲較短
+- 問題較容易追蹤與除錯
+
+Multi-Agent 的價值則通常出現在：
+
+- 工具數量過多，單一 Agent 的選擇準確率下降
+- 任務跨越多個差異明顯的專業領域
+- 不同角色需要獨立 Prompt、模型、上下文或權限
+- 子任務需要平行執行、正式交接或互相審核
+- 各部分需要獨立測試、部署或擴充
+
+| 判斷面向 | 維持單一 Agent | 考慮 Multi-Agent |
+| --- | --- | --- |
+| 工具數量 | 數量有限、用途清楚 | 工具很多且描述容易重疊 |
+| 任務範圍 | 同一工作領域 | 多個差異明顯的專業領域 |
+| Prompt 與 Context | 可共用核心規則 | 需要隔離不同角色的背景資訊 |
+| 權限 | 工具權限相近 | 不同角色需不同資料或操作權限 |
+| 執行方式 | 單一循環可以完成 | 需要平行、交接、審核或重做 |
+| 成本與延遲 | 希望保持較低 | 接受更多模型呼叫與協調成本 |
+
+書中也提醒，Multi-Agent 雖然可能帶來專業分工、平行化、擴充性與韌性，但同時會增加通訊、同步、維護與 Token 成本。如果沒有清楚的分工理由，增加 Agent 反而可能降低效率。
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 2, “Architecture Design Patterns,” pp. 32–34；Chapter 8, “How Many Agents Do I Need?” pp. 163–177.
+
+## Data Machi 的架構演進位置
+
+```mermaid
+flowchart LR
+    A[階段 1<br/>單一聊天模型] --> B[階段 2<br/>單一 Agent + 多個 Tools]
+    B --> C[階段 3<br/>工具分組與路由]
+    C --> D[階段 4<br/>Supervisor + 專家 Agents]
+    D --> E[階段 5<br/>分散式 Multi-Agent]
+```
+
+Data Machi 目前位於第二到第三階段之間：已有單一 Coordinator、領域工具分組、工具路由與平行執行，也具備記憶、釐清與 Verification；但 Analyst、Document、Trello 與 Confluence 尚未各自成為擁有獨立模型、State 與決策循環的 Agent。
+
+<Info>
+  這不是尚未完成的缺陷，而是根據目前工具數量、任務範圍、延遲與維護成本做出的架構選擇。書中也建議，在拆成 Multi-Agent 前，可以先改善工具 description、語意選擇或階層式 Tool Selection；只有這些方式仍不足時，才進一步拆分 Agent。
+</Info>
+
+> **參考來源**<br />Michael Albada, _Building Applications with AI Agents: Designing and Implementing Multiagent Systems_, O’Reilly Media, 2025, Chapter 5, “Tool Selection,” pp. 93–105；Chapter 8, “Single-Agent Scenarios,” pp. 163–169.
+
 ## 未來可能的拆分時機
 
 若 Data Machi 未來遇到以下需求，才會考慮真正的 Multi-Agent 拆分：
 
 <Accordion title="可能觸發 Multi-Agent 拆分的未來場景">
+  **場景一：分析師 \+ 審核師工作流**
 
-**場景一：分析師 + 審核師工作流**
+  若需要讓 Analyst Agent 先產出分析草稿，交給 Reviewer Agent 獨立查核資料正確性，再由 Writer Agent 整理最終報告，這個「草稿→查核→報告」的流程有明確的角色交接，適合拆成三個獨立節點。
 
-若需要讓 Analyst Agent 先產出分析草稿，交給 Reviewer Agent 獨立查核資料正確性，再由 Writer Agent 整理最終報告，這個「草稿→查核→報告」的流程有明確的角色交接，適合拆成三個獨立節點。
+  ```mermaid
+  flowchart LR
+A[Analyst Agent] -->|分析草稿| R[Reviewer Agent]
+R -->|通過| W[Writer Agent]
+R -->|退回修正| A
+W --> F[最終報告]
+  ```
 
-```text
-Analyst Agent → （草稿）→ Reviewer Agent → （批准/退回）→ Writer Agent
-                              ↑                    │
-                              └────────────────────┘
-                                  （退回修正）
+  **場景二：工具數量爆炸**
+
+  若工具清單從目前的 9 個增長到 30 個以上，Coordinator 的工具選擇準確度開始下滑，就是考慮按領域拆分 Sub-Agent 的時機。
+
+  **場景三：不同權限要求**
+
+  若系統需要支援不同角色（普通用戶 vs. 管理員），而管理員可以執行刪除或批量更新操作，用不同 Agent 隔離權限邊界會比在工具內部做條件判斷更清晰。
+</Accordion>
+
+## Graph 裡的三種 Node
+
+從 Graph Engineering 的角度來看，Node 不只是一種東西。理解 Node 的責任範圍，有助於避免把每個能力都錯誤包裝成 Agent。
+
+| Node 類型 | 主要責任 | 是否自主決策 |
+| --- | --- | --- |
+| **Tool Node** | 執行一個明確操作，例如查詢試算表或建立卡片 | 否 |
+| **LLM Node** | 完成一次分類、摘要、判斷或生成 | 有限，通常只做一次模型決策 |
+| **Agent Node** | 在自己的工具與上下文中反覆判斷、行動與觀察 | 是，內部可包含完整 Loop |
+
+```mermaid
+flowchart TD
+    G[外層 Graph]
+    G --> I[Intent Classifier<br/>LLM Node]
+    G --> S[Spreadsheet Query<br/>Tool Node]
+    G --> R[Research Agent<br/>Agent Node]
+    G --> H[Human Approval<br/>控制節點]
 ```
 
-**場景二：工具數量爆炸**
+因此，「Graph 中有很多 Node」不代表 Multi-Agent；只有當其中多個 Node 各自具備獨立目標、上下文、工具集與決策循環時，才是由 Graph 編排多個 Agent。
 
-若工具清單從目前的 9 個增長到 30 個以上，Coordinator 的工具選擇準確度開始下滑，就是考慮按領域拆分 Sub-Agent 的時機。
-
-**場景三：不同權限要求**
-
-若系統需要支援不同角色（普通用戶 vs. 管理員），而管理員可以執行刪除或批量更新操作，用不同 Agent 隔離權限邊界會比在工具內部做條件判斷更清晰。
-
-</Accordion>
+對 Data Machi 而言，現階段以單一 Coordinator 搭配多個 Tool Node 最合理；未來只有在研究、分析、查核等任務需要長時間自主執行與正式交接時，再把特定 Node 升級成 Agent Node。
 
 ## Multi-Agent 的隱藏成本
 

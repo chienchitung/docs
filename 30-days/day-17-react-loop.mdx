@@ -76,6 +76,7 @@ ReAct 框架將 Agent 的每一輪行動拆解成三個明確的階段：
   <Card title="沒有觀察的系統" icon="eye-slash">
     模型只在執行前規劃一次，無論工具回傳什麼結果，都照著原本計劃執行。遇到「查無資料」「欄位不存在」「回傳格式不符」，只能報錯或回傳錯誤答案。
   </Card>
+
   <Card title="有觀察的 Agent" icon="eye">
     每次工具執行後，模型重新評估結果，動態調整後續行動。能處理「查無資料」「找到多筆同名項目」「欄位名稱不一致」等真實世界中常見的資料問題。
   </Card>
@@ -84,6 +85,34 @@ ReAct 框架將 Agent 的每一輪行動拆解成三個明確的階段：
 <Info>
   **觀察讓 Agent 能處理「現實的不完美」**：真實的企業資料從來不是結構完美的教科書範例。資料缺失、命名不一致、系統之間的欄位對應差異，都需要 Agent 在觀察後動態調整策略。
 </Info>
+
+## Agentic Search：Observation 之後重新定義問題
+
+ReAct 的價值不只是「工具失敗時再試一次」，更重要的是：**新的 Observation 可以改變下一輪搜尋策略，甚至改變問題本身的拆解方式。**
+
+Onyx 的 Agent Search 就是一個很具體的例子。系統先進行初步搜尋，再把複雜問題拆成多個子問題；當初版答案仍有缺口時，它不只是用同一個查詢重試，而是根據目前已知道的資訊重新進行 refinement decomposition。第二輪拆解會參考原始問題、初版答案的不足、哪些子問題已回答或無法回答，以及初步搜尋中抽取出的實體、關係與關鍵詞。
+
+```text
+第一次搜尋
+↓
+Observation：找到部分資訊，但答案仍不完整
+↓
+重新判斷缺少什麼
+↓
+重新拆解子問題
+↓
+再次搜尋與驗證
+↓
+產生更完整答案
+```
+
+這比單純的 Retry 更接近真正的 Agent 行為。Retry 通常是在「同一個任務」上再嘗試一次；ReAct / Agentic Search 則可能在觀察結果後**改變下一步該做的任務**。
+
+<Note>
+  Data Machi 目前已具備工具結果回到 Coordinator 後重新判斷下一步的基本 ReAct Loop，但尚未完整實作 Onyx 這種「初版答案不足 → 重新拆題 → 多子題補查 → 再驗證」的深度搜尋流程。這可以視為未來複雜研究型問題的擴充方向。
+</Note>
+
+> **參考來源**<br />Evan Lohn & Joachim Rahmfeld, [“Beyond RAG: Implementing Agent Search with LangGraph for Smarter Knowledge Retrieval”](https://onyx.app/blog/agent-search-with-langgraph), Onyx, 2025-02-21. Onyx 描述了由 initial search、sub-question decomposition、initial answer 到 refinement decomposition 的迭代搜尋設計。
 
 ## Data Machi 的 ReAct 實作
 

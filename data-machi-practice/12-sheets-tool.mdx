@@ -1,0 +1,138 @@
+---
+title: "實作 12｜加入 Google Sheets：建立第一個可驗證資料工具"
+sidebarTitle: "實作 12｜Sheets Tool"
+description: "以匿名測試資料串接 Google Sheets，驗證 Service Account、欄位與查詢結果。"
+---
+
+Google Sheets 是最適合當作第一個資料工具的來源，因為讀者可以直接打開表格，人工核對系統回傳的數字是否正確。
+
+```mermaid
+flowchart LR
+    Q[自然語言問題] --> C[Coordinator]
+    C --> T[Sheets Tool]
+    T --> S[Google Sheets API]
+    S --> P[Pandas 篩選與計算]
+    P --> A[結構化結果]
+    A --> C --> U[最終回答]
+```
+
+## 先建立匿名測試表
+
+建議使用簡單欄位：
+
+| Request ID | Created Date | Category | Status | Owner |
+| --- | --- | --- | --- | --- |
+| R001 | 2026-07-01 | Dashboard | Completed | User A |
+| R002 | 2026-07-03 | Data Query | In Progress | User B |
+| R003 | 2026-07-04 | Dashboard | Completed | User A |
+
+接著把 Sheet 分享給 Service Account Email，並將 Sheet ID 放入後端環境變數。
+
+## LLM 與程式各自負責什麼？
+
+| 工作 | 建議執行者 |
+| --- | --- |
+| 理解「七月完成多少件」 | LLM |
+| 將欄位別名對應到 `Status` | Tool 規則 |
+| 日期篩選、Count、Groupby | Pandas |
+| 將數字整理成自然語言 | LLM |
+
+不要讓模型直接閱讀大量列後自行加總。模型負責理解問題，精確計算交給程式。
+
+## 建議的測試問題
+
+- 目前共有多少筆需求？
+- Completed 有幾筆？
+- Dashboard 類別中有幾筆已完成？
+- 哪些負責人的案件仍在進行中？
+
+每個答案都應與 Sheet 人工篩選結果一致。
+
+## 工具結果應保留什麼？
+
+除了回答文字，建議保留：
+
+- 使用的工作表名稱
+- 套用的欄位與篩選條件
+- 符合條件的筆數
+- 查詢時間
+- 是否命中快取
+
+這些資料可以支援後續 Verification 與除錯。
+
+## 常見失敗
+
+- `SpreadsheetNotFound`：Sheet ID 錯誤或尚未分享。
+- 欄位找不到：表頭拼字、空格或別名不一致。
+- 日期篩選錯誤：日期仍是文字格式。
+- 資料更新但結果沒變：TTL 快取尚未過期。
+
+## 本篇驗收
+
+- 至少四個測試問題都能與人工結果一致。
+- 空結果會回答「找不到」，而不是猜測。
+- 欄位不存在時會明確說明。
+- 回答不洩露 Service Account 或 Sheet ID。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請使用匿名測試 Sheet 檢查目前 Sheets Tool。
+先列出支援的欄位、別名、日期格式與查詢類型，
+再建立四個可人工核對的測試案例。
+精確計算必須由 Pandas 完成，不要讓 LLM 自行加總資料列。
+```
+
+## 建立並驗證匿名測試 Sheet
+
+### 步驟 1：建立匿名測試資料
+
+建立一份新的 Google Sheet，加入 `Request ID`、`Created Date`、`Category`、`Status` 等欄位，並填入 3～5 筆匿名資料。
+
+**圖 1｜匿名 Google Sheet 的欄位與測試資料**
+
+> \[圖片預留位置：Google Sheet，顯示欄位名稱與 3～5 筆匿名資料\]
+
+_圖說：先用簡單且可人工核對的匿名資料驗證 Sheets Tool。欄位名稱應與程式預期一致，避免一開始就使用複雜或含有企業資訊的正式資料。_
+
+### 步驟 2：取得並設定 Google Sheet ID
+
+從瀏覽器網址辨識 Sheet ID，並填入後端環境變數。
+
+**圖 2｜從網址辨識 Google Sheet ID**
+
+> \[圖片預留位置：瀏覽器網址列，框選 `/d/` 與 `/edit` 之間的 Sheet ID\]
+
+_圖說：Google Sheet ID 位於網址中的 `/d/` 與下一個斜線之間。填入環境變數時使用完整 ID；教學圖片則應遮蔽大部分字元。_
+
+### 步驟 3：將 Sheet 分享給 Service Account
+
+將匿名試算表分享給前一篇建立的 Service Account Email，權限設定為 Viewer。
+
+**圖 3｜確認 Sheet 已分享給 Service Account**
+
+> \[圖片預留位置：Google Sheets 分享視窗，顯示 Service Account Email 與 Viewer 權限\]
+
+_圖說：JSON Key 只能證明後端身分，不能自動取得試算表權限。請確認匿名測試 Sheet 已分享給 Service Account Email，且第一版只授予 Viewer。_
+
+### 步驟 4：執行查詢並人工核對結果
+
+使用簡單問題測試 Sheets Tool，將原始資料、問題與回答放在一起比對，確認統計結果可以人工重算。
+
+**圖 4｜人工核對 Sheets Tool 查詢結果**
+
+> \[圖片預留位置：匿名 Sheet 原始資料、Data Machi 問題、工具狀態與回答的組合畫面\]
+
+_圖說：將原始資料、使用者問題與最終答案放在同一個驗證畫面中，確認筆數、金額或狀態統計能被人工重算。第一個 Sheets Tool 測試應選擇簡單且可核對的問題。_
+
+### 步驟 5：測試權限不足的錯誤狀態
+
+暫時移除 Sheet 分享權限，確認系統會回傳清楚的 Permission Denied，而不是空白結果或無限 Loading。
+
+**圖 5｜辨識 Service Account 的權限錯誤**
+
+> \[圖片預留位置：暫時移除 Sheet 分享權限後的 Permission Denied 訊息\]
+
+_圖說：若憑證可以被載入，但目標 Sheet 沒有分享給 Service Account，系統通常會回傳 Permission Denied。這代表身分驗證成功，但資源授權不足；重新分享為 Viewer 後再測試。_
+
+下一篇會加入 PDF RAG，讓 Data Machi 可以回答文件內容並保留來源。

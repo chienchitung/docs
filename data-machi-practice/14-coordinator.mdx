@@ -1,0 +1,157 @@
+---
+title: "實作 14｜建立 Coordinator：讓系統選擇正確工具"
+sidebarTitle: "實作 14｜Coordinator"
+description: "使用 LangGraph 統一管理 Gemini、Sheets、RAG 與選配工具的路由。"
+---
+
+當 Data Machi 同時擁有 Sheets、RAG、Trello 與 Confluence，真正的問題不再是「有沒有工具」，而是「什麼問題應該交給哪個工具」。Coordinator 就像總機，負責判斷、分派與整合。
+
+```mermaid
+flowchart TD
+    U[使用者問題] --> C[Coordinator]
+    C -->|數字與表格| S[Sheets Tool]
+    C -->|PDF 文件| R[RAG Tool]
+    C -->|專案進度| T[Trello Tool]
+    C -->|知識頁面| F[Confluence Tool]
+    S --> C
+    R --> C
+    T --> C
+    F --> C
+    C --> A[最終回答]
+```
+
+## LangGraph 在這裡做什麼？
+
+LangGraph 把流程拆成可觀察的 State、Node 與 Edge：
+
+- **State**：保存訊息、工具結果、來源與執行狀態。
+- **Agent Node**：讓模型判斷下一步。
+- **Tool Node**：執行被選中的工具。
+- **Conditional Edge**：依模型結果決定呼叫工具或結束。
+
+```mermaid
+stateDiagram-v2
+    [*] --> Agent
+    Agent --> Tool: 有 tool call
+    Tool --> Agent: 回傳 ToolMessage
+    Agent --> [*]: 已能回答
+```
+
+這是一個循環 Graph，而不是單向流水線。工具回傳後，Agent 需要再次閱讀結果，判斷是否足夠、是否要補查，或是否能產生最終答案。
+
+## 先從單一 Coordinator 開始
+
+不要因為有四種能力就立刻拆成四個 Agent。若所有工具都能由同一個模型理解與選擇，單一 Coordinator 通常更容易除錯、成本更低，也更適合初期產品。
+
+只有在下列情況才考慮拆分 Agent：
+
+- 工具數量過多，選錯率明顯上升。
+- 不同角色需要獨立 Prompt、模型或權限。
+- 流程本身具有研究、審核、退回與重做等明確交接。
+
+## 路由測試矩陣
+
+| 問題 | 預期工具 |
+| --- | --- |
+| 七月完成多少筆需求？ | Sheets |
+| 文件中如何定義 SLA？ | RAG 或 Confluence |
+| 哪些卡片逾期？ | Trello |
+| 請改寫這段文字 | 不需工具 |
+| 比較表格數字與文件規範 | Sheets \+ RAG |
+
+## 平行與順序
+
+若同一問題需要獨立查詢 Sheets 與 RAG，可以平行執行；若第二個工具的參數必須依賴第一個結果，就必須維持順序。
+
+```mermaid
+flowchart LR
+    Q[複合問題] --> P{是否互相依賴？}
+    P -- 否 --> A1[平行查 Sheets]
+    P -- 否 --> A2[平行查 RAG]
+    A1 --> M[合併]
+    A2 --> M
+    P -- 是 --> B1[先查來源 A]
+    B1 --> B2[用結果查來源 B]
+    B2 --> M
+```
+
+## 本篇驗收
+
+- 每種問題會選到預期工具。
+- 不需要資料的問題不會亂呼叫工具。
+- 複合問題可以整合兩個以上來源。
+- Tool 失敗時，Coordinator 能說明哪個來源失敗。
+- Trace 能看出每一步的 Node、工具與結果。
+
+## 建議的 Vibe Coding Prompt
+
+```text
+請根據目前工具清單建立路由測試矩陣。
+先不要拆成 Multi-Agent，使用單一 Coordinator。
+請檢查每個工具的名稱、description、輸入 schema 與錯誤回傳，
+並建立不需工具、單工具、雙工具與工具失敗四類測試。
+```
+
+## 驗證 Coordinator 的路由結果
+
+### 步驟 1：測試數字問題
+
+送出一個需要精確統計的問題，預期 Coordinator 呼叫 Sheets Tool。
+
+**圖 1｜數字問題路由到 Sheets Tool**
+
+> \[圖片預留位置：測試問題、工具執行狀態與 Sheets 回傳結果\]
+
+_圖說：當問題要求精確數字或表格統計時，Coordinator 應選擇 Sheets Tool，而不是讓模型自行估算。_
+
+### 步驟 2：測試文件定義問題
+
+送出一個需要查詢 PDF 或知識文件的問題，預期 Coordinator 呼叫 RAG Tool 並保留來源。
+
+**圖 2｜文件問題路由到 RAG Tool**
+
+> \[圖片預留位置：文件問題、RAG 搜尋狀態、來源檔名與頁碼\]
+
+_圖說：當問題涉及文件定義或規範時，Coordinator 應呼叫 RAG，並在最終回答中保留來源。_
+
+### 步驟 3：測試不需工具的一般問題
+
+送出改寫、摘要或一般文字問題，確認 Coordinator 可以直接回答，不會為每個問題都強制呼叫工具。
+
+**圖 3｜一般文字問題不呼叫工具**
+
+> \[圖片預留位置：不需資料的問題與直接回答\]
+
+_圖說：改寫、摘要或一般知識問題不一定需要資料工具。正確的 Coordinator 不應為每個問題都強制呼叫工具。_
+
+### 步驟 4：測試複合問題
+
+送出一個同時需要數字與文件規範的問題，確認 Coordinator 能同時或依序呼叫兩個以上工具，再整合成最終回答。
+
+**圖 4｜複合問題整合多個工具**
+
+> \[圖片預留位置：同一問題中 Sheets 與 RAG 的工具執行紀錄及整合回答\]
+
+_圖說：複合問題可能同時需要數字與文件規範。畫面應讓讀者看出各工具的結果如何被整合成最後回答。_
+
+### 步驟 5：從 Trace 檢查執行順序
+
+使用 LangGraph Trace 或結構化 Log，確認 Coordinator、Tool 與最終回答之間的節點順序、狀態與耗時。
+
+**圖 5｜從 Trace 觀察 Coordinator 執行順序**
+
+> \[圖片預留位置：LangGraph Trace 或結構化 Log，標示 Coordinator → Tool → Coordinator 與耗時\]
+
+_圖說：Trace 應能看出問題先進入 Coordinator、接著呼叫哪個 Tool，以及工具結果如何回到 Coordinator 產生最終回答。若尚未整合視覺化 Trace，可先使用結構化 Log 呈現節點、工具、狀態與耗時。_
+
+### 步驟 6：測試工具失敗情境
+
+暫時讓其中一個資料來源不可用，確認 Coordinator 能指出失敗工具、保留仍可使用的結果，並提供下一步建議。
+
+**圖 6｜工具失敗時指出問題來源**
+
+> \[圖片預留位置：模擬某個資料來源不可用，以及系統顯示失敗工具名稱的畫面\]
+
+_圖說：當其中一個工具失敗時，Coordinator 應指出失敗的是 Sheets、RAG、Trello 或其他來源，並說明哪些資料仍然可用，而不是只回傳無法判斷原因的通用錯誤。_
+
+下一篇會處理多輪追問、先前工具結果與釐清流程。
