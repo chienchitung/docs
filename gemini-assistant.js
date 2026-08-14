@@ -181,6 +181,7 @@
       "padding:14px 16px;flex:0 0 auto;border-bottom:1px solid #e2e8f0;}" +
       "@media (prefers-color-scheme: dark){.dm-gm-header{border-color:#1e293b;}}" +
       ".dm-gm-header strong{font-size:14px;}" +
+      ".dm-gm-header-actions{display:flex;align-items:center;gap:4px;}" +
       ".dm-gm-header-actions button{background:transparent;border:none;color:inherit;cursor:pointer;" +
       "padding:6px;width:28px;height:28px;opacity:.6;display:flex;align-items:center;justify-content:center;" +
       "border-radius:6px;}" +
@@ -323,8 +324,8 @@
     'a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9 ' +
     'a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var ICON_SEND =
-    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M12 19V5M12 5l-6 6M12 5l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M2 21L23 12L2 3V10L17 12L2 14V21Z"/></svg>';
   var ICON_STOP =
     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
     '<rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>';
