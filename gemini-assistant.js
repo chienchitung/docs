@@ -260,7 +260,20 @@
     var panel = el("div", { id: "dm-gm-panel", role: "dialog", "aria-label": "AI 問答小幫手" });
     var header = el("div", { class: "dm-gm-header" }, "<strong>&#10022; Assistant</strong>");
     var actions = el("div", { class: "dm-gm-header-actions" });
-    var resetBtn = el("button", { title: "API Key 設定", "aria-label": "API Key 設定" }, ICON_GEAR);
+    var newChatBtn = el(
+      "button",
+      { id: "dm-gm-newchat", title: "開新對話", "aria-label": "開新對話" },
+      ICON_NEW_CHAT
+    );
+    newChatBtn.addEventListener("click", function () {
+      history = [];
+      render();
+    });
+    var resetBtn = el(
+      "button",
+      { id: "dm-gm-settings", title: "API Key 設定", "aria-label": "API Key 設定" },
+      ICON_GEAR
+    );
     resetBtn.addEventListener("click", function () {
       var content = document.getElementById("dm-gm-content");
       if (content) {
@@ -273,6 +286,7 @@
       panel.classList.remove("dm-gm-open");
       syncMobileToggle();
     });
+    actions.appendChild(newChatBtn);
     actions.appendChild(resetBtn);
     actions.appendChild(closeBtn);
     header.appendChild(actions);
@@ -286,6 +300,14 @@
     return panel;
   }
 
+  function updateHeaderActions() {
+    var hasKey = !!getApiKey();
+    var newChatBtn = document.getElementById("dm-gm-newchat");
+    var resetBtn = document.getElementById("dm-gm-settings");
+    if (newChatBtn) newChatBtn.style.display = hasKey ? "" : "none";
+    if (resetBtn) resetBtn.style.display = hasKey ? "" : "none";
+  }
+
   function render() {
     var content = document.getElementById("dm-gm-content");
     if (!content) return;
@@ -296,6 +318,7 @@
     } else {
       content.appendChild(renderChat());
     }
+    updateHeaderActions();
   }
 
   var ICON_EYE =
@@ -329,6 +352,10 @@
   var ICON_STOP =
     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
     '<rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>';
+  var ICON_NEW_CHAT =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M18.4 2.6a2.03 2.03 0 0 1 2.9 2.9L12 14.8l-3.9 1 1-3.9Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   function copyToClipboard(text, btnEl) {
     function feedback() {
