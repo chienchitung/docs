@@ -182,8 +182,10 @@
       "@media (prefers-color-scheme: dark){.dm-gm-header{border-color:#1e293b;}}" +
       ".dm-gm-header strong{font-size:14px;}" +
       ".dm-gm-header-actions button{background:transparent;border:none;color:inherit;cursor:pointer;" +
-      "font-size:15px;padding:4px 6px;opacity:.6;}" +
-      ".dm-gm-header-actions button:hover{opacity:1;}" +
+      "padding:6px;width:28px;height:28px;opacity:.6;display:flex;align-items:center;justify-content:center;" +
+      "border-radius:6px;}" +
+      ".dm-gm-header-actions button:hover{opacity:1;background:rgba(0,0,0,.06);}" +
+      "@media (prefers-color-scheme: dark){.dm-gm-header-actions button:hover{background:rgba(255,255,255,.1);}}" +
       ".dm-gm-disclaimer{flex:0 0 auto;text-align:center;font-size:11.5px;font-style:italic;opacity:.55;" +
       "padding:8px 16px;}" +
       "#dm-gm-content{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}" +
@@ -208,6 +210,7 @@
       ".dm-gm-bubble pre code{background:none;padding:0;}" +
       "@media (prefers-color-scheme: dark){.dm-gm-bubble code,.dm-gm-bubble pre{background:rgba(255,255,255,.1);}}" +
       ".dm-gm-bubble a{color:inherit;text-decoration:underline;}" +
+      ".dm-gm-aborted{display:block;font-size:11px;font-style:italic;opacity:.55;margin-top:4px;}" +
       ".dm-gm-dots{display:inline-flex;gap:4px;align-items:center;padding:4px 2px;}" +
       ".dm-gm-dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.3;" +
       "animation:dmgmdot 1s infinite ease-in-out;}" +
@@ -220,9 +223,11 @@
       ".dm-gm-input-row{display:flex;gap:6px;}" +
       ".dm-gm-input-row textarea{flex:1;resize:none;border-radius:10px;border:1px solid #cbd5e1;" +
       "padding:8px 10px;font-size:13.5px;font-family:inherit;height:38px;background:transparent;color:inherit;}" +
-      ".dm-gm-input-row button{background:#16A34A;color:#fff;border:none;border-radius:10px;" +
-      "padding:0 14px;cursor:pointer;font-size:13px;flex:0 0 auto;}" +
+      ".dm-gm-input-row button{background:#16A34A;color:#fff;border:none;border-radius:50%;" +
+      "width:34px;height:34px;padding:0;cursor:pointer;flex:0 0 auto;" +
+      "display:flex;align-items:center;justify-content:center;}" +
       ".dm-gm-input-row button:disabled{opacity:.5;cursor:not-allowed;}" +
+      ".dm-gm-input-row button.dm-gm-stop{background:#475569;}" +
       ".dm-gm-setup{padding:16px 14px;font-size:13px;line-height:1.6;}" +
       ".dm-gm-setup input{width:100%;box-sizing:border-box;padding:8px 10px;margin:10px 0;" +
       "border-radius:8px;border:1px solid #cbd5e1;font-size:13px;background:transparent;color:inherit;}" +
@@ -254,7 +259,7 @@
     var panel = el("div", { id: "dm-gm-panel", role: "dialog", "aria-label": "AI 問答小幫手" });
     var header = el("div", { class: "dm-gm-header" }, "<strong>&#10022; Assistant</strong>");
     var actions = el("div", { class: "dm-gm-header-actions" });
-    var resetBtn = el("button", { title: "API Key 設定", "aria-label": "API Key 設定" }, "&#9881;");
+    var resetBtn = el("button", { title: "API Key 設定", "aria-label": "API Key 設定" }, ICON_GEAR);
     resetBtn.addEventListener("click", function () {
       var content = document.getElementById("dm-gm-content");
       if (content) {
@@ -309,6 +314,20 @@
   var ICON_CHECK =
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
     '<path d="M4 12.5l5 5L20 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_GEAR =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/>' +
+    '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 ' +
+    '1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 ' +
+    '1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9 ' +
+    'a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9 ' +
+    'a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_SEND =
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M12 19V5M12 5l-6 6M12 5l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_STOP =
+    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>';
 
   function copyToClipboard(text, btnEl) {
     function feedback() {
@@ -430,16 +449,24 @@
     var footer = el("div", { class: "dm-gm-footer" });
     var row = el("div", { class: "dm-gm-input-row" });
     var textarea = el("textarea", { placeholder: "輸入你的問題…" });
-    var sendBtn = el("button", {}, "送出");
+    var sendBtn = el("button", { type: "button", title: "送出", "aria-label": "送出" }, ICON_SEND);
+    var currentController = null;
 
     function send() {
       var q = textarea.value.trim();
       if (!q || busy) return;
       textarea.value = "";
-      appendAndSend(q, body, sendBtn, textarea);
+      currentController = new AbortController();
+      appendAndSend(q, body, sendBtn, textarea, currentController);
     }
 
-    sendBtn.addEventListener("click", send);
+    sendBtn.addEventListener("click", function () {
+      if (busy) {
+        if (currentController) currentController.abort();
+      } else {
+        send();
+      }
+    });
     textarea.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -471,7 +498,21 @@
     return msg;
   }
 
-  function appendAndSend(question, body, sendBtn, textarea) {
+  function setSendMode(sendBtn, mode) {
+    if (mode === "stop") {
+      sendBtn.innerHTML = ICON_STOP;
+      sendBtn.classList.add("dm-gm-stop");
+      sendBtn.title = "停止產生";
+      sendBtn.setAttribute("aria-label", "停止產生");
+    } else {
+      sendBtn.innerHTML = ICON_SEND;
+      sendBtn.classList.remove("dm-gm-stop");
+      sendBtn.title = "送出";
+      sendBtn.setAttribute("aria-label", "送出");
+    }
+  }
+
+  function appendAndSend(question, body, sendBtn, textarea, controller) {
     history.push({ role: "user", text: question });
     body.appendChild(renderMessage("user", question));
 
@@ -483,8 +524,8 @@
     body.scrollTop = body.scrollHeight;
 
     busy = true;
-    sendBtn.disabled = true;
     textarea.disabled = true;
+    setSendMode(sendBtn, "stop");
 
     var target = "";
     var revealed = "";
@@ -519,10 +560,14 @@
       }
     }
 
-    askGeminiStream(question, function (partial) {
-      target = partial;
-      if (!typing && target) startTyping();
-    })
+    askGeminiStream(
+      question,
+      function (partial) {
+        target = partial;
+        if (!typing && target) startTyping();
+      },
+      controller.signal
+    )
       .then(function (finalText) {
         target = finalText || target || "（沒有取得回應內容）";
         streamDone = true;
@@ -531,13 +576,20 @@
       })
       .catch(function (err) {
         stopTyping();
+        if (err && err.name === "AbortError") {
+          revealed = target;
+          bubble.innerHTML = target ? markdownToHtml(target) : "";
+          bubble.appendChild(el("span", { class: "dm-gm-aborted" }, "（已停止回覆）"));
+          if (target) history.push({ role: "model", text: target });
+          return;
+        }
         modelMsg.className = "dm-gm-msg error";
         bubble.className = "dm-gm-bubble";
         bubble.textContent = err.message || "發生未知錯誤";
       })
       .finally(function () {
         busy = false;
-        sendBtn.disabled = false;
+        setSendMode(sendBtn, "send");
         textarea.disabled = false;
         textarea.focus();
         body.scrollTop = body.scrollHeight;
@@ -579,7 +631,7 @@
       });
   }
 
-  function askGeminiStream(question, onChunk) {
+  function askGeminiStream(question, onChunk, signal) {
     var apiKey = getApiKey();
     if (!apiKey) return Promise.reject(new Error("尚未設定 API Key"));
 
@@ -590,6 +642,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: signal,
     }).then(function (res) {
       if (!res.ok) {
         return errorFromResponse(res).then(function (err) {
