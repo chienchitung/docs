@@ -224,9 +224,8 @@
       ".dm-gm-input-row{display:flex;gap:6px;}" +
       ".dm-gm-input-row textarea{flex:1;resize:none;border-radius:10px;border:1px solid #cbd5e1;" +
       "padding:8px 10px;font-size:13.5px;font-family:inherit;height:38px;background:transparent;color:inherit;}" +
-      ".dm-gm-input-row button{background:#16A34A;color:#fff;border:none;border-radius:50%;" +
-      "width:34px;height:34px;padding:0;cursor:pointer;flex:0 0 auto;" +
-      "display:flex;align-items:center;justify-content:center;}" +
+      ".dm-gm-input-row button{background:#16A34A;color:#fff;border:none;border-radius:10px;" +
+      "padding:0 14px;cursor:pointer;font-size:13px;flex:0 0 auto;}" +
       ".dm-gm-input-row button:disabled{opacity:.5;cursor:not-allowed;}" +
       ".dm-gm-input-row button.dm-gm-stop{background:#475569;}" +
       ".dm-gm-setup{padding:16px 14px;font-size:13px;line-height:1.6;}" +
@@ -346,12 +345,6 @@
     '1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9 ' +
     'a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9 ' +
     'a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  var ICON_SEND =
-    '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M2 21L23 12L2 3V10L17 12L2 14V21Z"/></svg>';
-  var ICON_STOP =
-    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>';
   var ICON_NEW_CHAT =
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
     '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>' +
@@ -477,7 +470,7 @@
     var footer = el("div", { class: "dm-gm-footer" });
     var row = el("div", { class: "dm-gm-input-row" });
     var textarea = el("textarea", { placeholder: "輸入你的問題…" });
-    var sendBtn = el("button", { type: "button", title: "送出", "aria-label": "送出" }, ICON_SEND);
+    var sendBtn = el("button", { type: "button", title: "送出", "aria-label": "送出" }, "送出");
     var currentController = null;
 
     function send() {
@@ -528,12 +521,12 @@
 
   function setSendMode(sendBtn, mode) {
     if (mode === "stop") {
-      sendBtn.innerHTML = ICON_STOP;
+      sendBtn.textContent = "停止";
       sendBtn.classList.add("dm-gm-stop");
       sendBtn.title = "停止產生";
       sendBtn.setAttribute("aria-label", "停止產生");
     } else {
-      sendBtn.innerHTML = ICON_SEND;
+      sendBtn.textContent = "送出";
       sendBtn.classList.remove("dm-gm-stop");
       sendBtn.title = "送出";
       sendBtn.setAttribute("aria-label", "送出");
