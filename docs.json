@@ -79,28 +79,6 @@
           "30-days/day-29-security-testing-deployment",
           "30-days/day-30-design-your-enterprise-agent"
         ]
-      },
-      {
-        "group": "實作篇｜Day 16–30",
-        "icon": "code",
-        "pages": [
-          "data-machi-practice/index",
-          "data-machi-practice/01-service-map",
-          "data-machi-practice/02-vibe-coding",
-          "data-machi-practice/03-github-hub",
-          "data-machi-practice/04-secrets-map"
-        ]
-      },
-      {
-        "group": "實作篇｜Day 16–30",
-        "icon": "code",
-        "pages": [
-          "data-machi-practice/overview",
-          "data-machi-practice/service-map",
-          "data-machi-practice/vibe-coding",
-          "data-machi-practice/github-hub",
-          "data-machi-practice/secrets-map"
-        ]
       }
     ]
   }
