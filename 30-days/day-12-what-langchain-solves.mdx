@@ -1,119 +1,48 @@
 ---
-title: "Day 12｜認識 LangChain 的本質：整合 AI 元件的工具箱，不是讓模型自動完成任務的魔法"
-sidebarTitle: "Day 12｜LangChain"
-description: "LangChain 整合模型、Prompt、工具呼叫與訊息格式，讓開發者不必從頭撰寫底層整合程式碼。但業務邏輯、資料品質與安全邊界仍是開發者的全部責任——理解框架能解決哪些問題、在哪些地方無法替你做決策，才能設計出真正有效地解決業務問題的企業 AI Agent。"
+title: "Day 12｜什麼是工具使用（Tool Use）？讓 AI 從「回答」開始學會「使用工具」"
+sidebarTitle: "Day 12｜工具使用（Tool Use）"
+description: "理解工具使用（Tool Use）如何讓模型連接外部系統，以及 LangChain 如何整合模型、提示詞、工具呼叫與訊息格式。框架負責技術整合，但業務邏輯、資料品質與安全邊界仍需由系統設計者負責。"
 ---
 
-在 AI 工程圈裡，LangChain 是一個幾乎無人不知的框架名稱，但它也是最容易被誤解的工具之一。很多人第一次聽到 LangChain，會以為它是一個能讓 AI「更聰明」或「自動完成企業任務」的神奇工具，但這個認知偏差往往導致開發者在錯誤的地方花費過多力氣。更準確的理解是：LangChain 提供一套標準化的方式，把模型、Prompt、Tool、對話訊息與輸出處理這些元件串連在一起，讓你不必從零開始寫每一段整合程式。
+檢索增強生成（RAG）讓 AI 可以查文件，但如果我們希望它取得即時數字、查詢專案狀態，甚至執行一個動作，就需要把外部能力包裝成工具（Tool）。對模型來說，工具可以理解成一組「我可以使用的方法」，每個方法都有清楚的名稱、用途與輸入參數。
 
-## 沒有框架時，開發者要面對什麼？
+例如 `query_google_sheets` 可以接受日期、地區或分類條件，回傳精確計算結果；`search_document_base` 負責從 PDF 找相關內容；`get_trello_cards` 則可以查詢任務狀態。模型不需要知道底層 API 怎麼寫，只需要知道什麼情況應該使用哪個工具，以及要傳入什麼資料。
 
-想像你要手工打造一個能同時使用 OpenAI、Gemini 和本地模型的企業 Agent，不使用任何框架，你需要：
+## 函式呼叫（Function Calling）到底做了什麼？
 
-<Steps>
-  <Step title="處理各家模型的 API 差異">
-    OpenAI、Anthropic、Google Gemini 各有不同的 API 端點、認證方式、訊息格式與回應結構。你要為每一家寫專屬的呼叫邏輯，日後換模型就等於重寫一遍。
-  </Step>
-  <Step title="自行管理對話訊息結構">
-    多輪對話需要追蹤 `system`、`user`、`assistant`、`tool_result` 等角色，以及工具呼叫紀錄。你要自己決定哪些訊息保留、哪些省略、上下文視窗滿了怎麼辦。
-  </Step>
-  <Step title="設計工具的輸入輸出規格">
-    每個外部工具（Google Sheets API、Trello API 等）都有自己的輸入格式。你要手動把這些規格轉換成模型能理解的 JSON Schema，還要處理工具呼叫的錯誤與重試。
-  </Step>
-  <Step title="處理輸出解析與驗證">
-    模型的輸出是純文字，你需要自行解析結構化資料、驗證格式是否正確、處理模型輸出不符預期的情況。
-  </Step>
-</Steps>
+當模型支援函式呼叫時，我們可以把工具規格提供給它。模型收到問題後，不一定直接生成答案，而是先輸出「我要使用哪個工具，以及需要哪些參數」。程式收到這個決定後，真的去執行函式，再把結果送回模型整理。
 
-LangChain 的價值，就是把這些重複性的底層工作抽象化，讓開發者可以專注在「這個 Agent 應該做什麼」，而不是「這段 API 呼叫怎麼寫」。
+這裡有一個非常重要的分工：**模型負責理解意圖，程式負責執行事實。** 例如使用者問平均訂單金額，模型可以判斷需要查 Google Sheets，但最後的加總與除法最好由 Pandas、SQL 或程式完成，而不是讓大型語言模型（LLM）自己算。
 
-## LangChain 像什麼？
+## 那 LangChain 又是什麼？
 
-用一個企業系統的比喻來理解會更直觀：
+LangChain 可以幫助我們把模型、提示詞（Prompt）、訊息格式、工具與輸出串在一起。它提供很多現成抽象層，讓開發者不需要每次都自己處理函式規格（Function Schema）、工具綁定（Tool Binding）與訊息交換。
 
-LangChain 比較像是企業 IT 架構中的**中介層（Middleware）或轉接層（Adapter Layer）**。你的業務系統（模型與 Agent 邏輯）不需要直接對接每一個外部系統（Google Sheets、Trello、Confluence）的 API 細節，而是透過統一的介面呼叫它們。
+但 LangChain 並不是「裝上去就會自動變成代理（Agent）」。資料應該去哪裡查、欄位怎麼定義、什麼情況需要重新查詢，以及哪些動作需要人工確認，這些仍然是產品與工程設計問題。
 
-<CardGroup cols={2}>
-  <Card title="統一的訊息格式" icon="envelope">
-    不管底層用的是哪家模型，LangChain 提供一致的 `HumanMessage`、`AIMessage`、`ToolMessage` 等訊息物件，讓對話流程的程式碼不需要因為換模型而改寫。
-  </Card>
-  <Card title="Tool 裝飾器" icon="tag">
-    用 `@tool` 裝飾器把一個 Python 函式轉成模型可識別的工具，自動生成 JSON Schema 描述，省去手動定義參數格式的工作。
-  </Card>
-  <Card title="模型互換性" icon="arrows-rotate">
-    切換 OpenAI 到 Gemini 或 Anthropic，通常只需要更換幾行初始化程式碼，其餘的 Agent 邏輯保持不變，方便比較不同模型的表現。
-  </Card>
-  <Card title="記憶與上下文管理" icon="brain">
-    提供多種對話記憶策略，例如保留完整歷史、摘要壓縮、或依視窗大小截斷，避免每次都要自己實作記憶機制。
-  </Card>
-</CardGroup>
+## 不要把框架當成業務邏輯
 
-## LangChain 在 Data Machi 中的角色
+框架最有價值的地方，是幫你少寫重複整合程式；最危險的地方，是讓人誤以為只要使用某個代理類別，系統就會自然懂公司的流程。
 
-Data Machi 的系統使用 LangChain 的三個核心部分：
+在 Data Machi 裡，我們會使用框架降低工具整合成本，但關鍵規則仍然會清楚留在程式與工作流程（Workflow）裡。這樣未來就算替換模型或框架，商業邏輯也不會一起消失。
 
-```python
-# 1. 訊息結構：統一對話格式
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
+## 進階理解｜一個好工具，至少要說清楚四件事
 
-messages = [
-    SystemMessage(content="你是一個企業資料分析助理，只根據實際資料回答問題。"),
-    HumanMessage(content="上個月的 Active Customer 數量是多少？"),
-]
+對非工程背景的讀者，不需要先記 JSON 結構規格（JSON Schema）。只要把工具想成「交給 AI 使用的一項公司能力」，它至少要說清楚：**叫什麼、什麼時候用、需要哪些輸入、會回傳什麼。** 例如 `get_project_status` 如果只描述成「查資料」，協調者（Coordinator）很容易和其他工具混淆；如果明確寫成「當使用者詢問專案目前狀態、負責人與截止日時使用」，分流就會穩定很多。
 
-# 2. Tool 裝飾器：自動把函式轉成模型可識別的工具
-from langchain_core.tools import tool
+| 工具要回答的問題 | 例子 |
+| --- | --- |
+| 名稱（Name）｜它叫什麼？ | `get_project_status` |
+| 用途說明（Description）｜何時使用？ | 查詢專案目前進度與負責人 |
+| 參數（Parameters）｜需要什麼？ | 專案名稱或 ID |
+| 回傳結果（Return）｜會得到什麼？ | 狀態、負責人、截止日、來源 |
 
-@tool
-def get_monthly_customer_count(year: int, month: int) -> dict:
-    """查詢指定年月的 Active Customer 數量。適用於需要具體數字的問題。"""
-    # 實際查詢邏輯
-    return {"year": year, "month": month, "count": 1234}
-
-# 3. 模型整合：統一呼叫介面
-from langchain_google_genai import ChatGoogleGenerativeAI
-
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-llm_with_tools = llm.bind_tools([get_monthly_customer_count])
-```
-
-透過 LangChain 的抽象，Data Machi 的 Coordinator 可以在不關心底層 API 差異的情況下，專注在「應該呼叫哪個工具、什麼時候終止、如何整合結果」的推理邏輯上。
-
-而對於更複雜的多步驟流程控制，Data Machi 進一步使用 **LangGraph** 來管理執行循環——這讓每一步的狀態轉移更明確，也更容易在特定節點加入驗證或人工確認的邏輯。
-
-<Accordion title="LangChain 與 LangGraph 的關係是什麼？">
-  LangChain 負責元件層面的整合（模型、工具、訊息），LangGraph 則負責流程層面的控制（狀態機、節點、邊、條件分支）。如果 LangChain 是工具箱，LangGraph 就是用這些工具搭建的流水線控制系統。對於需要明確執行循環的複雜 Agent，LangGraph 提供比 LangChain 內建的 AgentExecutor 更精細的控制能力。
+<Accordion title="延伸閱讀：LangChain 比較像轉接層（Middleware），不是 AI 大腦">
+  LangChain 的價值主要是幫忙統一模型、訊息與工具的接法，降低不同 API 之間的整合成本。它不會替你決定公司的正確流程、資料定義與安全邊界。可以把它想成「轉接層」：讓不同零件比較容易接起來，但產品要解決什麼問題、哪些步驟不能出錯，仍然需要另外設計。
 </Accordion>
 
-## LangChain 不負責什麼？
-
-這是更重要的認知：**框架只解決技術整合問題，不解決業務設計問題。**
-
-LangChain 不會：
-- 自動替你定義正確的工作流程與邏輯順序
-- 保證模型在每次推理時都選到正確的工具
-- 處理資料品質問題（髒資料、欄位不一致、缺漏值）
-- 確保 Agent 的回答符合業務規範與安全邊界
-- 自動驗證輸出是否真實可信
-
-<Warning>
-  業務邏輯、資料清洗、安全邊界與回答驗證，仍然是開發者的責任。框架讓你更快搭建系統，但它不會替你思考這個系統是否解決了正確的問題。
-</Warning>
-
-## 踩坑筆記
-
-在 AI 工程實踐中，有一個常見的陷阱：**從框架出發設計產品**。
-
-開發者看到 LangChain 提供了 Retrieval Chain、ConversationalRetrievalChain、AgentExecutor 等現成元件，就把業務問題往這些元件上套，結果設計出的系統符合框架的形狀，但不符合實際使用者的需求。
-
-正確的順序應該是：
-
-1. **先確認工作問題**：使用者真正在問什麼？他們的工作流程是什麼？
-2. **判斷哪些部分需要 AI**：哪些步驟需要語言理解、哪些用確定性程式就夠了？
-3. **選擇適合的工具**：這裡才輪到框架。LangChain 是手段，不是目的。
-
 <Info>
-  今天只要記住一件事：LangChain 是整合 AI 元件的工具箱，不是自動生成企業 Agent 的魔法。
+  今天先記住一件事：工具使用（Tool Use）的核心是讓模型「選擇能力」，但真正的資料查詢、計算與操作仍由程式執行；LangChain 是整合工具箱，不是業務流程本身。
 </Info>
 
-下一篇，我們會看 Data Machi 如何讓 AI 真正讀懂 Google Sheets，以及在設計資料分析工具時需要注意哪些細節。
+下一篇，我們會實際加入第一個結構化資料工具，讓 Data Machi 可以查 Google Sheets，而且所有數字都由程式精確計算。

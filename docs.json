@@ -21,7 +21,7 @@
         "pages": ["index"]
       },
       {
-        "group": "第一篇｜AI 與工作",
+        "group": "Part 1｜從 Chat 到企業 AI",
         "pages": [
           "30-days/day-01-enterprise-ai-is-not-chatbot",
           "30-days/day-02-what-is-knowledge-work",
@@ -31,7 +31,7 @@
         ]
       },
       {
-        "group": "第二篇｜企業知識檢索",
+        "group": "Part 2｜讓 AI 找到企業知識",
         "pages": [
           "30-days/day-06-what-is-rag",
           "30-days/day-07-pdf-to-searchable-knowledge",
@@ -41,7 +41,7 @@
         ]
       },
       {
-        "group": "第三篇｜工具整合",
+        "group": "Part 3｜從 RAG 走向 Tool Use",
         "pages": [
           "30-days/day-11-rag-vs-tool-use",
           "30-days/day-12-what-langchain-solves",
@@ -51,7 +51,7 @@
         ]
       },
       {
-        "group": "第四篇｜Agent 決策",
+        "group": "Part 4｜從 Tool 走向 Agent",
         "pages": [
           "30-days/day-16-when-tools-become-agent",
           "30-days/day-17-react-loop",
@@ -61,7 +61,7 @@
         ]
       },
       {
-        "group": "第五篇｜可控工作流",
+        "group": "Part 5｜把 Agent 變成可控 Workflow",
         "pages": [
           "30-days/day-21-why-agentexecutor-is-not-enough",
           "30-days/day-22-what-is-langgraph",
@@ -71,7 +71,7 @@
         ]
       },
       {
-        "group": "第六篇｜企業級產品",
+        "group": "Part 6｜從 Demo 走向 Product",
         "pages": [
           "30-days/day-26-timeout-retry-fallback",
           "30-days/day-27-agent-ux",
