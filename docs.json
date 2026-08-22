@@ -9,6 +9,9 @@
     "dark": "#15803D"
   },
   "favicon": "/favicon.svg",
+  "fonts": {
+    "family": "Inter"
+  },
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
