@@ -71,7 +71,7 @@
         ]
       },
       {
-        "group": "Part 6｜從 Demo 走向 Product",
+        "group": "Part 6｜從 Demo 走向 Production",
         "pages": [
           "30-days/day-26-timeout-retry-fallback",
           "30-days/day-27-agent-ux",
