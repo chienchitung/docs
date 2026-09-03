@@ -84,5 +84,11 @@
         ]
       }
     ]
+  },
+  "seo": {
+    "metatags": {
+      "canonical": "https://data-machi.com",
+      "google-site-verification": "wqTdsV8maL-pP7XZcfJMr-frWS-j8YUAtxjXxmzpPaA"
+    }
   }
 }
