@@ -84,5 +84,10 @@
         ]
       }
     ]
+  },
+  "seo": {
+    "metatags": {
+      "canonical": "https://data-machi.com"
+    }
   }
 }
